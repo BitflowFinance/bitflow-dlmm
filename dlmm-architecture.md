@@ -30,7 +30,7 @@
 #### Admin-Configurable
 Set via public admin functions
 - `admins` (`(list 5 principal)`): List of principals with admin permissions
-- `bin-steps` (`list 10 uint`): List of allowed bin steps (initial: 1, 5, 10, and 20)
+- `bin-steps` (`(list 10 uint)`): List of allowed bin steps (initial: 1, 5, 10, and 20)
 - `minimum-total-shares` (`uint`): Minimum shares to mint when creating a pool
 - `minimum-burnt-shares` (`uint`): Minimum shares to burn when creating a pool
 - `public-pool-creation` (`bool`): Allow pool creation by anyone or admins only
@@ -152,17 +152,37 @@ Manage or retrieve data about variable fees for a single bin in a pool
 ### Trait Definition
 - `get-name`: () (response (string-ascii 32) uint)
 - `get-symbol`: () (response (string-ascii 32) uint)
-- `get-decimals`: () (response uint uint)
-- `get-token-uri`: () (response (optional (string-utf8 256)) uint)
-- `get-total-supply`: () (response uint uint)
-- `get-balance`: (principal) (response uint uint)
+- `get-decimals`: (uint) (response uint uint)
+- `get-token-uri`: (uint) (response (optional (string-utf8 256)) uint)
+- `get-total-supply`: (uint) (response uint uint)
+- `get-overall-supply`: () (response uint uint)
+- `get-balance`: (uint principal) (response uint uint)
+- `get-overall-balance`: (principal) (response uint uint)
 - `get-pool`: ...
-- `set-pool-uri`: ...
-- `set-pool-status`: ...  
+- `get-active-bin-id`: () (response uint uint)
+- `get-balances-at-bin`: ...
+- `get-user-bins`: ...
+- `set-pool-uri`: ((string-utf8 256)) (response bool uint)
+- `set-pool-status`: (bool) (response bool uint)  
   _Remove if `pool-status` is managed in the core contract_
-- `set-variable-fees-manager`: ...
-- `set-fee-address`: ...  
+- `set-variable-fees-manager`: (principal) (response bool uint)
+- `set-fee-address`: (principal) (response bool uint)  
   _Remove if `fee-address` is managed in the core contract_
+- `set-x-fees`: (uint uint) (response bool uint)
+- `set-y-fees`: (uint uint) (response bool uint)
+- `set-variable-fees`: (uint uint) (response bool uint)
+- `set-variable-fees-cooldown`: (uint) (response bool uint)
+- `set-freeze-variable-fees-manager`: () (response bool uint)
+- `update-bin-balances`: ...
+- `update-user-balances`: ...
+- `transfer`: (uint uint principal principal) (response bool uint)
+- `transfer-memo`: (uint uint principal principal (buff 34)) (response bool uint)
+- `transfer-many`: ((list 200 {token-id: uint, amount: uint, sender: principal, recipient: principal})) (response bool uint)
+- `transfer-many-memo`: ((list 200 {token-id: uint, amount: uint, sender: principal, recipient: principal, memo: (buff 34)})) (response bool uint)
+- `pool-transfer`: (<sip-010-trait> uint principal) (response bool uint)
+- `pool-mint`: (uint uint principal) (response bool uint)
+- `pool-burn`: (uint uint principal) (response bool uint)
+- `create-pool`: ...
 
 ## 4. dlmm-pool-stx-aeusdc-v-1-1
 
