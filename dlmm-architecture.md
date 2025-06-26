@@ -9,6 +9,7 @@
 - `dlmm-router-v-1-1`
 
 ### External
+- `sip-010-trait-ft-standard-v-1-1`
 - `sip-013-trait-ft-standard-v-1-1`
 - `token-stx-v-1-2`
 
