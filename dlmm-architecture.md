@@ -110,16 +110,16 @@ Create new pools
 Retrieve quotes using a single bin in a pool
 
 **Public** (read-only if possible)
-- `get-dy`: Return token X -> Y quote
-- `get-dx`: Return token Y -> X quote
+- `get-dy`: Return token X → Y quote
+- `get-dx`: Return token Y → X quote
 - `get-dlp`: Return number of shares to mint for adding liquidity
 
 ### Swap Functions
 Swap using a single bin in a pool
 
 **Public**
-- `swap-x-for-y`: Swap token X -> Y
-- `swap-y-for-x`: Swap token Y -> X
+- `swap-x-for-y`: Swap token X → Y
+- `swap-y-for-x`: Swap token Y → X
 
 ### Liquidity Functions
 Add or withdraw liquidity using a single bin in a pool
@@ -142,7 +142,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `set-variable-fees-cooldown-multi`: Batch version of `set-variable-fees-cooldown` (120 max)
 - `set-freeze-variable-fees-manager-multi`: Batch version of `set-freeze-variable-fees-manager` (120 max)
 
-## dlmm-pool-trait-v-1-1 (w.i.p.)
+## 3. dlmm-pool-trait-v-1-1 (w.i.p.)
 
 ### Traits
 - `sip-010-trait-ft-standard-v-1-1` (use)
@@ -164,7 +164,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `set-fee-address`: ...  
   _Remove if `fee-address` is managed in the core contract_
 
-## dlmm-pool-stx-aeusdc-v-1-1
+## 4. dlmm-pool-stx-aeusdc-v-1-1
 
 ### Traits
 - `dlmm-pool-trait-v-1-1` (implement)
@@ -202,12 +202,12 @@ Set via the core contract using admin functions
 - `variable-fees-manager`: Principal authorized to set variable fees 
 - `fee-address` (`principal`): Principal to send protocol fees to  
   _May add this in the `pools` mapping in the core contract instead of here_
-- `x-protocol-fee` (`uint`): Protocol fee charged for protocol when swapping X -> Y
-- `x-provider-fee` (`uint`): Provider fee charged for providers when swapping X -> Y
-- `x-variable-fee` (`uint`): Variable fee charged for providers when swapping X -> Y
-- `y-protocol-fee` (`uint`): Protocol fee charged for protocol when swapping Y -> X
-- `y-provider-fee` (`uint`): Protocol fee charged for providers when swapping Y -> X
-- `y-variable-fee` (`uint`): Variable fee charged for providers when swapping Y -> X
+- `x-protocol-fee` (`uint`): Protocol fee charged for protocol when swapping X → Y
+- `x-provider-fee` (`uint`): Provider fee charged for providers when swapping X → Y
+- `x-variable-fee` (`uint`): Variable fee charged for providers when swapping X → Y
+- `y-protocol-fee` (`uint`): Protocol fee charged for protocol when swapping Y → X
+- `y-provider-fee` (`uint`): Protocol fee charged for providers when swapping Y → X
+- `y-variable-fee` (`uint`): Variable fee charged for providers when swapping Y → X
 - `variable-fees-cooldown`: Variable fees can be reset after this cooldown (Stacks blocks) is reached
 - `freeze-variable-fees-manager`: If `true`, `variable-fees-manager` is permanently frozen
 
@@ -272,7 +272,10 @@ Manage or retrieve data about the pool contract
 - `pool-burn`: Burn existing `pool-token` via `withdraw-liquidity` in core
 - `create-pool`: Called via `create-pool` in core
 
-## dlmm-router-v-1-1 (w.i.p.)
+## 5. dlmm-router-v-1-1
+
+### Constants
+- Router error codes
 
 ### Traits
 - `dlmm-pool-trait-v-1-1` (use)
@@ -282,8 +285,8 @@ Manage or retrieve data about the pool contract
 Retrieve quotes using a single or multiple bins in a pool
 
 **Public** (read-only if possible)
-- `get-dy-multi`: Return token X -> Y quote (100 max)
-- `get-dx-multi`: Return token Y -> X quote (100 max)
+- `get-dy-multi`: Return token X → Y quote (100 max)
+- `get-dx-multi`: Return token Y → X quote (100 max)
 - `get-dlp-multi`: Return number of shares to mint for adding liquidity (100 max)
 
 **Private**
@@ -295,8 +298,8 @@ Retrieve quotes using a single or multiple bins in a pool
 Swap using a single bin or multiple bins in a pool
 
 **Public**
-- `swap-x-for-y-multi`: Swap token X -> Y (100 max)
-- `swap-y-for-x-multi`: Swap token Y -> X (100 max)
+- `swap-x-for-y-multi`: Swap token X → Y (100 max)
+- `swap-y-for-x-multi`: Swap token Y → X (100 max)
 
 **Private**
 - `fold-swap-x-for-y`: Used to batch `swap-x-for-y` calls via core
