@@ -47,25 +47,25 @@ Updated only as a side-effect of other functions
 ### Admin Functions
 Follows the same design as XYK Core
 
-**Read-only**
+#### Read-only
 - `get-admins`: Returns `admins`
 - `get-admin-helper`: Returns `admin-helper`
 
-**Public**
+#### Public
 - `add-admin`: Add principal to `admins` (admin-only)
 - `remove-admin`: Remove principal from `admins` (admin-only)
 
-**Private**
+#### Private
 - `admin-not-removable`: Helper for removing a principal from `admins`
 
 ### Pool Management Functions
 Manage or retrieve data about pools
 
-**Read-only**
+#### Read-only
 - `get-last-pool-id`: Returns `last-pool-id`
 - `get-pool-by-id`: Returns data about a pool from `pools` mapping
 
-**Public**
+#### Public
 - `set-pool-uri`: Set URI for a pool (admin-only)
 - `set-pool-status`: Set pool status (admin-only)
 - `set-fee-address`: Set fee address (admin-only)
@@ -77,19 +77,19 @@ Manage or retrieve data about pools
 - `set-x-fees-multi`: Batch version of `set-x-fees` (120 max)
 - `set-y-fees-multi`: Batch version of `set-y-fees` (120 max)
 
-**Private**
+#### Private
 - `is-valid-pool`: Check the validity of a pool
 
 ### Core Management Functions
 Manage or retrieve data about the core contract
 
-**Read-only**
+#### Read-only
 - `get-bin-steps`: Returns `bin-steps`
 - `get-minimum-total-shares`: Returns `minimum-total-shares`
 - `get-minimum-burnt-shares`: Returns `minimum-burnt-shares`
 - `get-public-pool-creation`: Returns `public-pool-creation`
 
-**Public**
+#### Public
 - `add-bin-step`: Add bin step to `bin-steps` (admin-only)
 - `remove-bin-step`: Remove bin step from `bin-steps` (admin-only)  
   _What if we removed a bin step used in an active pool?_
@@ -99,17 +99,17 @@ Manage or retrieve data about the core contract
 ### Pool Creation Functions
 Create new pools
 
-**Public**
+#### Public
 - `create-pool`: Create a new pool (admin-only when `public-pool-creation` is false)  
   _If `public-pool-creation` is `true`, anyone can create pools. Otherwise, only admins can create pools_
 
-**Private**
+#### Private
 - `create-symbol`: Create pool symbol using token symbols
 
 ### Quote Functions
 Retrieve quotes using a single bin in a pool
 
-**Public** (read-only if possible)
+#### Public (read-only if possible)
 - `get-dy`: Return token X → Y quote
 - `get-dx`: Return token Y → X quote
 - `get-dlp`: Return number of shares to mint for adding liquidity
@@ -117,21 +117,21 @@ Retrieve quotes using a single bin in a pool
 ### Swap Functions
 Swap using a single bin in a pool
 
-**Public**
+#### Public
 - `swap-x-for-y`: Swap token X → Y
 - `swap-y-for-x`: Swap token Y → X
 
 ### Liquidity Functions
 Add or withdraw liquidity using a single bin in a pool
 
-**Public**
+#### Public
 - `add-liquidity`: Add proportional liquidity (single-sided for non-active bins)
 - `withdraw-liquidity`: Withdraw proportional liquidity
 
 ### Variable Fees Functions
 Manage or retrieve data about variable fees for a single bin in a pool 
 
-**Public**
+#### Public
 - `set-variable-fees`: Set variable fees (admin and manager-only)
 - `set-variable-fees-manager`: Set variable fees manager (admin-only)
 - `set-variable-fees-cooldown`: Set the cooldown period (Stacks blocks) for resetting variable fees (admin-only)
@@ -224,7 +224,7 @@ Updated only as a side-effect of other functions
 ### SIP-013 Functions
 Interact or retrieve data about the `pool-token` and `pool-token-id` (SIP-013-compliant)
 
-**Read-only**
+#### Read-only
 - `get-name`: Returns `pool-name`
 - `get-symbol`: Returns `pool-symbol`
 - `get-decimals`: Returns `pool-token` decimals
@@ -234,26 +234,26 @@ Interact or retrieve data about the `pool-token` and `pool-token-id` (SIP-013-co
 - `get-balance`: Returns `pool-token` balance for a principal at a bin
 - `get-overall-balance`: Returns overall `pool-token` balance for a principal
 
-**Public**
+#### Public
 - `transfer`: Transfer `pool-token` (single bin)
 - `transfer-memo`: Transfer `pool-token` (single bin) with memo
 - `transfer-many`: Transfer many `pool-token` (different bins)
 - `transfer-many-memo`: Transfer many `pool-token` (different bins) with memo
 
-**Private**
+#### Private
 - `tag-pool-token-id`: Burn `pool-token-id` from one principal and mint to another
 
 ### Pool Management Functions
 Manage or retrieve data about the pool contract
 
-**Read-only**
+#### Read-only
 - `get-pool`: Returns base pool data
 - `get-active-bin-id`: Returns `active-bin-id`
 - `get-balances-at-bin`: Returns data about a bin from `balances-at-bin` mapping
 - `get-user-balance-at-bin`: Returns user data at a bin from `user-balance-at-bin` mapping
 - `get-user-bins`: Returns list of user bins from `user-bins` mapping
 
-**Public** (callable by core only)
+#### Public (callable by core only)
 - `set-pool-uri`: Called via `set-pool-uri` in core
 - `set-pool-status`: Called via `set-pool-status` in core  
   _Remove if `pool-status` is managed in the core contract_
@@ -284,12 +284,12 @@ Manage or retrieve data about the pool contract
 ### Quote Functions
 Retrieve quotes using a single or multiple bins in a pool
 
-**Public** (read-only if possible)
+#### Public (read-only if possible)
 - `get-dy-multi`: Return token X → Y quote (100 max)
 - `get-dx-multi`: Return token Y → X quote (100 max)
 - `get-dlp-multi`: Return number of shares to mint for adding liquidity (100 max)
 
-**Private**
+#### Private
 - `fold-get-dy`: Used to batch `get-dy` calls via core
 - `fold-get-dx`: Used to batch `get-dx` calls via core
 - `fold-get-dlp`: Used to batch `get-dlp` calls via core
@@ -297,21 +297,21 @@ Retrieve quotes using a single or multiple bins in a pool
 ### Swap Functions
 Swap using a single bin or multiple bins in a pool
 
-**Public**
+#### Public
 - `swap-x-for-y-multi`: Swap token X → Y (100 max)
 - `swap-y-for-x-multi`: Swap token Y → X (100 max)
 
-**Private**
+#### Private
 - `fold-swap-x-for-y`: Used to batch `swap-x-for-y` calls via core
 - `fold-swap-y-for-x`: Used to batch `swap-y-for-x` calls via core
 
 ### Liquidity Functions
 Add or withdraw liquidity using a single or multiple bins in a pool
 
-**Public**
+#### Public
 - `add-liquidity-multi`: Add proportional liquidity (single-sided for non-active bins) (100 max)
 - `withdraw-liquidity-multi`: Withdraw proportional liquidity (100 max)
 
-**Private**
+#### Private
 - `fold-add-liquidity`: Used to batch `add-liquidity` calls via core
 - `fold-withdraw-liquidity`: Used to batch `withdraw-liquidity` calls via core
