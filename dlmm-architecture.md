@@ -179,7 +179,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `transfer-memo`: (uint uint principal principal (buff 34)) (response bool uint)
 - `transfer-many`: ((list 200 {token-id: uint, amount: uint, sender: principal, recipient: principal})) (response bool uint)
 - `transfer-many-memo`: ((list 200 {token-id: uint, amount: uint, sender: principal, recipient: principal, memo: (buff 34)})) (response bool uint)
-- `pool-transfer`: (<sip-010-trait> uint principal) (response bool uint)
+- `pool-transfer`: (\<sip-010-trait> uint principal) (response bool uint)
 - `pool-mint`: (uint uint principal) (response bool uint)
 - `pool-burn`: (uint uint principal) (response bool uint)
 - `create-pool`: ...
