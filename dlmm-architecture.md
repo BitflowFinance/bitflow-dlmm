@@ -9,7 +9,7 @@
 - `dlmm-router-v-1-1`
 
 ### External
-- `sip-010-trait-ft-standard-v-1-1`
+- `sip-013-trait-ft-standard-v-1-1`
 - `token-stx-v-1-2`
 
 ## 2. dlmm-core-v-1-1
@@ -137,7 +137,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `freeze-variable-fees-manager`: Freeze the variable fees manager address (admin-only)
 - `reset-variable-fees`: Reset variable fees if the cooldown period has passed
 - `set-variable-fees-multi`: Batch version of `set-variable-fees` (120 max)
-- `set-variable-fee-manager-multi`: Batch version of `set-variable-fees-manager` (120 max)
+- `set-variable-fees-manager-multi`: Batch version of `set-variable-fees-manager` (120 max)
 - `set-variable-fees-cooldown-multi`: Batch version of `set-variable-fees-cooldown` (120 max)
 - `set-freeze-variable-fees-manager-multi`: Batch version of `set-freeze-variable-fees-manager` (120 max)
 
@@ -145,6 +145,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 
 ### Traits
 - `sip-010-trait-ft-standard-v-1-1` (use)
+- `sip-013-trait-ft-standard-v-1-1` (use)
 - `dlmm-pool-trait` (define)
 
 ### Trait Definition
@@ -166,10 +167,16 @@ Manage or retrieve data about variable fees for a single bin in a pool
 
 ### Traits
 - `dlmm-pool-trait-v-1-1` (implement)
-- `sip-010-trait-ft-standard-v-1-1` (use)
+- `sip-013-trait-ft-standard-v-1-1` (implement)
+- `sip-013-transfer-many-trait-v-1-1` (implement)
+- `sip-013-trait-ft-standard-v-1-1` (use)
+
+### Token Definitions
+- `define-fungible-token pool-token`
+- `define-non-fungible-token pool-token-id {id: uint, owner: principal}`
 
 ### Constants
-- Pool and SIP-010 error codes
+- Pool and SIP-013 error codes
 - `CORE_ADDRESS` (`.dlmm-core-v-1-1`)
 - `CONTRACT_DEPLOYER` (`tx-sender`)
 
@@ -209,11 +216,12 @@ Updated only as a side-effect of other functions
 - `last-variable-fees-update`: Latest variable fees update (Stacks block)
 
 ### Mappings
-- `balances-at-bin` (`int { x-balance: uint, y-balance: uint, total-shares: uint }`)
-- `user-balance-at-bin` (`{ user: principal, id: int } uint`)
+- `balances-at-bin` (`uint { x-balance: uint, y-balance: uint, total-shares: uint }`)
+- `user-balance-at-bin` (`{ id: uint, user: principal } uint`)
+- `user-bins` (`principal (list 1000 uint)`)
 
-### SIP-010 Functions
-Interact or retrieve data about the `pool-token` (SIP-010-compliant)
+### SIP-013 Functions
+Interact or retrieve data about the `pool-token` and `pool-token-id` (SIP-013-compliant)
 
 **Read-only**
 - `get-name`: Returns `pool-name`
@@ -221,10 +229,18 @@ Interact or retrieve data about the `pool-token` (SIP-010-compliant)
 - `get-decimals`: Returns `pool-token` decimals
 - `get-token-uri`: Returns `pool-uri`
 - `get-total-supply`: Returns total `pool-token` supply
-- `get-balance`: Returns `pool-token` balance for a principal
+- `get-overall-supply`: Returns overall total `pool-token` supply
+- `get-balance`: Returns `pool-token` balance for a principal at a bin
+- `get-overall-balance`: Returns overall `pool-token` balance for a principal
 
 **Public**
-- `transfer`: Transfer `pool-token`
+- `transfer`: Transfer `pool-token` (single bin)
+- `transfer-memo`: Transfer `pool-token` (single bin) with memo
+- `transfer-many`: Transfer many `pool-token` (different bins)
+- `transfer-many-memo`: Transfer many `pool-token` (different bins) with memo
+
+**Private**
+- `tag-pool-token-id`: Burn `pool-token-id` from one principal and mint to another
 
 ### Pool Management Functions
 Manage or retrieve data about the pool contract
@@ -234,6 +250,7 @@ Manage or retrieve data about the pool contract
 - `get-active-bin-id`: Returns `active-bin-id`
 - `get-balances-at-bin`: Returns data about a bin from `balances-at-bin` mapping
 - `get-user-balance-at-bin`: Returns user data at a bin from `user-balance-at-bin` mapping
+- `get-user-bins`: Returns list of user bins from `user-bins` mapping
 
 **Public** (callable by core only)
 - `set-pool-uri`: Called via `set-pool-uri` in core
@@ -248,7 +265,7 @@ Manage or retrieve data about the pool contract
 - `set-freeze-variable-fees-manager`: Called via `set-freeze-variable-fees-manager` in core
 - `set-active-bin`: Set current active bin via pool creation, swap, and liquidity functions in core
 - `update-bin-balances`: Update the `balances-at-bin` mapping via pool creation, swap, and liquidity functions in core
-- `update-user-balance`: Update the `user-balance-at-bin` mapping via the transfer function in pool, and through pool creation and liquidity functions in core
+- `update-user-balance`: Update the `user-balance-at-bin` mapping via the mint, burn, and transfer functions in pool
 - `pool-transfer`: Transfer X / Y token from the pool via swap and withdraw liquidity functions in core
 - `pool-mint`: Mint new `pool-token` via pool creation and add liquidity functions in core
 - `pool-burn`: Burn existing `pool-token` via `withdraw-liquidity` in core
