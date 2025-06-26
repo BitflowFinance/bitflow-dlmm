@@ -315,7 +315,7 @@ Retrieve quotes using a single or multiple bins in a pool
 - `fold-get-dlp`: Used to batch `get-dlp` calls via core
 
 ### Swap Functions
-Swap using a single bin or multiple bins in a pool
+Swap using a single or multiple bins in a pool
 
 #### Public
 - `swap-x-for-y-multi`: Swap token X → Y (100 max)
