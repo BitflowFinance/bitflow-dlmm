@@ -1,6 +1,142 @@
 # DLMM Simulator
 
-A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity Market Maker) routing logic.
+A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity Market Maker) routing logic with an interactive visualization tool.
+
+## Quick Start
+
+### Prerequisites
+
+- **Python 3.8+** (3.8, 3.9, 3.10, or 3.11 recommended)
+- **Git** for cloning the repository
+- **pip** for package management
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd bitflow-dlmm/dlmm-simulator
+   ```
+
+2. **Create and activate a virtual environment:**
+   ```bash
+   # Create virtual environment
+   python3 -m venv .venv
+   
+   # Activate the virtual environment
+   # On macOS/Linux:
+   source .venv/bin/activate
+   # On Windows:
+   .venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the visualization app:**
+   ```bash
+   streamlit run app.py --server.headless true
+   ```
+
+5. **Open your browser:**
+   Navigate to `http://localhost:8502` (or the URL shown in the terminal)
+
+### Troubleshooting
+
+**Common Issues:**
+
+1. **Python version issues:**
+   ```bash
+   # Check your Python version
+   python3 --version
+   
+   # If you need to install Python 3.8+
+   # On macOS with Homebrew:
+   brew install python@3.11
+   
+   # On Ubuntu/Debian:
+   sudo apt update
+   sudo apt install python3.11 python3.11-venv
+   ```
+
+2. **Streamlit not found:**
+   ```bash
+   # Make sure you're in the virtual environment
+   which python
+   # Should show path to .venv/bin/python
+   
+   # Reinstall streamlit if needed
+   pip install streamlit
+   ```
+
+3. **Port already in use:**
+   ```bash
+   # Use a different port
+   streamlit run app.py --server.port 8503 --server.headless true
+   ```
+
+4. **Permission issues on macOS:**
+   ```bash
+   # Install Xcode command line tools (needed for some packages)
+   xcode-select --install
+   
+   # Install watchdog for better performance
+   pip install watchdog
+   ```
+
+### Development Setup
+
+For development work:
+
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run tests
+python -m pytest tests/
+
+# Run specific test file
+python -m pytest tests/test_routing.py -v
+
+# Run with coverage
+pip install pytest-cov
+python -m pytest tests/ --cov=src --cov-report=html
+```
+
+### Package Versions
+
+The following key packages are used:
+
+- **Streamlit**: 1.28.0+ (for visualization)
+- **Plotly**: 5.17.0+ (for interactive charts)
+- **Pandas**: 2.0.0+ (for data manipulation)
+- **NumPy**: 1.24.0+ (for numerical operations)
+- **Pytest**: 7.0.0+ (for testing)
+
+### File Structure
+
+```
+dlmm-simulator/
+├── app.py                 # Main Streamlit visualization app
+├── requirements.txt       # Python dependencies
+├── README.md             # This file
+├── src/                  # Core simulation code
+│   ├── __init__.py
+│   ├── pool.py          # Pool data structures and mock data
+│   ├── routing.py       # Routing algorithms
+│   ├── math.py          # Mathematical formulas and calculations
+│   └── utils.py         # Utility functions
+├── tests/               # Test files
+│   ├── __init__.py
+│   ├── test_pool.py
+│   ├── test_routing.py
+│   └── test_quotes.py
+└── examples/            # Example scripts
+    ├── basic_routing.py
+    └── multi_pool_routing.py
+```
 
 ## Features
 
@@ -9,29 +145,6 @@ A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity
 - Multi-pool routing with pathfinding algorithms
 - Price impact calculations
 - Quote generation and optimization
-
-## Project Structure
-
-```
-dlmm-simulator/
-├── __init__.py
-├── requirements.txt
-├── README.md
-├── src/
-│   ├── __init__.py
-│   ├── pool.py          # Pool data structures and mock data
-│   ├── routing.py       # Routing algorithms
-│   ├── math.py          # Mathematical formulas and calculations
-│   └── utils.py         # Utility functions
-├── tests/
-│   ├── __init__.py
-│   ├── test_pool.py
-│   ├── test_routing.py
-│   └── test_quotes.py
-└── examples/
-    ├── basic_routing.py
-    └── multi_pool_routing.py
-```
 
 ## Mathematical Formulas
 
