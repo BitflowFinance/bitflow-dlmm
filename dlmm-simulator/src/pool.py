@@ -44,6 +44,15 @@ class MockPool:
             config = PoolConfig()
         return cls(config)
     
+    @classmethod
+    def create_uniform_pool(cls, config: Optional[PoolConfig] = None) -> 'MockPool':
+        """Create a pool with uniform liquidity distribution (every 5th bin empty)."""
+        if config is None:
+            config = PoolConfig()
+        pool = cls(config)
+        pool._generate_uniform_liquidity()
+        return pool
+    
     def _generate_liquidity(self):
         """Generate mock liquidity data following a bell curve around the active bin."""
         for bin_id in range(self.config.num_bins):
@@ -57,6 +66,46 @@ class MockPool:
             # Scale liquidity to reasonable amounts
             base_liquidity = 1000000  # 1M USDC equivalent
             scaled_liquidity = liquidity * base_liquidity
+            
+            # Calculate price for this bin
+            price = self._calculate_bin_price(bin_id)
+            
+            # Determine token composition based on bin position
+            if bin_id < self.config.active_bin_id:
+                # Left bins: only X tokens (BTC)
+                x_amount = scaled_liquidity / price
+                y_amount = 0
+            elif bin_id > self.config.active_bin_id:
+                # Right bins: only Y tokens (USDC)
+                x_amount = 0
+                y_amount = scaled_liquidity
+            else:
+                # Active bin: both tokens (roughly 50/50 split)
+                x_amount = scaled_liquidity / (2 * price)
+                y_amount = scaled_liquidity / 2
+            
+            self.bins[bin_id] = BinData(
+                bin_id=bin_id,
+                price=price,
+                x_amount=x_amount,
+                y_amount=y_amount,
+                total_liquidity=scaled_liquidity,
+                is_active=(bin_id == self.config.active_bin_id)
+            )
+    
+    def _generate_uniform_liquidity(self):
+        """Generate mock liquidity data with uniform distribution (every 5th bin empty)."""
+        for bin_id in range(self.config.num_bins):
+            # Every 5th bin is empty (bin_id % 5 == 0)
+            if bin_id % 5 == 0:
+                # Empty bin
+                x_amount = 0
+                y_amount = 0
+                scaled_liquidity = 0
+            else:
+                # Uniform distribution for non-empty bins
+                base_liquidity = 1000000  # 1M USDC equivalent
+                scaled_liquidity = base_liquidity
             
             # Calculate price for this bin
             price = self._calculate_bin_price(bin_id)

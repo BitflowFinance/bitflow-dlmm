@@ -19,9 +19,14 @@ from src.pool import MockPool
 from src.routing import SinglePoolRouter
 
 
-def create_pool():
+def create_pool(pool_type="bell_curve"):
     """Create a mock pool for visualization."""
-    return MockPool.create_bell_curve_pool()
+    if pool_type == "bell_curve":
+        return MockPool.create_bell_curve_pool()
+    elif pool_type == "uniform":
+        return MockPool.create_uniform_pool()
+    else:
+        return MockPool.create_bell_curve_pool()  # Default fallback
 
 
 def get_bin_data_for_viz(pool, bin_range=20):
@@ -250,9 +255,32 @@ def main():
         st.session_state.amount = 0.0
     if 'direction' not in st.session_state:
         st.session_state.direction = "X→Y"
+    if 'pool_type' not in st.session_state:
+        st.session_state.pool_type = "bell_curve"
     
     # Sidebar controls
     st.sidebar.header("Swap Controls")
+    
+    # Pool type selection
+    st.sidebar.subheader("Pool Distribution")
+    col1, col2 = st.sidebar.columns(2)
+    
+    with col1:
+        if st.button("Bell Curve", key="bell_curve_btn"):
+            st.session_state.pool_type = "bell_curve"
+            st.session_state.pool = create_pool("bell_curve")
+            st.session_state.amount = 0.0
+            st.rerun()
+    
+    with col2:
+        if st.button("Uniform", key="uniform_btn"):
+            st.session_state.pool_type = "uniform"
+            st.session_state.pool = create_pool("uniform")
+            st.session_state.amount = 0.0
+            st.rerun()
+    
+    # Show current pool type
+    st.sidebar.markdown(f"**Current: {st.session_state.pool_type.replace('_', ' ').title()}**")
     
     # Bin range input
     bin_range = st.sidebar.number_input(
@@ -343,7 +371,7 @@ def main():
     
     # Reset button
     if st.sidebar.button("Reset to Original State"):
-        st.session_state.pool = create_pool()
+        st.session_state.pool = create_pool(st.session_state.pool_type)
         st.session_state.amount = 0.0
         st.session_state.direction = "X→Y"
         st.rerun()
