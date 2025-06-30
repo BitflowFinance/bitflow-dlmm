@@ -180,7 +180,6 @@ Manage or retrieve data about variable fees for a single bin in a pool
 
 ### Traits
 - `sip-010-trait-ft-standard-v-1-1` (use)
-- `sip-013-trait-ft-standard-v-1-1` (use)
 - `dlmm-pool-trait` (define)
 
 ### Trait Definition
@@ -224,7 +223,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `dlmm-pool-trait-v-1-1` (implement)
 - `sip-013-trait-ft-standard-v-1-1` (implement)
 - `sip-013-transfer-many-trait-v-1-1` (implement)
-- `sip-013-trait-ft-standard-v-1-1` (use)
+- `sip-010-trait-ft-standard-v-1-1` (use)
 
 ### Token Definitions
 - `define-fungible-token pool-token`
