@@ -192,7 +192,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `get-overall-supply`: () (response uint uint)
 - `get-balance`: (uint principal) (response uint uint)
 - `get-overall-balance`: (principal) (response uint uint)
-- `get-pool`: () (response {pool-id: uint, pool-name: (string-ascii 32), pool-symbol: (string-ascii 32), pool-uri: (string-utf8 256), pool-created: bool, creation-height: uint, core-address: principal, variable-fees-manager: principal, fee-address: principal, x-token: principal, y-token: principal, pool-token: principal, bin-step: uint, x-protocol-fee: uint, x-provider-fee: uint, x-variable-fee: uint, y-protocol-fee: uint, y-provider-fee: uint, y-variable-fee: uint, last-variable-fees-update: uint, variable-fees-cooldown: uint, freeze-variable-fees-manager: bool} uint)
+- `get-pool`: () (response {pool-id: uint, pool-name: (string-ascii 32), pool-symbol: (string-ascii 32), pool-uri: (string-utf8 256), pool-created: bool, creation-height: uint, core-address: principal, variable-fees-manager: principal, fee-address: principal, x-token: principal, y-token: principal, pool-token: principal, x-balance: uint, y-balance: uint, bin-step: uint, x-protocol-fee: uint, x-provider-fee: uint, x-variable-fee: uint, y-protocol-fee: uint, y-provider-fee: uint, y-variable-fee: uint, last-variable-fees-update: uint, variable-fees-cooldown: uint, freeze-variable-fees-manager: bool} uint)
 - `get-active-bin-id`: () (response uint uint)
 - `get-balances-at-bin`: (uint) (response uint uint)
 - `get-user-bins`: () (response (list 1001 uint) uint)
@@ -263,8 +263,10 @@ Set via the core contract using admin functions
 
 #### Indirectly Modified
 Updated as a side-effect of other functions
-- `active-bin-id`: ID of the active bin
-- `last-variable-fees-update`: Latest variable fees update (Stacks block)
+- `x-balance` (`uint`): Overall X balance in the pool
+- `y-balance` (`uint`): Overall Y balance in the pool
+- `active-bin-id` (`uint`): ID of the active bin
+- `last-variable-fees-update` (`uint`): Latest variable fees update (Stacks block)
 
 ### Mappings
 - `balances-at-bin` (`uint {x-balance: uint, y-balance: uint, total-shares: uint}`)
