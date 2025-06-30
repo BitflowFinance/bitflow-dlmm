@@ -41,7 +41,7 @@ Updated as a side-effect of other functions
 - `last-pool-id` (`uint`): ID of last created pool
 
 ### Mappings
-- `pools` (`uint { id: uint, name: (string-ascii 32), symbol: (string-ascii 32), pool-contract: principal, status: bool }`)  
+- `pools` (`uint {id: uint, name: (string-ascii 32), symbol: (string-ascii 32), pool-contract: principal, status: bool}`)  
   _May add `fee-address` here instead of in each pool contract_
 
 ### Admin Functions
@@ -176,7 +176,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `set-freeze-variable-fees-manager-multi`: Batch version of `set-freeze-variable-fees-manager` (120 max)
   - Parameters: `(pool-traits (list 120 <dlmm-pool-trait>))`
 
-## 3. dlmm-pool-trait-v-1-1 (w.i.p.)
+## 3. dlmm-pool-trait-v-1-1
 
 ### Traits
 - `sip-010-trait-ft-standard-v-1-1` (use)
@@ -191,10 +191,10 @@ Manage or retrieve data about variable fees for a single bin in a pool
 - `get-overall-supply`: () (response uint uint)
 - `get-balance`: (uint principal) (response uint uint)
 - `get-overall-balance`: (principal) (response uint uint)
-- `get-pool`: ...
+- `get-pool`: () (response {pool-id: uint, pool-name: (string-ascii 32), pool-symbol: (string-ascii 32), pool-uri: (string-utf8 256), pool-created: bool, creation-height: uint, core-address: principal, variable-fees-manager: principal, fee-address: principal, x-token: principal, y-token: principal, pool-token: principal, bin-step: uint, x-protocol-fee: uint, x-provider-fee: uint, x-variable-fee: uint, y-protocol-fee: uint, y-provider-fee: uint, y-variable-fee: uint, last-variable-fees-update: uint, variable-fees-cooldown: uint, freeze-variable-fees-manager: bool} uint)
 - `get-active-bin-id`: () (response uint uint)
 - `get-balances-at-bin`: (uint) (response uint uint)
-- `get-user-bins`: ...
+- `get-user-bins`: () (response (list 1001 uint) uint)
 - `set-pool-uri`: ((string-utf8 256)) (response bool uint)
 - `set-variable-fees-manager`: (principal) (response bool uint)
 - `set-fee-address`: (principal) (response bool uint)  
@@ -266,8 +266,8 @@ Updated as a side-effect of other functions
 - `last-variable-fees-update`: Latest variable fees update (Stacks block)
 
 ### Mappings
-- `balances-at-bin` (`uint { x-balance: uint, y-balance: uint, total-shares: uint }`)
-- `user-balance-at-bin` (`{ id: uint, user: principal } uint`)
+- `balances-at-bin` (`uint {x-balance: uint, y-balance: uint, total-shares: uint}`)
+- `user-balance-at-bin` (`{id: uint, user: principal} uint`)
 - `user-bins` (`principal (list 1001 uint)`)
 
 ### SIP-013 Functions
