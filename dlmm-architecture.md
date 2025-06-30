@@ -228,7 +228,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 
 ### Token Definitions
 - `define-fungible-token pool-token`
-- `define-non-fungible-token pool-token-id {id: uint, owner: principal}`
+- `define-non-fungible-token pool-token-id {token-id: uint, owner: principal}`
 
 ### Constants
 - Pool and SIP-013 error codes
@@ -280,26 +280,24 @@ Interact or retrieve data about the `pool-token` and `pool-token-id` (SIP-013-co
 
 #### Read-only
 - `get-name`: Returns `pool-name`
-  - Parameters: `(id uint)`
 - `get-symbol`: Returns `pool-symbol`
-  - Parameters: `(id uint)`
 - `get-decimals`: Returns `pool-token` decimals
-  - Parameters: `(id uint)`
+  - Parameters: `(token-id uint)`
 - `get-token-uri`: Returns `pool-uri`
-  - Parameters: `(id uint)`
+  - Parameters: `(token-id uint)`
 - `get-total-supply`: Returns total `pool-token` supply
-  - Parameters: `(id uint)`
+  - Parameters: `(token-id uint)`
 - `get-overall-supply`: Returns overall total `pool-token` supply
 - `get-balance`: Returns `pool-token` balance for a principal at a bin
-  - Parameters: `(id uint) (user principal)`
+  - Parameters: `(token-id uint) (user principal)`
 - `get-overall-balance`: Returns overall `pool-token` balance for a principal
   - Parameters: `(user principal)`
 
 #### Public
 - `transfer`: Transfer `pool-token` (single bin)
-  - Parameters: `(id uint) (amount uint) (sender principal) (recipient principal)`
+  - Parameters: `(token-id uint) (amount uint) (sender principal) (recipient principal)`
 - `transfer-memo`: Transfer `pool-token` (single bin) with memo
-  - Parameters: `(id uint) (amount uint) (sender principal) (recipient principal) (memo (buff 34))`
+  - Parameters: `(token-id uint) (amount uint) (sender principal) (recipient principal) (memo (buff 34))`
 - `transfer-many`: Transfer many `pool-token` (different bins)
   - Parameters: `(transfers (list 200 {token-id: uint, amount: uint, sender: principal, recipient: principal}))`
 - `transfer-many-memo`: Transfer many `pool-token` (different bins) with memo
@@ -307,7 +305,7 @@ Interact or retrieve data about the `pool-token` and `pool-token-id` (SIP-013-co
 
 #### Private
 - `tag-pool-token-id`: Burn `pool-token-id` from one principal and mint to another
-  - Parameters: `(id {id: uint, owner: principal})`
+  - Parameters: `(id {token-id: uint, owner: principal})`
 
 ### Pool Management Functions
 Manage or retrieve data about the pool contract
