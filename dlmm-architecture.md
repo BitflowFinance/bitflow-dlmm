@@ -11,6 +11,7 @@
 ### External
 - `sip-010-trait-ft-standard-v-1-1`
 - `sip-013-trait-ft-standard-v-1-1`
+- `sip-013-trait-transfer-many-v-1-1`
 - `token-stx-v-1-2`
 
 ## 2. dlmm-core-v-1-1
@@ -220,7 +221,7 @@ Manage or retrieve data about variable fees for a single bin in a pool
 ### Traits
 - `dlmm-pool-trait-v-1-1` (implement)
 - `sip-013-trait-ft-standard-v-1-1` (implement)
-- `sip-013-transfer-many-trait-v-1-1` (implement)
+- `sip-013-trait-transfer-many-v-1-1` (implement)
 - `sip-010-trait-ft-standard-v-1-1` (use)
 
 ### Token Definitions
