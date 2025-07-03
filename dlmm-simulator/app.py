@@ -11,12 +11,15 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import sys
 import os
+import requests
+import json
 
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.pool import MockPool
 from src.routing import SinglePoolRouter
+from src.quote_engine import MockRedisClient, QuoteEngine
 
 
 def create_pool(pool_type="bell_curve"):
@@ -247,6 +250,119 @@ def main():
     
     st.title("DLMM Pool Visualization")
     st.markdown("Visualize the impact of quoted swaps on pool liquidity distribution")
+    
+    # Add Quote Engine Section
+    st.markdown("---")
+    st.subheader("🚀 DLMM Quote Engine")
+    
+    # Initialize quote engine
+    if 'quote_engine' not in st.session_state:
+        st.session_state.quote_engine = QuoteEngine(MockRedisClient())
+    
+    # Quote Engine Interface
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        token_in = st.selectbox(
+            "Token In",
+            ["BTC", "ETH", "USDC"],
+            key="token_in_select"
+        )
+    
+    with col2:
+        token_out = st.selectbox(
+            "Token Out", 
+            ["BTC", "ETH", "USDC"],
+            key="token_out_select"
+        )
+    
+    with col3:
+        amount_in = st.number_input(
+            "Amount In",
+            min_value=0.01,
+            value=1.0,
+            step=0.01,
+            key="amount_in_input"
+        )
+    
+    # Get Quote Button
+    if st.button("Get Quote", key="get_quote_btn"):
+        if token_in == token_out:
+            st.error("Token In and Token Out must be different!")
+        else:
+            try:
+                # Convert amount to scaled format (18 decimals)
+                scaled_amount = int(amount_in * 1e18)
+                
+                # Get quote from engine
+                quote = st.session_state.quote_engine.get_quote(
+                    token_in, 
+                    token_out, 
+                    scaled_amount
+                )
+                
+                # Store quote in session state
+                st.session_state.last_quote = quote
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error getting quote: {str(e)}")
+    
+    # Display Quote Results
+    if 'last_quote' in st.session_state and st.session_state.last_quote:
+        quote = st.session_state.last_quote
+        
+        if quote.success:
+            st.success("✅ Quote Retrieved Successfully!")
+            
+            # Quote details in columns
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric(
+                    "Amount Out",
+                    f"{quote.amount_out / 1e18:.6f} {token_out}",
+                    help="Amount of output tokens you'll receive"
+                )
+            
+            with col2:
+                effective_price = quote.amount_out / quote.amount_in if quote.amount_in > 0 else 0
+                st.metric(
+                    "Effective Price",
+                    f"${effective_price:.2f}",
+                    help="Price per input token"
+                )
+            
+            with col3:
+                st.metric(
+                    "Price Impact",
+                    f"{quote.price_impact:.4f}%",
+                    help="Price impact of this trade"
+                )
+            
+            with col4:
+                st.metric(
+                    "Route Type",
+                    quote.route_type.value,
+                    help="Type of routing used"
+                )
+            
+            # Show route steps
+            if quote.steps:
+                st.subheader("Route Steps")
+                for i, step in enumerate(quote.steps):
+                    with st.expander(f"Step {i+1}: {step.pool_id} (Bin {step.bin_id})"):
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.write(f"**Input:** {step.amount_in / 1e18:.6f} {step.token_in}")
+                        with col2:
+                            st.write(f"**Output:** {step.amount_out / 1e18:.6f} {step.token_out}")
+                        with col3:
+                            st.write(f"**Price:** ${step.price:.2f}")
+        else:
+            st.error(f"❌ Quote Failed: {quote.error}")
+    
+    st.markdown("---")
     
     # Initialize session state
     if 'pool' not in st.session_state:

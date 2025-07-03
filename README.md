@@ -43,6 +43,143 @@ A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity
 5. **Open your browser:**
    Navigate to `http://localhost:8502` (or the URL shown in the terminal)
 
+### Testing the Quote Engine
+
+1. **Run the quote engine test:**
+   ```bash
+   cd dlmm-simulator
+   python test_quote_engine.py
+   ```
+
+2. **Test different route types:**
+   - Single pool quotes
+   - Multi-pool same pair quotes
+   - Multi-pair routing quotes
+   - Invalid route handling
+
+## Quote Engine
+
+The DLMM Quote Engine provides comprehensive routing and quote calculation capabilities for all types of swap routes.
+
+### Types of Swap Routes
+
+| Route Type | Pair-Hops | Pool-Hops | Bin-Hops | Description |
+|------------|-----------|-----------|----------|-------------|
+| **Type 1** | 0 | 0 | 0 | Single pair, single pool, single bin |
+| **Type 2** | 0 | 0 | N | Single pair, single pool, multi bin |
+| **Type 3** | 0 | N | N | Single pair, multi pool, multi bin |
+| **Type 4** | N | N | N | Multi pair, multi pool, multi bin |
+
+### Route Discovery Logic
+
+Given token A and token B, and input swap amount of token A:
+
+1. **Determine if route exists between these tokens**
+   - Similar to XYK multihop logic
+   - Can be multiple pools per same token pair
+   - Find the shortest path by number of token pair diffs (pair hops)
+
+2. **Basic Single Pool MVP**
+   - Only consider swaps with single pool
+   - Get quote for the amount received using DLMM function
+   - If multiple pools exist for that pair, compare rate against pools
+   - Return best option, and pair, pool, & bin data to send to contract
+   - For route type #1, swap through DLMM core b/c single bin
+   - For route type #2, swap through that type of single pool router
+
+3. **Basic Multi Pair MVP**
+   - Only consider routes with multiple pairs
+   - Set a max number of pair hops
+   - Make list of unique combinations of pools for the route
+   - For each pool, get the bin info needed, ensure its active pool
+   - Get quotes in order of # pair hops, then TVL by pool
+   - For route type #4
+
+4. **Advanced Single Pair Multi Pool Multi Bin**
+   Example: Route: A → B (switching pools mid-route based on best rates)
+   ```
+   Pool 1 (bin_step=0.001): |--|--|--|--|--|  
+   Pool 2 (bin_step=0.002): |----|----|----|  
+   Pool 3 (bin_step=0.005): |--------|------|  
+   ```
+   - Pool 1 = tight lanes, good for small trades
+   - Pool 2 = medium lanes
+   - Pool 3 = wide lanes, good for large trades if deep enough liquidity
+   - Consider basic MVP + single pair, multi pool, multi bin routes
+   - Gather all bin data for each pool for this pair
+   - Calculate min amount received via more advanced dijkstras
+   - Return optimal path and bin data params
+   - For route type #3, swap through that type of router
+
+5. **Advanced Multi Pair, Multi Pool, Multi Bin**
+   - Combine the logic needed for basic multipair MVP
+   - With router #3 logic between single pair, multi pool, multi bin
+
+### Redis Cache Schema
+
+The quote engine uses a Redis cache to store pool and bin state data:
+
+#### Pool State Structure
+```json
+{
+    "pool_id": "BTC-USDC-25",
+    "token_x": "BTC",
+    "token_y": "USDC", 
+    "bin_step": 25,
+    "active_bin_id": 500,
+    "active_bin_price": "50000000000000000000",
+    "status": "active",
+    "total_tvl": "1000000000000000000000",
+    "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### Bin State Structure
+```json
+{
+    "pool_id": "BTC-USDC-25",
+    "bin_id": 500,
+    "x_amount": "1000000000000000000",
+    "y_amount": "500000000000000000000000",
+    "price": "50000000000000000000",
+    "total_liquidity": "1000000000000000000",
+    "is_active": true
+}
+```
+
+#### Token Pair Index
+```json
+{
+    "pools": ["BTC-USDC-25", "BTC-USDC-50", "BTC-USDC-100"],
+    "best_pool": "BTC-USDC-25",
+    "last_updated": "2024-01-01T00:00:00Z"
+}
+```
+
+### Usage Example
+
+```python
+from src.quote_engine import MockRedisClient, QuoteEngine
+
+# Initialize quote engine
+redis_client = MockRedisClient()
+quote_engine = QuoteEngine(redis_client)
+
+# Get quote for BTC to USDC
+quote = quote_engine.get_quote(
+    token_in="BTC",
+    token_out="USDC", 
+    amount_in=int(1 * 1e18)  # 1 BTC
+)
+
+if quote.success:
+    print(f"Amount out: {quote.amount_out / 1e18} USDC")
+    print(f"Price impact: {quote.price_impact}%")
+    print(f"Route type: {quote.route_type.value}")
+else:
+    print(f"Quote failed: {quote.error}")
+```
+
 ### Troubleshooting
 
 **Common Issues:**
@@ -103,6 +240,9 @@ python -m pytest tests/test_routing.py -v
 # Run with coverage
 pip install pytest-cov
 python -m pytest tests/ --cov=src --cov-report=html
+
+# Test quote engine
+python test_quote_engine.py
 ```
 
 ### Package Versions
@@ -122,11 +262,13 @@ dlmm-simulator/
 ├── app.py                 # Main Streamlit visualization app
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
+├── test_quote_engine.py  # Quote engine test script
 ├── src/                  # Core simulation code
 │   ├── __init__.py
 │   ├── pool.py          # Pool data structures and mock data
 │   ├── routing.py       # Routing algorithms
 │   ├── math.py          # Mathematical formulas and calculations
+│   ├── quote_engine.py  # Quote engine with Redis cache
 │   └── utils.py         # Utility functions
 ├── tests/               # Test files
 │   ├── __init__.py
@@ -145,6 +287,10 @@ dlmm-simulator/
 - Multi-pool routing with pathfinding algorithms
 - Price impact calculations
 - Quote generation and optimization
+- **NEW**: Comprehensive quote engine with Redis cache
+- **NEW**: Support for all route types (single bin to multi-pair)
+- **NEW**: Fee calculation and integration
+- **NEW**: Route optimization and ranking
 
 ## Mathematical Formulas
 
@@ -318,6 +464,13 @@ $$\text{Slippage} = \frac{|\Delta y_{expected} - \Delta y_{actual}|}{\Delta y_{e
    - Basic multi-pool routing for same trading pair
    - Different bin step configurations
 
+5. **Quote Engine with Redis Cache**
+   - Mock Redis client for development
+   - Comprehensive route discovery
+   - Support for all route types
+   - Fee calculation and integration
+   - Route optimization and ranking
+
 ### 🔄 In Progress / Needs Work
 
 1. **Multi-Pool Same Pair (Same Bin Step)**
@@ -328,11 +481,17 @@ $$\text{Slippage} = \frac{|\Delta y_{expected} - \Delta y_{actual}|}{\Delta y_{e
    - Pathfinding between different token pairs not working
    - Need to implement proper multi-hop routing logic
 
+3. **Advanced Route Optimization**
+   - Dijkstra's algorithm for optimal pathfinding
+   - Gas cost optimization
+   - Slippage protection
+
 ### 📋 Test Coverage
 
 - **11 passing tests** out of 15 total tests
 - Single bin, multi-bin, and insufficient liquidity tests all passing
 - Multi-pool and cross-pair tests need fixes
+- **NEW**: Quote engine comprehensive testing
 
 ## Setup
 
@@ -351,11 +510,17 @@ pytest tests/
 python examples/basic_routing.py
 ```
 
+4. Test quote engine:
+```bash
+python test_quote_engine.py
+```
+
 ## Usage
 
 ```python
 from src.pool import MockPool
 from src.routing import SinglePoolRouter
+from src.quote_engine import MockRedisClient, QuoteEngine
 
 # Create a mock pool
 pool = MockPool.create_bell_curve_pool()
@@ -366,6 +531,12 @@ router = SinglePoolRouter(pool)
 # Get quote
 quote = router.get_quote(token_in="BTC", amount_in=1.0, token_out="USDC")
 print(f"Quote: {quote}")
+
+# Use quote engine
+redis_client = MockRedisClient()
+quote_engine = QuoteEngine(redis_client)
+quote = quote_engine.get_quote("BTC", "USDC", int(1 * 1e18))
+print(f"Engine Quote: {quote}")
 ```
 
 ## Test Coverage
@@ -397,7 +568,13 @@ The simulator includes comprehensive tests for:
    - Insufficient liquidity
    - Minimum output requirements
    - Invalid token pairs
-   - Same token swaps 
+   - Same token swaps
+
+6. **Quote Engine**
+   - All route types
+   - Redis cache integration
+   - Fee calculations
+   - Route optimization
 
 ## Quote Calculation Pseudocode
 

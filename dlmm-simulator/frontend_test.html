@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLMM Quote Engine Frontend Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 5px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .quote-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .detail-item {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .detail-value {
+            font-size: 18px;
+            color: #333;
+            margin-top: 5px;
+        }
+        .steps {
+            margin-top: 20px;
+        }
+        .step {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .step-header {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 DLMM Quote Engine Frontend Test</h1>
+        
+        <form id="quoteForm">
+            <div class="form-group">
+                <label for="tokenIn">Token In:</label>
+                <select id="tokenIn" required>
+                    <option value="">Select token...</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="USDC">USDC</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="tokenOut">Token Out:</label>
+                <select id="tokenOut" required>
+                    <option value="">Select token...</option>
+                    <option value="BTC">BTC</option>
+                    <option value="ETH">ETH</option>
+                    <option value="USDC">USDC</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="amountIn">Amount In:</label>
+                <input type="number" id="amountIn" step="0.01" min="0.01" required placeholder="e.g., 1.5">
+            </div>
+            
+            <button type="submit">Get Quote</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>Quote Result</h3>
+            <div id="quoteDetails" class="quote-details"></div>
+            <div id="steps" class="steps"></div>
+            <pre id="jsonResult"></pre>
+        </div>
+    </div>
+
+    <script>
+        // Mock API client for testing
+        class QuoteEngineAPI {
+            constructor() {
+                // In a real implementation, this would be your backend API endpoint
+                this.baseUrl = '/api/quote';
+            }
+            
+            async getQuote(tokenIn, tokenOut, amountIn) {
+                // For testing, we'll simulate the API response
+                // In production, this would be a real API call
+                
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Mock response based on the Python implementation
+                const mockResponses = {
+                    'BTC-USDC': {
+                        success: true,
+                        token_in: 'BTC',
+                        token_out: 'USDC',
+                        amount_in: parseFloat(amountIn),
+                        amount_out: parseFloat(amountIn) * 49.95,
+                        price_impact: 0.0,
+                        route_type: 'multi_bin',
+                        estimated_gas: 150000,
+                        steps: [{
+                            pool_id: 'BTC-USDC-25',
+                            bin_id: 500,
+                            token_in: 'X',
+                            token_out: 'Y',
+                            amount_in: parseFloat(amountIn) * 0.999,
+                            amount_out: parseFloat(amountIn) * 49.95,
+                            price: 50.0,
+                            price_impact: 0.0
+                        }],
+                        effective_price: 49.95
+                    },
+                    'ETH-USDC': {
+                        success: true,
+                        token_in: 'ETH',
+                        token_out: 'USDC',
+                        amount_in: parseFloat(amountIn),
+                        amount_out: parseFloat(amountIn) * 3088.51,
+                        price_impact: 0.0,
+                        route_type: 'multi_bin',
+                        estimated_gas: 150000,
+                        steps: [{
+                            pool_id: 'ETH-USDC-25',
+                            bin_id: 500,
+                            token_in: 'X',
+                            token_out: 'Y',
+                            amount_in: parseFloat(amountIn) * 0.999,
+                            amount_out: parseFloat(amountIn) * 3088.51,
+                            price: 3000.0,
+                            price_impact: 0.0
+                        }],
+                        effective_price: 3088.51
+                    },
+                    'BTC-ETH': {
+                        success: true,
+                        token_in: 'BTC',
+                        token_out: 'ETH',
+                        amount_in: parseFloat(amountIn),
+                        amount_out: parseFloat(amountIn) * 16.67,
+                        price_impact: 0.0,
+                        route_type: 'multi_bin',
+                        estimated_gas: 150000,
+                        steps: [{
+                            pool_id: 'BTC-ETH-25',
+                            bin_id: 500,
+                            token_in: 'X',
+                            token_out: 'Y',
+                            amount_in: parseFloat(amountIn) * 0.999,
+                            amount_out: parseFloat(amountIn) * 16.67,
+                            price: 16.67,
+                            price_impact: 0.0
+                        }],
+                        effective_price: 16.67
+                    }
+                };
+                
+                const pair = `${tokenIn}-${tokenOut}`;
+                const reversePair = `${tokenOut}-${tokenIn}`;
+                
+                if (mockResponses[pair]) {
+                    return mockResponses[pair];
+                } else if (mockResponses[reversePair]) {
+                    // Handle reverse pairs
+                    const response = {...mockResponses[reversePair]};
+                    response.token_in = tokenIn;
+                    response.token_out = tokenOut;
+                    response.amount_out = response.amount_in / response.effective_price;
+                    response.effective_price = 1 / response.effective_price;
+                    return response;
+                } else {
+                    return {
+                        success: false,
+                        error: 'No routes found between tokens',
+                        token_in: tokenIn,
+                        token_out: tokenOut,
+                        amount_in: parseFloat(amountIn)
+                    };
+                }
+            }
+        }
+        
+        // Initialize API
+        const api = new QuoteEngineAPI();
+        
+        // Handle form submission
+        document.getElementById('quoteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const tokenIn = document.getElementById('tokenIn').value;
+            const tokenOut = document.getElementById('tokenOut').value;
+            const amountIn = document.getElementById('amountIn').value;
+            
+            if (tokenIn === tokenOut) {
+                showError('Token In and Token Out must be different');
+                return;
+            }
+            
+            // Show loading state
+            const submitButton = e.target.querySelector('button');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Getting Quote...';
+            submitButton.disabled = true;
+            
+            try {
+                const quote = await api.getQuote(tokenIn, tokenOut, amountIn);
+                showQuote(quote);
+            } catch (error) {
+                showError('Failed to get quote: ' + error.message);
+            } finally {
+                submitButton.textContent = originalText;
+                submitButton.disabled = false;
+            }
+        });
+        
+        function showQuote(quote) {
+            const resultDiv = document.getElementById('result');
+            const detailsDiv = document.getElementById('quoteDetails');
+            const stepsDiv = document.getElementById('steps');
+            const jsonDiv = document.getElementById('jsonResult');
+            
+            if (!quote.success) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<h3>❌ Quote Failed</h3><p>${quote.error}</p>`;
+                resultDiv.style.display = 'block';
+                return;
+            }
+            
+            resultDiv.className = 'result success';
+            
+            // Show quote details
+            detailsDiv.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">Amount Out</div>
+                    <div class="detail-value">${quote.amount_out.toFixed(6)} ${quote.token_out}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Effective Price</div>
+                    <div class="detail-value">$${quote.effective_price.toFixed(2)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Price Impact</div>
+                    <div class="detail-value">${quote.price_impact.toFixed(4)}%</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Route Type</div>
+                    <div class="detail-value">${quote.route_type}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Estimated Gas</div>
+                    <div class="detail-value">${quote.estimated_gas.toLocaleString()}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Steps</div>
+                    <div class="detail-value">${quote.steps.length}</div>
+                </div>
+            `;
+            
+            // Show route steps
+            if (quote.steps && quote.steps.length > 0) {
+                stepsDiv.innerHTML = '<h4>Route Steps:</h4>';
+                quote.steps.forEach((step, index) => {
+                    stepsDiv.innerHTML += `
+                        <div class="step">
+                            <div class="step-header">Step ${index + 1}: ${step.pool_id} (Bin ${step.bin_id})</div>
+                            <div>${step.amount_in.toFixed(6)} ${step.token_in} → ${step.amount_out.toFixed(6)} ${step.token_out}</div>
+                            <div>Price: $${step.price.toFixed(2)} | Impact: ${step.price_impact.toFixed(4)}%</div>
+                        </div>
+                    `;
+                });
+            } else {
+                stepsDiv.innerHTML = '';
+            }
+            
+            // Show JSON response
+            jsonDiv.textContent = JSON.stringify(quote, null, 2);
+            
+            resultDiv.style.display = 'block';
+        }
+        
+        function showError(message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<h3>❌ Error</h3><p>${message}</p>`;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
