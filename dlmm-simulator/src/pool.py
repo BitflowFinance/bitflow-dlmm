@@ -22,7 +22,7 @@ class BinData:
 class PoolConfig:
     """Configuration for a DLMM pool."""
     active_bin_id: int = 500
-    active_price: float = 50000.0  # $50,000 per BTC
+    active_price: float = 100000.0  # $100,000 per BTC
     bin_step: float = 0.001        # 0.1% (10 bps) between bins
     num_bins: int = 1001           # 0-1000
     x_token: str = "BTC"

@@ -9,7 +9,11 @@ pytest-cov>=4.0.0
 streamlit>=1.28.0
 plotly>=5.17.0
 
-# Added from the code block
+# API and web dependencies
 fastapi>=0.104.0
 uvicorn>=0.24.0
-pydantic>=2.0.0 
+pydantic>=2.0.0
+requests>=2.31.0
+
+# Development and testing
+python-multipart>=0.0.6 

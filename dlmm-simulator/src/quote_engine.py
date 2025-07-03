@@ -12,7 +12,7 @@ import math
 from collections import defaultdict, deque
 import heapq
 
-from .pool import MockPool, BinData
+from .pool import MockPool, BinData, PoolConfig
 from .routing import SinglePoolRouter
 from .math import DLMMMath
 
@@ -201,7 +201,7 @@ class MockRedisClient:
                 "token_y": "USDC",
                 "bin_step": 25,
                 "active_bin_id": 500,
-                "active_bin_price": 50000.0,  # 50,000 USDC per BTC
+                "active_bin_price": 100000.0,  # 100,000 USDC per BTC
                 "status": "active",
                 "total_tvl": 1000000.0,
                 "created_at": "2024-01-01T00:00:00Z"
@@ -212,31 +212,9 @@ class MockRedisClient:
                 "token_y": "USDC",
                 "bin_step": 50,
                 "active_bin_id": 500,
-                "active_bin_price": 50000.0,  # 50,000 USDC per BTC
+                "active_bin_price": 100000.0,  # 100,000 USDC per BTC
                 "status": "active", 
                 "total_tvl": 500000.0,
-                "created_at": "2024-01-01T00:00:00Z"
-            },
-            {
-                "pool_id": "ETH-USDC-25",
-                "token_x": "ETH", 
-                "token_y": "USDC",
-                "bin_step": 25,
-                "active_bin_id": 500,
-                "active_bin_price": 3000.0,  # 3,000 USDC per ETH
-                "status": "active",
-                "total_tvl": 800000.0,
-                "created_at": "2024-01-01T00:00:00Z"
-            },
-            {
-                "pool_id": "BTC-ETH-25",
-                "token_x": "BTC",
-                "token_y": "ETH", 
-                "bin_step": 25,
-                "active_bin_id": 500,
-                "active_bin_price": 16.67,  # 16.67 ETH per BTC
-                "status": "active",
-                "total_tvl": 600000.0,
                 "created_at": "2024-01-01T00:00:00Z"
             },
             {
@@ -245,7 +223,7 @@ class MockRedisClient:
                 "token_y": "USDC",
                 "bin_step": 25,
                 "active_bin_id": 500,
-                "active_bin_price": 150.0,  # 150 USDC per SOL
+                "active_bin_price": 200.0,  # 200 USDC per SOL
                 "status": "active",
                 "total_tvl": 100000.0,
                 "created_at": "2024-01-01T00:00:00Z"
@@ -265,15 +243,9 @@ class MockRedisClient:
             "last_updated": "2024-01-01T00:00:00Z"
         }
         
-        self.data["pairs:ETH:USDC"] = {
-            "pools": ["ETH-USDC-25"],
-            "best_pool": "ETH-USDC-25", 
-            "last_updated": "2024-01-01T00:00:00Z"
-        }
-        
-        self.data["pairs:BTC:ETH"] = {
-            "pools": ["BTC-ETH-25"],
-            "best_pool": "BTC-ETH-25",
+        self.data["pairs:BTC:USDC"] = {
+            "pools": ["BTC-USDC-25", "BTC-USDC-50"],
+            "best_pool": "BTC-USDC-25",
             "last_updated": "2024-01-01T00:00:00Z"
         }
         
@@ -288,55 +260,72 @@ class MockRedisClient:
         pool_id = pool["pool_id"]
         active_bin_id = pool["active_bin_id"]
         active_price = float(pool["active_bin_price"])  # Price is already stored as float
-        bin_step = pool["bin_step"] / 10000  # Convert bps to decimal
+        bin_step = pool["bin_step"] / 1000000  # Convert bps to decimal (25 bps = 0.000025)
+        
+        # Define token decimals
+        token_decimals = {
+            "BTC": 8,
+            "USDC": 6,
+            "SOL": 9
+        }
+        
+        token_x = pool["token_x"]
+        token_y = pool["token_y"]
+        x_decimals = token_decimals.get(token_x, 18)
+        y_decimals = token_decimals.get(token_y, 18)
         
         print(f"DEBUG: Creating bins for {pool_id}")
         print(f"DEBUG: active_price: {active_price}")
         print(f"DEBUG: bin_step: {bin_step}")
+        print(f"DEBUG: {token_x} decimals: {x_decimals}, {token_y} decimals: {y_decimals}")
         
         # Create bins around active bin
         for bin_id in range(active_bin_id - 50, active_bin_id + 51):
             # Calculate bin price using DLMMMath
             bin_price = DLMMMath.calculate_bin_price(active_price, bin_step, bin_id, active_bin_id)
-            
+            if bin_id in [499, 500, 501]:
+                print(f"DEBUG: {pool_id} bin {bin_id}: calculated price = {bin_price} (active_price={active_price}, bin_step={bin_step})")
             # Create liquidity distribution (bell curve around active bin)
             distance = abs(bin_id - active_bin_id)
             liquidity_factor = max(0.1, 1 - (distance / 50) ** 2)
-            
-            # Determine token amounts based on bin position and price
-            base_liquidity = 10000 * liquidity_factor  # Base liquidity amount
-            
-            if bin_id < active_bin_id:
-                # Left bins: mostly X tokens (lower price)
-                x_amount = base_liquidity
-                y_amount = base_liquidity * bin_price
-            elif bin_id > active_bin_id:
-                # Right bins: mostly Y tokens (higher price)
-                x_amount = base_liquidity
-                y_amount = base_liquidity * bin_price
+            # Create realistic liquidity amounts based on token decimals
+            if token_x == "BTC" and token_y == "USDC":
+                base_x_amount = 1000 * liquidity_factor  # 1000 BTC
+                base_y_amount = 100000000 * liquidity_factor  # 100M USDC
+            elif token_x == "SOL" and token_y == "USDC":
+                base_x_amount = 100000 * liquidity_factor  # 100K SOL
+                base_y_amount = 20000000 * liquidity_factor  # 20M USDC
             else:
-                # Active bin: balanced based on price
-                x_amount = base_liquidity
-                y_amount = base_liquidity * bin_price
-            
-            if bin_id == active_bin_id:
-                print(f"DEBUG: Active bin {bin_id}:")
-                print(f"DEBUG:   bin_price: {bin_price}")
-                print(f"DEBUG:   x_amount: {x_amount}")
-                print(f"DEBUG:   y_amount: {y_amount}")
-                print(f"DEBUG:   price stored: {bin_price}")
-            
+                base_x_amount = 1000 * liquidity_factor
+                base_y_amount = 1000000 * liquidity_factor
+            if bin_id < active_bin_id:
+                # Left bins: only X tokens
+                x_amount = base_x_amount
+                y_amount = 0
+            elif bin_id > active_bin_id:
+                # Right bins: only Y tokens
+                x_amount = 0
+                y_amount = base_y_amount
+            else:
+                # Active bin: both tokens
+                x_amount = base_x_amount
+                y_amount = base_y_amount
             bin_data = {
                 "pool_id": pool_id,
                 "bin_id": bin_id,
-                "x_amount": x_amount,  # Store as float
-                "y_amount": y_amount,  # Store as float
-                "price": bin_price,  # Store as float, human readable
+                "x_amount": x_amount,
+                "y_amount": y_amount,
+                "price": bin_price,
                 "total_liquidity": x_amount + y_amount,
                 "is_active": bin_id == active_bin_id
             }
-            
             self.data[f"bin:{pool_id}:{bin_id}"] = bin_data
+        # After all bins are created, print debug info for bins 499, 500, 501
+        for check_bin in [499, 500, 501]:
+            key = f"bin:{pool_id}:{check_bin}"
+            if key in self.data:
+                bin_data = self.data[key]
+                print(f"DEBUG: {pool_id} bin {check_bin}: x_amount={bin_data['x_amount']}, y_amount={bin_data['y_amount']}, price={bin_data['price']}")
     
     def get(self, key: str) -> Optional[str]:
         """Get value from Redis"""
@@ -461,7 +450,22 @@ class QuoteEngine:
         """Calculate quote for a specific path through the graph"""
         if len(path) == 2:
             # Direct path - single pair
-            return self._calculate_single_pair_quote(path[0], path[1], amount_in, token_in, token_out)
+            quote = self._calculate_single_pair_quote(path[0], path[1], amount_in, token_in, token_out)
+            print(f"DEBUG: Single pair quote result: success={quote.success}, amount_out={quote.amount_out}")
+            if quote.success and quote.amount_out > 0:
+                return quote
+            else:
+                return QuoteResult(
+                    token_in=token_in,
+                    token_out=token_out,
+                    amount_in=amount_in,
+                    amount_out=0,
+                    price_impact=0.0,
+                    route_type=RouteType.MULTI_BIN,
+                    steps=[],
+                    success=False,
+                    error="No valid single pair quote"
+                )
         else:
             # Multi-hop path
             return self._calculate_multi_pair_quote(path, amount_in, token_in, token_out)
@@ -507,7 +511,8 @@ class QuoteEngine:
             )
         current_amount = amount_in
         all_steps = []
-        total_price_impact = 0.0
+        # For theoretical output calculation
+        theoretical_amount = amount_in
         for i, pool_id in enumerate(path_pools):
             hop_token_in = path[i]
             hop_token_out = path[i + 1]
@@ -525,21 +530,33 @@ class QuoteEngine:
                     error=f"Hop {i+1} failed: {hop_quote.error}"
                 )
             all_steps.extend(hop_quote.steps)
-            total_price_impact += hop_quote.price_impact
+            # For theoretical output: use active bin price for the full input of this hop
+            pool_data = json.loads(self.redis.get(f"pool:{pool_id}"))
+            active_price = float(pool_data["active_bin_price"])
+            if hop_token_in == pool_data["token_x"] and hop_token_out == pool_data["token_y"]:
+                # X→Y
+                theoretical_amount = theoretical_amount * active_price
+            else:
+                # Y→X
+                theoretical_amount = theoretical_amount / active_price if active_price > 0 else 0
             current_amount = hop_quote.amount_out
+        
+        # Calculate price impact as described
+        price_impact = abs(current_amount - theoretical_amount) / theoretical_amount if theoretical_amount > 0 else 0
+        print(f"DEBUG: After swap loop: total_amount_out={current_amount}, theoretical_amount={theoretical_amount}, price_impact={price_impact}")
         return QuoteResult(
             token_in=token_in,
             token_out=token_out,
             amount_in=amount_in,
             amount_out=current_amount,
-            price_impact=total_price_impact / len(path_pools),
+            price_impact=price_impact * 100,  # as percent
             route_type=RouteType.MULTI_PAIR,
             steps=all_steps,
             success=True
         )
     
     def _single_pool_quote(self, pool_id: str, amount_in: float, token_in: str = None, token_out: str = None) -> QuoteResult:
-        """Calculate quote for single pool (multi-bin) using DLMMMath for all math"""
+        """Calculate quote for a single pool using SinglePoolRouter"""
         pool_data = json.loads(self.redis.get(f"pool:{pool_id}"))
         if not pool_data:
             return QuoteResult(
@@ -554,17 +571,39 @@ class QuoteEngine:
                 error="Pool not found"
             )
         
-        pool_token_x = pool_data["token_x"]
-        pool_token_y = pool_data["token_y"]
+        # Create a MockPool instance for the SinglePoolRouter
+        from .pool import MockPool, PoolConfig, BinData
+        config = PoolConfig(
+            active_bin_id=pool_data["active_bin_id"],
+            active_price=float(pool_data["active_bin_price"]),
+            bin_step=pool_data["bin_step"] / 1000000,  # Convert bps to decimal (25 bps = 0.000025)
+            num_bins=1000,  # Default value, could be made configurable
+            x_token=pool_data["token_x"],
+            y_token=pool_data["token_y"]
+        )
+        pool = MockPool(config)
+        
+        # Clear the default bins and add our custom bins
+        pool.bins = {}
+        bins = self._get_pool_bins(pool_id)
+        for bin_id, bin_data in bins.items():
+            pool.bins[bin_id] = BinData(
+                bin_id=bin_id,
+                x_amount=float(bin_data["x_amount"]),
+                y_amount=float(bin_data["y_amount"]),
+                price=float(bin_data["price"]),
+                total_liquidity=float(bin_data["x_amount"]) + float(bin_data["y_amount"]) / float(bin_data["price"]),
+                is_active=bin_id == pool_data["active_bin_id"]
+            )
+        
+        # Determine swap direction
         if token_in and token_out:
-            if token_in == pool_token_x and token_out == pool_token_y:
-                is_x_to_y = True
-                actual_token_in = pool_token_x
-                actual_token_out = pool_token_y
-            elif token_in == pool_token_y and token_out == pool_token_x:
-                is_x_to_y = False
-                actual_token_in = pool_token_y
-                actual_token_out = pool_token_x
+            if token_in == pool_data["token_x"] and token_out == pool_data["token_y"]:
+                actual_token_in = pool_data["token_x"]
+                actual_token_out = pool_data["token_y"]
+            elif token_in == pool_data["token_y"] and token_out == pool_data["token_x"]:
+                actual_token_in = pool_data["token_y"]
+                actual_token_out = pool_data["token_x"]
             else:
                 return QuoteResult(
                     token_in=token_in,
@@ -578,67 +617,51 @@ class QuoteEngine:
                     error=f"Pool {pool_id} cannot handle {token_in} to {token_out} swap"
                 )
         else:
-            is_x_to_y = True
-            actual_token_in = pool_token_x
-            actual_token_out = pool_token_y
+            actual_token_in = pool_data["token_x"]
+            actual_token_out = pool_data["token_y"]
         
+        # Apply fees
         fee_amount = amount_in * self.fee_rate
         amount_after_fees = amount_in - fee_amount
-        bins = self._get_pool_bins(pool_id)
-        if not bins:
-            return QuoteResult(
-                token_in=actual_token_in,
-                token_out=actual_token_out,
-                amount_in=amount_in,
-                amount_out=0,
-                price_impact=0.0,
-                route_type=RouteType.MULTI_BIN,
-                steps=[],
-                success=False,
-                error="No bins found"
-            )
+        
+        # Use SinglePoolRouter to get the quote
+        router = SinglePoolRouter(pool)
+        route_result = router.get_quote(actual_token_in, amount_after_fees, actual_token_out)
+        
+        # Debug output
+        print(f"DEBUG: SinglePoolRouter result:")
+        print(f"  input: {amount_after_fees} {actual_token_in}")
+        print(f"  output: {route_result.total_amount_out} {actual_token_out}")
+        print(f"  steps: {len(route_result.steps)}")
+        for i, step in enumerate(route_result.steps):
+            print(f"    Step {i}: bin_id={step.bin_id}, amount_in={step.amount_in}, amount_out={step.amount_out}, price={step.price}")
+        
+        # Convert RouteStep to QuoteStep
         steps = []
-        remaining_amount = amount_after_fees
-        total_amount_out = 0
-        active_bin_id = pool_data["active_bin_id"]
-        # Traverse bins in correct direction
-        if is_x_to_y:
-            bin_sequence = sorted(bins.keys())
-        else:
-            bin_sequence = sorted(bins.keys(), reverse=True)
-        for bin_id in bin_sequence:
-            if remaining_amount <= 0:
-                break
-            bin_data = bins[bin_id]
-            step = self._calculate_bin_step(
-                bin_data, remaining_amount, is_x_to_y, pool_id, bin_id, actual_token_in, actual_token_out
+        for step in route_result.steps:
+            quote_step = QuoteStep(
+                pool_id=step.pool_id,
+                bin_id=step.bin_id,
+                token_in=step.token_in,
+                token_out=step.token_out,
+                amount_in=step.amount_in,
+                amount_out=step.amount_out,
+                price=step.price,
+                price_impact=step.price_impact,
+                fee_amount=fee_amount * (step.amount_in / amount_after_fees) if amount_after_fees > 0 else 0
             )
-            if step.amount_out > 0:
-                steps.append(step)
-                total_amount_out += step.amount_out
-                remaining_amount -= step.amount_in
-        if remaining_amount > 0:
-            return QuoteResult(
-                token_in=actual_token_in,
-                token_out=actual_token_out,
-                amount_in=amount_in,
-                amount_out=total_amount_out,
-                price_impact=0.0,
-                route_type=RouteType.MULTI_BIN,
-                steps=steps,
-                success=False,
-                error=f"Insufficient liquidity: {remaining_amount} unswapped"
-            )
-        total_price_impact = sum(step.price_impact for step in steps) / len(steps) if steps else 0
+            steps.append(quote_step)
+        
         return QuoteResult(
             token_in=actual_token_in,
             token_out=actual_token_out,
             amount_in=amount_in,
-            amount_out=total_amount_out,
-            price_impact=total_price_impact,
+            amount_out=route_result.total_amount_out,
+            price_impact=route_result.total_price_impact,
             route_type=RouteType.MULTI_BIN,
             steps=steps,
-            success=True
+            success=route_result.success,
+            error=route_result.error_message
         )
     
     def _get_pool_bins(self, pool_id: str) -> Dict[int, Dict]:
@@ -647,44 +670,8 @@ class QuoteEngine:
         for key in self.redis.keys(f"bin:{pool_id}:*"):
             bin_id = int(key.split(":")[-1])
             bin_data = json.loads(self.redis.get(key))
-            bins[bin_id] = bin_data
+            bins[int(bin_id)] = bin_data  # Ensure bin_id is always int
         return bins
-    
-    def _calculate_bin_step(self, bin_data: Dict, amount_in: float, is_x_to_y: bool, 
-                           pool_id: str, bin_id: int, token_in: str, token_out: str) -> QuoteStep:
-        """Calculate a single bin step using DLMMMath.swap_within_bin"""
-        x_amount = float(bin_data["x_amount"])
-        y_amount = float(bin_data["y_amount"])
-        price = float(bin_data["price"])  # Price is already stored correctly
-        
-        # Use DLMMMath.swap_within_bin for the swap math
-        bin_struct = BinData(
-            bin_id=bin_id,
-            x_amount=x_amount,
-            y_amount=y_amount,
-            price=price,
-            total_liquidity=x_amount + y_amount / price
-        )
-        
-        # Convert input to float for math.py
-        amount_in_f = amount_in
-        amount_out_f, remaining_in_f = DLMMMath.swap_within_bin(bin_struct, amount_in_f, is_x_to_y)
-        used_in_f = amount_in_f - remaining_in_f
-        
-        # Scale back to float
-        used_in = amount_in_f - remaining_in_f
-        amount_out = amount_out_f
-        
-        return QuoteStep(
-            pool_id=pool_id,
-            bin_id=bin_id,
-            token_in=token_in,
-            token_out=token_out, 
-            amount_in=used_in,
-            amount_out=amount_out,
-            price=price,
-            price_impact=0.0
-        )
     
     def _multi_pool_quote(self, pool_ids: List[str], amount_in: float, token_in: str = None, token_out: str = None) -> QuoteResult:
         """Calculate quote for multiple pools of same pair"""
@@ -699,7 +686,9 @@ class QuoteEngine:
                 best_quote = quote
                 best_amount_out = quote.amount_out
         
-        return best_quote or QuoteResult(
+        if best_quote and best_quote.amount_out > 0:
+            return best_quote
+        return QuoteResult(
             token_in=token_in or "",
             token_out=token_out or "",
             amount_in=amount_in,

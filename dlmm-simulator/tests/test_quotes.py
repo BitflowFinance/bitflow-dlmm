@@ -53,6 +53,24 @@ class TestSingleBinQuotes:
         expected_output = amount_in / self.active_bin.price
         assert abs(result.total_amount_out - expected_output) < 0.001
 
+    def test_single_bin_quote_x_to_y(self):
+        """Test single bin quote for X to Y swap."""
+        config = PoolConfig(
+            active_bin_id=500,
+            active_price=100000.0,
+            bin_step=0.001,
+            x_token="BTC",
+            y_token="USDC"
+        )
+        pool = MockPool(config)
+        router = SinglePoolRouter(pool)
+        
+        # Test small swap within active bin
+        quote = router.get_quote("BTC", 0.1, "USDC")
+        assert quote.success
+        assert quote.amount_out > 0
+        assert quote.price_impact < 1.0  # Should be very low for small swap
+
 
 class TestMultiBinQuotes:
     """Test quotes for swaps across multiple bins within the same pool."""
@@ -120,7 +138,7 @@ class TestMultiPoolSamePairQuotes:
         # Create two BTC/USDC pools with different configurations
         config1 = PoolConfig(
             active_bin_id=500,
-            active_price=50000.0,
+            active_price=100000.0,
             bin_step=0.001,
             x_token="BTC",
             y_token="USDC"
@@ -128,7 +146,7 @@ class TestMultiPoolSamePairQuotes:
         
         config2 = PoolConfig(
             active_bin_id=500,
-            active_price=50100.0,  # Slightly different price
+            active_price=100100.0,  # Slightly different price
             bin_step=0.002,        # Different bin step
             x_token="BTC",
             y_token="USDC"
@@ -176,14 +194,14 @@ class TestMultiPoolSamePairDifferentBinStep:
     def setup_method(self):
         config1 = PoolConfig(
             active_bin_id=500,
-            active_price=50000.0,
+            active_price=100000.0,
             bin_step=0.001,
             x_token="BTC",
             y_token="USDC"
         )
         config2 = PoolConfig(
             active_bin_id=500,
-            active_price=50000.0,
+            active_price=100000.0,
             bin_step=0.002,  # Different bin step
             x_token="BTC",
             y_token="USDC"

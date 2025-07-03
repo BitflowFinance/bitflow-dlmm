@@ -43,7 +43,7 @@ class StressTestSuite:
             try:
                 quote_start = time.time()
                 quote = self.quote_engine.get_quote(
-                    token_in, token_out, int(amount * 1e18)
+                    token_in, token_out, amount
                 )
                 quote_time = time.time() - quote_start
                 
@@ -53,7 +53,7 @@ class StressTestSuite:
                     "token_in": token_in,
                     "token_out": token_out,
                     "amount": amount,
-                    "amount_out": quote.amount_out / 1e18 if quote.success else 0
+                    "amount_out": quote.amount_out if quote.success else 0
                 })
                 
             except Exception as e:
@@ -98,7 +98,7 @@ class StressTestSuite:
                 try:
                     quote_start = time.time()
                     quote = self.quote_engine.get_quote(
-                        token_in, token_out, int(amount * 1e18)
+                        token_in, token_out, amount
                     )
                     quote_time = time.time() - quote_start
                     
@@ -256,14 +256,14 @@ class StressTestSuite:
         for token_in, token_out, amount in edge_cases:
             try:
                 quote = self.quote_engine.get_quote(
-                    token_in, token_out, int(amount * 1e18)
+                    token_in, token_out, amount
                 )
                 
                 results.append({
                     "case": f"{token_in}->{token_out} ({amount})",
                     "success": quote.success,
                     "expected_failure": token_in == token_out or amount <= 0 or "INVALID" in [token_in, token_out],
-                    "amount_out": quote.amount_out / 1e18 if quote.success else 0,
+                    "amount_out": quote.amount_out if quote.success else 0,
                     "error": quote.error
                 })
                 
@@ -301,7 +301,7 @@ class StressTestSuite:
             
             try:
                 quote = self.quote_engine.get_quote(
-                    token_in, token_out, int(amount * 1e18)
+                    token_in, token_out, amount
                 )
             except:
                 pass

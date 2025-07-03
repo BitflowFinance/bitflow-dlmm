@@ -35,11 +35,8 @@ class QuoteEngineAPI:
         Returns:
             Dictionary with quote information
         """
-        # Convert to scaled amount (assuming 18 decimals)
-        scaled_amount = int(amount_in * 1e18)
-        
-        # Get quote from engine
-        quote = self.quote_engine.get_quote(token_in, token_out, scaled_amount)
+        # Get quote from engine (amount_in is already a float)
+        quote = self.quote_engine.get_quote(token_in, token_out, amount_in)
         
         # Format response
         return self._format_quote_response(quote)
@@ -83,12 +80,12 @@ class QuoteEngineAPI:
         for key in self.redis_client.keys(f"bin:{pool_id}:*"):
             bin_id = int(key.split(":")[-1])
             bin_data = self.redis_client.data[key]
-            if int(bin_data["x_amount"]) > 0 or int(bin_data["y_amount"]) > 0:
+            if float(bin_data["x_amount"]) > 0 or float(bin_data["y_amount"]) > 0:
                 bins.append({
                     "bin_id": bin_id,
-                    "x_amount": float(bin_data["x_amount"]) / 1e18,
-                    "y_amount": float(bin_data["y_amount"]) / 1e18,
-                    "price": float(bin_data["price"]) / 1e18,
+                    "x_amount": float(bin_data["x_amount"]),
+                    "y_amount": float(bin_data["y_amount"]),
+                    "price": float(bin_data["price"]),
                     "is_active": bin_data["is_active"]
                 })
         
@@ -98,8 +95,8 @@ class QuoteEngineAPI:
             "token_y": pool_data["token_y"],
             "bin_step": pool_data["bin_step"],
             "active_bin_id": pool_data["active_bin_id"],
-            "active_bin_price": float(pool_data["active_bin_price"]) / 1e18,
-            "total_tvl": float(pool_data["total_tvl"]) / 1e18,
+            "active_bin_price": float(pool_data["active_bin_price"]),
+            "total_tvl": float(pool_data["total_tvl"]),
             "status": pool_data["status"],
             "bins": bins
         }
@@ -112,7 +109,7 @@ class QuoteEngineAPI:
                 "error": quote.error,
                 "token_in": quote.token_in,
                 "token_out": quote.token_out,
-                "amount_in": quote.amount_in / 1e18
+                "amount_in": quote.amount_in
             }
         
         # Format steps
@@ -123,8 +120,8 @@ class QuoteEngineAPI:
                 "bin_id": step.bin_id,
                 "token_in": step.token_in,
                 "token_out": step.token_out,
-                "amount_in": step.amount_in / 1e18,
-                "amount_out": step.amount_out / 1e18,
+                "amount_in": step.amount_in,
+                "amount_out": step.amount_out,
                 "price": step.price,
                 "price_impact": step.price_impact
             })
@@ -133,8 +130,8 @@ class QuoteEngineAPI:
             "success": True,
             "token_in": quote.token_in,
             "token_out": quote.token_out,
-            "amount_in": quote.amount_in / 1e18,
-            "amount_out": quote.amount_out / 1e18,
+            "amount_in": quote.amount_in,
+            "amount_out": quote.amount_out,
             "price_impact": quote.price_impact,
             "route_type": quote.route_type.value,
             "estimated_gas": quote.estimated_gas,

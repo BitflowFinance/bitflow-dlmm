@@ -19,7 +19,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.pool import MockPool
 from src.routing import SinglePoolRouter
-from src.quote_engine import MockRedisClient, QuoteEngine
 
 
 def create_pool(pool_type="bell_curve"):
@@ -54,7 +53,7 @@ def get_bin_data_for_viz(pool, bin_range=20):
     return bins_data
 
 
-def create_tvl_histogram(bins_data, title, used_bins=None):
+def create_tvl_histogram(bins_data, title, used_bins=None, bin_step=None):
     """Create TVL histogram using Plotly."""
     if not bins_data:
         return go.Figure()
@@ -137,14 +136,21 @@ def create_tvl_histogram(bins_data, title, used_bins=None):
         )
     
     # Highlight used bins if provided
-    if used_bins:
+    if used_bins and bin_step is not None:
         for bin_id in used_bins:
             bin_data = df[df['bin_id'] == bin_id]
             if len(bin_data) > 0:
                 bin_price = bin_data['price'].iloc[0]
+                
+                # Calculate proper bin boundaries based on bin step
+                # Each bin represents a point in price space, not a range
+                # But for visualization, we can show a small range around the bin price
+                # Use half the distance to the next bin as the visualization width
+                bin_width = bin_price * bin_step * 0.5  # Half the bin step distance
+                
                 fig.add_vrect(
-                    x0=bin_price-0.5,
-                    x1=bin_price+0.5,
+                    x0=bin_price - bin_width,
+                    x1=bin_price + bin_width,
                     fillcolor="rgba(44, 160, 44, 0.2)",
                     layer="below",
                     line_width=0
@@ -255,24 +261,20 @@ def main():
     st.markdown("---")
     st.subheader("🚀 DLMM Quote Engine")
     
-    # Initialize quote engine
-    if 'quote_engine' not in st.session_state:
-        st.session_state.quote_engine = QuoteEngine(MockRedisClient())
-    
     # Quote Engine Interface
     col1, col2, col3 = st.columns(3)
     
     with col1:
         token_in = st.selectbox(
             "Token In",
-            ["BTC", "ETH", "USDC"],
+            ["BTC", "ETH", "USDC", "SOL"],
             key="token_in_select"
         )
     
     with col2:
         token_out = st.selectbox(
             "Token Out", 
-            ["BTC", "ETH", "USDC"],
+            ["BTC", "ETH", "USDC", "SOL"],
             key="token_out_select"
         )
     
@@ -291,19 +293,35 @@ def main():
             st.error("Token In and Token Out must be different!")
         else:
             try:
-                # Convert amount to scaled format (18 decimals)
-                scaled_amount = int(amount_in * 1e18)
+                # Use API server instead of local quote engine
+                api_url = "http://localhost:8000/quote"
+                payload = {
+                    "token_in": token_in,
+                    "token_out": token_out,
+                    "amount_in": amount_in
+                }
                 
-                # Get quote from engine
-                quote = st.session_state.quote_engine.get_quote(
-                    token_in, 
-                    token_out, 
-                    scaled_amount
-                )
+                response = requests.post(api_url, json=payload)
                 
-                # Store quote in session state
-                st.session_state.last_quote = quote
-                st.rerun()
+                if response.status_code == 200:
+                    quote_data = response.json()
+                    
+                    # Create a simple quote object for display
+                    class SimpleQuote:
+                        def __init__(self, data):
+                            self.success = data.get('success', False)
+                            self.amount_in = data.get('amount_in', 0)
+                            self.amount_out = data.get('amount_out', 0)
+                            self.price_impact = data.get('price_impact', 0)
+                            self.route_type = type('RouteType', (), {'value': data.get('route_type', 'unknown')})()
+                            self.steps = data.get('steps', [])
+                            self.error = data.get('error', None)
+                    
+                    quote = SimpleQuote(quote_data)
+                    st.session_state.last_quote = quote
+                    st.rerun()
+                else:
+                    st.error(f"API Error: {response.status_code} - {response.text}")
                 
             except Exception as e:
                 st.error(f"Error getting quote: {str(e)}")
@@ -321,7 +339,7 @@ def main():
             with col1:
                 st.metric(
                     "Amount Out",
-                    f"{quote.amount_out / 1e18:.6f} {token_out}",
+                    f"{quote.amount_out:.6f} {token_out}",
                     help="Amount of output tokens you'll receive"
                 )
             
@@ -351,14 +369,14 @@ def main():
             if quote.steps:
                 st.subheader("Route Steps")
                 for i, step in enumerate(quote.steps):
-                    with st.expander(f"Step {i+1}: {step.pool_id} (Bin {step.bin_id})"):
+                    with st.expander(f"Step {i+1}: {step['pool_id']} (Bin {step['bin_id']})"):
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.write(f"**Input:** {step.amount_in / 1e18:.6f} {step.token_in}")
+                            st.write(f"**Input:** {step['amount_in']:.6f} {step['token_in']}")
                         with col2:
-                            st.write(f"**Output:** {step.amount_out / 1e18:.6f} {step.token_out}")
+                            st.write(f"**Output:** {step['amount_out']:.6f} {step['token_out']}")
                         with col3:
-                            st.write(f"**Price:** ${step.price:.2f}")
+                            st.write(f"**Price:** ${step['price']:.2f}")
         else:
             st.error(f"❌ Quote Failed: {quote.error}")
     
@@ -573,7 +591,11 @@ def main():
     with col1:
         st.subheader("Current State")
         st.markdown("*Note: Chart shows TVL in USD with BTC/USD price on X-axis. Hover for detailed token amounts and values.*")
-        current_fig = create_tvl_histogram(current_bins, "Current Pool Liquidity")
+        current_fig = create_tvl_histogram(
+            current_bins, 
+            "Current Pool Liquidity", 
+            bin_step=st.session_state.pool.config.bin_step
+        )
         st.plotly_chart(current_fig, use_container_width=True)
     
     with col2:
@@ -581,14 +603,19 @@ def main():
         if amount == 0:
             st.markdown("*Set an input amount above to see quoted state*")
             # Show the same current state when amount is 0
-            quoted_fig = create_tvl_histogram(current_bins, "No Swap (Amount = 0)")
+            quoted_fig = create_tvl_histogram(
+                current_bins, 
+                "No Swap (Amount = 0)",
+                bin_step=st.session_state.pool.config.bin_step
+            )
             st.plotly_chart(quoted_fig, use_container_width=True)
         elif quoted_bins and quote and quote.success:
             st.markdown("*Note: Chart shows TVL in USD with BTC/USD price on X-axis. Hover for detailed token amounts and values.*")
             quoted_fig = create_tvl_histogram(
                 quoted_bins, 
                 f"After {amount} {direction} Quote",
-                used_bin_ids
+                used_bin_ids,
+                bin_step=st.session_state.pool.config.bin_step
             )
             st.plotly_chart(quoted_fig, use_container_width=True)
         else:
@@ -600,13 +627,13 @@ def main():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("Input Amount", f"{amount} {quote.steps[0].token_in if quote.steps else ''}")
+            st.metric("Input Amount", f"{amount} {quote.steps[0]['token_in'] if quote.steps else ''}")
         
         with col2:
-            st.metric("Output Amount", f"{quote.total_amount_out:.2f} {quote.steps[0].token_out if quote.steps else ''}")
+            st.metric("Output Amount", f"{quote.amount_out:.2f} {quote.steps[0]['token_out'] if quote.steps else ''}")
         
         with col3:
-            st.metric("Price Impact", f"{quote.total_price_impact:.4f}%")
+            st.metric("Price Impact", f"{quote.price_impact:.4f}%")
         
         # Show bin usage details
         st.markdown("**Bin Usage Details:**")
@@ -614,11 +641,11 @@ def main():
             usage_data = []
             for step in quote.steps:
                 usage_data.append({
-                    'Bin ID': step.bin_id,
-                    'Amount In': f"{step.amount_in:.4f} {step.token_in}",
-                    'Amount Out': f"{step.amount_out:.2f} {step.token_out}",
-                    'Price': f"${step.price:,.2f}",
-                    'Price Impact': f"{step.price_impact:.4f}%"
+                    'Bin ID': step['bin_id'],
+                    'Amount In': f"{step['amount_in']:.4f} {step['token_in']}",
+                    'Amount Out': f"{step['amount_out']:.2f} {step['token_out']}",
+                    'Price': f"${step['price']:.2f}",
+                    'Price Impact': f"{step['price_impact']:.4f}%"
                 })
             
             usage_df = pd.DataFrame(usage_data)
@@ -627,7 +654,7 @@ def main():
             st.info("No bins used in this quote")
     
     elif quote:
-        st.error(f"Quote failed: {quote.error_message}")
+        st.error(f"Quote failed: {quote.error}")
 
 
 if __name__ == "__main__":

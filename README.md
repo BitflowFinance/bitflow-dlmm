@@ -1,6 +1,6 @@
 # DLMM Simulator
 
-A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity Market Maker) routing logic with an interactive visualization tool.
+A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity Market Maker) routing logic with an interactive visualization tool and REST API.
 
 ## Quick Start
 
@@ -35,31 +35,54 @@ A Python-based simulator for testing and analyzing DLMM (Decentralized Liquidity
    pip install -r requirements.txt
    ```
 
-4. **Run the visualization app:**
+4. **Start the API server:**
    ```bash
-   streamlit run app.py --server.headless true
+   python api_server.py
    ```
 
-5. **Open your browser:**
-   Navigate to `http://localhost:8502` (or the URL shown in the terminal)
+5. **Start the visualization app:**
+   ```bash
+   streamlit run app.py
+   ```
+
+6. **Open your browser:**
+   - API Documentation: `http://localhost:8000/docs`
+   - Streamlit App: `http://localhost:8501`
 
 ### Testing the Quote Engine
 
-1. **Run the quote engine test:**
+1. **Test via API:**
+   ```bash
+   curl -X POST http://localhost:8000/quote \
+     -H "Content-Type: application/json" \
+     -d '{"token_in": "BTC", "token_out": "USDC", "amount_in": 1.0}'
+   ```
+
+2. **Test via Python:**
    ```bash
    cd dlmm-simulator
    python test_quote_engine.py
    ```
 
-2. **Test different route types:**
-   - Single pool quotes
-   - Multi-pool same pair quotes
-   - Multi-pair routing quotes
-   - Invalid route handling
+## Architecture
+
+The DLMM Simulator consists of two main components:
+
+### 1. API Server (`api_server.py`)
+- **FastAPI-based REST API** for quote calculations
+- **Mock Redis client** for development and testing
+- **Graph-based routing** for multi-hop paths
+- **Real-time quote calculations** with detailed step breakdowns
+
+### 2. Streamlit Frontend (`app.py`)
+- **Interactive web interface** for testing quotes
+- **Real-time visualization** of pool states
+- **Multi-token support** (BTC, ETH, USDC, SOL)
+- **Route visualization** with step-by-step breakdowns
 
 ## Quote Engine
 
-The DLMM Quote Engine provides comprehensive routing and quote calculation capabilities for all types of swap routes.
+The DLMM Quote Engine provides comprehensive routing and quote calculation capabilities for all types of swap routes using **simple float arithmetic** (no 1e18 scaling).
 
 ### Types of Swap Routes
 
@@ -115,9 +138,9 @@ Given token A and token B, and input swap amount of token A:
    - Combine the logic needed for basic multipair MVP
    - With router #3 logic between single pair, multi pool, multi bin
 
-### Redis Cache Schema
+### Data Storage Schema
 
-The quote engine uses a Redis cache to store pool and bin state data:
+The quote engine uses a simple in-memory storage (MockRedis) for development:
 
 #### Pool State Structure
 ```json
@@ -127,9 +150,9 @@ The quote engine uses a Redis cache to store pool and bin state data:
     "token_y": "USDC", 
     "bin_step": 25,
     "active_bin_id": 500,
-    "active_bin_price": "50000000000000000000",
+    "active_bin_price": 50000.0,
     "status": "active",
-    "total_tvl": "1000000000000000000000",
+    "total_tvl": 1000000.0,
     "created_at": "2024-01-01T00:00:00Z"
 }
 ```
@@ -139,10 +162,10 @@ The quote engine uses a Redis cache to store pool and bin state data:
 {
     "pool_id": "BTC-USDC-25",
     "bin_id": 500,
-    "x_amount": "1000000000000000000",
-    "y_amount": "500000000000000000000000",
-    "price": "50000000000000000000",
-    "total_liquidity": "1000000000000000000",
+    "x_amount": 10000.0,
+    "y_amount": 500000000.0,
+    "price": 50000.0,
+    "total_liquidity": 10000000.0,
     "is_active": true
 }
 ```
@@ -156,141 +179,72 @@ The quote engine uses a Redis cache to store pool and bin state data:
 }
 ```
 
-### Usage Example
+### API Usage Examples
+
+#### Get Quote
+```bash
+curl -X POST http://localhost:8000/quote \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token_in": "BTC",
+    "token_out": "USDC", 
+    "amount_in": 1.0
+  }'
+```
+
+#### Get Available Pools
+```bash
+curl http://localhost:8000/pools
+```
+
+#### Get Pool Details
+```bash
+curl http://localhost:8000/pools/BTC-USDC-25
+```
+
+### Python Usage Example
 
 ```python
-from src.quote_engine import MockRedisClient, QuoteEngine
-
-# Initialize quote engine
-redis_client = MockRedisClient()
-quote_engine = QuoteEngine(redis_client)
+import requests
 
 # Get quote for BTC to USDC
-quote = quote_engine.get_quote(
-    token_in="BTC",
-    token_out="USDC", 
-    amount_in=int(1 * 1e18)  # 1 BTC
-)
+response = requests.post("http://localhost:8000/quote", json={
+    "token_in": "BTC",
+    "token_out": "USDC", 
+    "amount_in": 1.0  # 1 BTC (no scaling needed)
+})
 
-if quote.success:
-    print(f"Amount out: {quote.amount_out / 1e18} USDC")
-    print(f"Price impact: {quote.price_impact}%")
-    print(f"Route type: {quote.route_type.value}")
-else:
-    print(f"Quote failed: {quote.error}")
+if response.status_code == 200:
+    quote = response.json()
+    if quote['success']:
+        print(f"Amount out: {quote['amount_out']} USDC")
+        print(f"Price impact: {quote['price_impact']}%")
+        print(f"Route type: {quote['route_type']}")
+    else:
+        print(f"Quote failed: {quote['error']}")
 ```
 
-### Troubleshooting
+### Available Pools
 
-**Common Issues:**
+The simulator includes the following sample pools:
 
-1. **Python version issues:**
-   ```bash
-   # Check your Python version
-   python3 --version
-   
-   # If you need to install Python 3.8+
-   # On macOS with Homebrew:
-   brew install python@3.11
-   
-   # On Ubuntu/Debian:
-   sudo apt update
-   sudo apt install python3.11 python3.11-venv
-   ```
+- **BTC-USDC-25**: 25 bps fee, ~$50,000 BTC price
+- **BTC-USDC-50**: 50 bps fee, ~$50,000 BTC price  
+- **ETH-USDC-25**: 25 bps fee, ~$3,000 ETH price
+- **BTC-ETH-25**: 25 bps fee, ~16.67 ETH per BTC
+- **SOL-USDC-25**: 25 bps fee, ~$150 SOL price
 
-2. **Streamlit not found:**
-   ```bash
-   # Make sure you're in the virtual environment
-   which python
-   # Should show path to .venv/bin/python
-   
-   # Reinstall streamlit if needed
-   pip install streamlit
-   ```
+### Key Features
 
-3. **Port already in use:**
-   ```bash
-   # Use a different port
-   streamlit run app.py --server.port 8503 --server.headless true
-   ```
-
-4. **Permission issues on macOS:**
-   ```bash
-   # Install Xcode command line tools (needed for some packages)
-   xcode-select --install
-   
-   # Install watchdog for better performance
-   pip install watchdog
-   ```
-
-### Development Setup
-
-For development work:
-
-```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run tests
-python -m pytest tests/
-
-# Run specific test file
-python -m pytest tests/test_routing.py -v
-
-# Run with coverage
-pip install pytest-cov
-python -m pytest tests/ --cov=src --cov-report=html
-
-# Test quote engine
-python test_quote_engine.py
-```
-
-### Package Versions
-
-The following key packages are used:
-
-- **Streamlit**: 1.28.0+ (for visualization)
-- **Plotly**: 5.17.0+ (for interactive charts)
-- **Pandas**: 2.0.0+ (for data manipulation)
-- **NumPy**: 1.24.0+ (for numerical operations)
-- **Pytest**: 7.0.0+ (for testing)
-
-### File Structure
-
-```
-dlmm-simulator/
-├── app.py                 # Main Streamlit visualization app
-├── requirements.txt       # Python dependencies
-├── README.md             # This file
-├── test_quote_engine.py  # Quote engine test script
-├── src/                  # Core simulation code
-│   ├── __init__.py
-│   ├── pool.py          # Pool data structures and mock data
-│   ├── routing.py       # Routing algorithms
-│   ├── math.py          # Mathematical formulas and calculations
-│   ├── quote_engine.py  # Quote engine with Redis cache
-│   └── utils.py         # Utility functions
-├── tests/               # Test files
-│   ├── __init__.py
-│   ├── test_pool.py
-│   ├── test_routing.py
-│   └── test_quotes.py
-└── examples/            # Example scripts
-    ├── basic_routing.py
-    └── multi_pool_routing.py
-```
-
-## Features
-
-- Mock pool data generation with bell curve liquidity distribution
-- Single-pool multi-bin routing simulation
-- Multi-pool routing with pathfinding algorithms
-- Price impact calculations
-- Quote generation and optimization
-- **NEW**: Comprehensive quote engine with Redis cache
-- **NEW**: Support for all route types (single bin to multi-pair)
-- **NEW**: Fee calculation and integration
-- **NEW**: Route optimization and ranking
+✅ **Simple Float Arithmetic**: No 1e18 scaling - all calculations use human-readable floats  
+✅ **Multi-hop Routing**: Support for complex routes like BTC → ETH → USDC  
+✅ **Real-time Quotes**: Instant quote calculations with detailed breakdowns  
+✅ **Interactive UI**: Streamlit-based frontend for easy testing  
+✅ **REST API**: FastAPI-based API for integration  
+✅ **Graph-based Routing**: Efficient pathfinding through liquidity networks  
+✅ **Multi-pool Support**: Compare rates across multiple pools for the same pair  
+✅ **Price Impact Calculation**: Realistic price impact based on liquidity depth  
+✅ **Route Visualization**: Step-by-step breakdown of swap routes  
 
 ## Mathematical Formulas
 
@@ -535,7 +489,7 @@ print(f"Quote: {quote}")
 # Use quote engine
 redis_client = MockRedisClient()
 quote_engine = QuoteEngine(redis_client)
-quote = quote_engine.get_quote("BTC", "USDC", int(1 * 1e18))
+quote = quote_engine.get_quote("BTC", "USDC", 1.0)  # 1 BTC (no scaling needed)
 print(f"Engine Quote: {quote}")
 ```
 

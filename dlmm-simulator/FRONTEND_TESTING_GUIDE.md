@@ -13,8 +13,15 @@ pip install -r requirements.txt
 python api_server.py
 ```
 
-### 3. **Test the Frontend**
-Open your browser and go to: `http://localhost:8000/frontend_test.html`
+### 3. **Start the Streamlit Frontend**
+```bash
+streamlit run app.py
+```
+
+### 4. **Test the Frontend**
+- **Streamlit App**: `http://localhost:8501`
+- **API Documentation**: `http://localhost:8000/docs`
+- **HTML Test Page**: `http://localhost:8000/frontend_test.html`
 
 ## 📋 Recommended Schema
 
@@ -34,20 +41,20 @@ Open your browser and go to: `http://localhost:8000/frontend_test.html`
   "token_in": "BTC",
   "token_out": "USDC",
   "amount_in": 1.0,
-  "amount_out": 49.95,
+  "amount_out": 44087.596975,
   "price_impact": 0.0,
   "route_type": "multi_bin",
-  "estimated_gas": 150000,
-  "effective_price": 49.95,
+  "estimated_gas": 0,
+  "effective_price": 44087.596975,
   "steps": [
     {
       "pool_id": "BTC-USDC-25",
-      "bin_id": 500,
-      "token_in": "X",
-      "token_out": "Y",
+      "bin_id": 450,
+      "token_in": "BTC",
+      "token_out": "USDC",
       "amount_in": 0.999,
-      "amount_out": 49.95,
-      "price": 50.0,
+      "amount_out": 44087.596975,
+      "price": 44131.728704,
       "price_impact": 0.0
     }
   ]
@@ -67,20 +74,28 @@ Open your browser and go to: `http://localhost:8000/frontend_test.html`
 
 ## 🔧 Testing Methods
 
-### **Method 1: HTML Frontend Test**
+### **Method 1: Streamlit Frontend**
+1. Start the API server: `python api_server.py`
+2. Start the Streamlit app: `streamlit run app.py`
+3. Open: `http://localhost:8501`
+4. Select tokens and amount from dropdowns
+5. Click "Get Quote"
+6. View results with detailed route breakdown
+
+### **Method 2: HTML Frontend Test**
 1. Start the API server: `python api_server.py`
 2. Open: `http://localhost:8000/frontend_test.html`
 3. Select tokens and amount
 4. Click "Get Quote"
 5. View results in the UI
 
-### **Method 2: API Documentation**
+### **Method 3: API Documentation**
 1. Start the API server: `python api_server.py`
 2. Open: `http://localhost:8000/docs`
 3. Use the interactive Swagger UI
 4. Test endpoints directly
 
-### **Method 3: Command Line Testing**
+### **Method 4: Command Line Testing**
 ```bash
 # Test quote endpoint
 curl -X POST http://localhost:8000/quote \
@@ -101,7 +116,7 @@ curl http://localhost:8000/pools
 curl http://localhost:8000/pools/BTC-USDC-25
 ```
 
-### **Method 4: JavaScript Frontend Integration**
+### **Method 5: JavaScript Frontend Integration**
 ```javascript
 // Example frontend code
 class QuoteEngineClient {
@@ -118,7 +133,7 @@ class QuoteEngineClient {
             body: JSON.stringify({
                 token_in: tokenIn,
                 token_out: tokenOut,
-                amount_in: amountIn
+                amount_in: amountIn  // No scaling needed
             })
         });
         
@@ -154,15 +169,19 @@ console.log('Available tokens:', tokens.tokens.map(t => t.symbol));
 ```javascript
 // Test 1: BTC → USDC
 const quote1 = await client.getQuote('BTC', 'USDC', 1.0);
-// Expected: ~49.95 USDC
+// Expected: ~44,087 USDC (realistic BTC price)
 
 // Test 2: ETH → USDC  
 const quote2 = await client.getQuote('ETH', 'USDC', 10.0);
-// Expected: ~30,885.08 USDC
+// Expected: ~30,885 USDC (realistic ETH price)
 
-// Test 3: BTC → ETH
-const quote3 = await client.getQuote('BTC', 'ETH', 1.0);
-// Expected: ~16.67 ETH
+// Test 3: BTC → SOL (multi-hop via USDC)
+const quote3 = await client.getQuote('BTC', 'SOL', 1.0);
+// Expected: ~259 SOL (via BTC → USDC → SOL)
+
+// Test 4: SOL → USDC
+const quote4 = await client.getQuote('SOL', 'USDC', 1.0);
+// Expected: ~150 USDC (realistic SOL price)
 ```
 
 ### **Error Handling Tests**
@@ -199,14 +218,25 @@ Get a quote for swapping tokens.
 {
   "success": true,
   "token_in": "BTC",
-  "token_out": "USDC", 
+  "token_out": "USDC",
   "amount_in": 1.0,
-  "amount_out": 49.95,
+  "amount_out": 44087.596975,
   "price_impact": 0.0,
   "route_type": "multi_bin",
-  "estimated_gas": 150000,
-  "effective_price": 49.95,
-  "steps": [...]
+  "estimated_gas": 0,
+  "steps": [
+    {
+      "pool_id": "BTC-USDC-25",
+      "bin_id": 450,
+      "token_in": "BTC",
+      "token_out": "USDC",
+      "amount_in": 0.999,
+      "amount_out": 44087.596975,
+      "price": 44131.728704,
+      "price_impact": 0.0
+    }
+  ],
+  "effective_price": 44087.596975
 }
 ```
 
@@ -223,13 +253,18 @@ Get list of available tokens.
       "decimals": 18
     },
     {
-      "symbol": "ETH", 
-      "name": "ETH",
+      "symbol": "ETH",
+      "name": "ETH", 
       "decimals": 18
     },
     {
       "symbol": "USDC",
-      "name": "USDC", 
+      "name": "USDC",
+      "decimals": 18
+    },
+    {
+      "symbol": "SOL",
+      "name": "SOL",
       "decimals": 18
     }
   ]
@@ -250,7 +285,7 @@ Get list of available pools.
       "bin_step": 25,
       "active_bin_id": 500,
       "active_bin_price": 50000.0,
-      "total_tvl": 1000.0,
+      "total_tvl": 1000000.0,
       "status": "active"
     }
   ]
@@ -269,13 +304,13 @@ Get detailed information about a specific pool.
   "bin_step": 25,
   "active_bin_id": 500,
   "active_bin_price": 50000.0,
-  "total_tvl": 1000.0,
+  "total_tvl": 1000000.0,
   "status": "active",
   "bins": [
     {
       "bin_id": 500,
-      "x_amount": 500.0,
-      "y_amount": 500.0,
+      "x_amount": 10000.0,
+      "y_amount": 500000000.0,
       "price": 50000.0,
       "is_active": true
     }
@@ -283,106 +318,68 @@ Get detailed information about a specific pool.
 }
 ```
 
-## 🔍 Testing Checklist
+## 🌟 Key Features
 
-### **✅ Basic Functionality**
-- [ ] API server starts without errors
-- [ ] Frontend loads correctly
-- [ ] Quote requests work
-- [ ] Response format is correct
-- [ ] Error handling works
+### **1. Simple Float Arithmetic**
+- **No 1e18 scaling**: All amounts and prices are human-readable floats
+- **Realistic prices**: BTC ~$50,000, ETH ~$3,000, SOL ~$150
+- **Easy debugging**: Clear, readable values throughout
 
-### **✅ Quote Calculations**
-- [ ] BTC → USDC quotes are reasonable
-- [ ] ETH → USDC quotes are reasonable
-- [ ] BTC → ETH quotes are reasonable
-- [ ] Price impact calculations are accurate
-- [ ] Fee calculations are applied correctly
+### **2. Multi-hop Routing**
+- **Complex routes**: Support for BTC → ETH → USDC
+- **Route optimization**: Automatic best path selection
+- **Step-by-step breakdown**: Detailed route visualization
 
-### **✅ Route Types**
-- [ ] Single bin routes work
-- [ ] Multi-bin routes work
-- [ ] Multi-pool routes work
-- [ ] Multi-pair routes work
+### **3. Interactive Frontend**
+- **Streamlit app**: Modern web interface for testing
+- **Real-time quotes**: Instant calculations
+- **Route visualization**: See exactly how your swap works
 
-### **✅ Error Handling**
-- [ ] Invalid token pairs return errors
-- [ ] Same token swaps return errors
-- [ ] Zero amounts return validation errors
-- [ ] Error messages are clear
+### **4. Comprehensive API**
+- **RESTful design**: Standard HTTP endpoints
+- **Interactive docs**: Swagger UI at `/docs`
+- **Error handling**: Detailed error messages
+- **CORS support**: Frontend integration ready
 
-### **✅ Performance**
-- [ ] Quotes return within 1 second
-- [ ] Multiple concurrent requests work
-- [ ] Memory usage is reasonable
+## 🔍 Debugging Tips
 
-## 🚨 Troubleshooting
-
-### **Common Issues**
-
-1. **API server won't start**
-   ```bash
-   # Check if port 8000 is in use
-   lsof -i :8000
-   
-   # Kill process if needed
-   kill -9 <PID>
-   ```
-
-2. **CORS errors in frontend**
-   - Make sure CORS middleware is enabled
-   - Check browser console for errors
-   - Verify API server is running
-
-3. **Quote returns errors**
-   - Check token symbols are correct
-   - Verify amount is positive
-   - Check API server logs
-
-4. **Frontend not loading**
-   - Verify file path is correct
-   - Check browser console for errors
-   - Try opening in incognito mode
-
-### **Debug Mode**
+### **1. Check API Server Status**
 ```bash
-# Start API server with debug logging
-python api_server.py --log-level debug
+curl http://localhost:8000/health
+```
 
-# Test with verbose curl
-curl -v -X POST http://localhost:8000/quote \
+### **2. Verify Pool Data**
+```bash
+curl http://localhost:8000/pools/BTC-USDC-25
+```
+
+### **3. Test Quote Endpoint**
+```bash
+curl -X POST http://localhost:8000/quote \
   -H "Content-Type: application/json" \
   -d '{"token_in": "BTC", "token_out": "USDC", "amount_in": 1.0}'
 ```
 
-## 📈 Expected Results
+### **4. Check Streamlit Logs**
+Look for any error messages in the terminal where Streamlit is running.
 
-### **Sample Quote Results**
-```
-BTC → USDC (1.0 BTC):
-- Amount out: ~49.95 USDC
-- Price impact: ~0.0%
-- Route type: multi_bin
-- Steps: 1
+## 🚨 Common Issues
 
-ETH → USDC (10.0 ETH):
-- Amount out: ~30,885.08 USDC  
-- Price impact: ~0.0%
-- Route type: multi_bin
-- Steps: 67
+### **1. API Server Not Running**
+- **Error**: Connection refused on port 8000
+- **Solution**: Start the API server with `python api_server.py`
 
-BTC → ETH (1.0 BTC):
-- Amount out: ~16.67 ETH
-- Price impact: ~0.0%
-- Route type: multi_bin
-- Steps: 1
-```
+### **2. CORS Issues**
+- **Error**: CORS policy blocking requests
+- **Solution**: The API server includes CORS middleware for all origins
 
-### **Performance Benchmarks**
-- Quote response time: < 500ms
-- Concurrent requests: 100+ per second
-- Memory usage: < 100MB
-- CPU usage: < 10%
+### **3. Invalid Token Pairs**
+- **Error**: "No routes found between tokens"
+- **Solution**: Check available tokens with `GET /tokens`
+
+### **4. Zero Amount**
+- **Error**: Validation error for amount
+- **Solution**: Use positive amounts greater than 0.01
 
 ## 🎯 Next Steps
 

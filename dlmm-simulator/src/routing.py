@@ -121,7 +121,9 @@ class SinglePoolRouter:
             RouteResult with swap details
         """
         current_bin = self.pool.config.active_bin_id
-        remaining_amount = amount_in
+        # Apply fee once at the beginning
+        fee_amount = amount_in * 0.0  # 0% fee - testing
+        remaining_amount = amount_in - fee_amount
         total_amount_out = 0
         steps = []
 
@@ -147,12 +149,17 @@ class SinglePoolRouter:
         for bin_id in bin_sequence:
             if remaining_amount <= 0:
                 break
+            # Skip if remaining amount is too small (numerical precision issue)
+            if remaining_amount < 1e-6:  # Increased threshold
+                break
             bin_data = self.pool.get_bin(bin_id)
             if not bin_data:
                 continue
+            
             amount_used, amount_out, new_remaining = process_bin(bin_data, remaining_amount, is_x_to_y)
-            # Only count bins where we actually get output
-            if amount_used > 0 and amount_out > 0:
+            
+            # Only count bins where we actually get output and amounts are meaningful
+            if amount_used > 1e-6 and amount_out > 1e-6:
                 total_amount_out += amount_out
                 price_impact = self.math.calculate_price_impact(
                     amount_used, amount_out, is_x_to_y, self.pool.config.active_price
@@ -168,17 +175,21 @@ class SinglePoolRouter:
                     price_impact=price_impact
                 )
                 steps.append(step)
+            
             remaining_amount = new_remaining
 
         # If we still have input left after all bins, it's insufficient liquidity
-        if remaining_amount > 0:
+        if remaining_amount > 1e-6:  # Only fail if significant amount remains
             # Calculate average price impact for partial swap
             if total_amount_out > 0:
+                # Calculate actual amount that was successfully swapped
+                actual_amount_swapped = amount_in - remaining_amount
+                
                 if is_x_to_y:
-                    avg_exec_price = total_amount_out / (amount_in - remaining_amount)
+                    avg_exec_price = total_amount_out / actual_amount_swapped
                     price_impact = abs(avg_exec_price - self.pool.config.active_price) / self.pool.config.active_price * 100
                 else:
-                    avg_exec_price = (amount_in - remaining_amount) / total_amount_out
+                    avg_exec_price = actual_amount_swapped / total_amount_out
                     price_impact = abs(avg_exec_price - self.pool.config.active_price) / self.pool.config.active_price * 100
             else:
                 price_impact = 0
@@ -214,11 +225,14 @@ class SinglePoolRouter:
 
         # Calculate average price impact for the whole swap
         if total_amount_out > 0:
+            # Calculate actual amount that was successfully swapped
+            actual_amount_swapped = amount_in - remaining_amount if remaining_amount > 0 else amount_in
+            
             if is_x_to_y:
-                avg_exec_price = total_amount_out / amount_in
+                avg_exec_price = total_amount_out / actual_amount_swapped
                 price_impact = abs(avg_exec_price - self.pool.config.active_price) / self.pool.config.active_price * 100
             else:
-                avg_exec_price = amount_in / total_amount_out
+                avg_exec_price = actual_amount_swapped / total_amount_out
                 price_impact = abs(avg_exec_price - self.pool.config.active_price) / self.pool.config.active_price * 100
         else:
             price_impact = 0
@@ -375,7 +389,7 @@ class MultiPoolRouter:
             # Create single pool router for this hop
             router = SinglePoolRouter(pool)
             
-            # Get quote for this hop
+            # Get quote for this hop (fee is now per bin in SinglePoolRouter)
             hop_quote = router.get_quote(token_in, current_amount, token_out)
             
             if not hop_quote.success:
@@ -388,7 +402,7 @@ class MultiPoolRouter:
                     error_message=f"Hop {i+1} failed: {hop_quote.error_message}"
                 )
             
-            # Update for next hop
+            # Update for next hop: use the ACTUAL amount swapped (not input) for next pool
             current_amount = hop_quote.total_amount_out
             all_steps.extend(hop_quote.steps)
             total_price_impact += hop_quote.total_price_impact

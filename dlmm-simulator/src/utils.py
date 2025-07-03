@@ -50,30 +50,34 @@ def create_test_pools() -> Dict[str, MockPool]:
     """
     pools = {}
     
-    # BTC/USDC pool
-    btc_usdc_config = PoolConfig(
-        active_bin_id=500,
-        active_price=50000.0,
-        bin_step=0.001,
-        x_token="BTC",
-        y_token="USDC"
+    # Create a pool with BTC/USDC
+    pool = MockPool.create_bell_curve_pool(
+        config=PoolConfig(
+            active_bin_id=500,
+            active_price=100000.0,
+            bin_step=0.001,
+            x_token="BTC",
+            y_token="USDC"
+        )
     )
-    pools["BTC-USDC"] = MockPool(btc_usdc_config)
+    pools["BTC-USDC"] = pool
     
-    # ETH/USDC pool
-    eth_usdc_config = PoolConfig(
-        active_bin_id=500,
-        active_price=3000.0,
-        bin_step=0.001,
-        x_token="ETH",
-        y_token="USDC"
+    # Create a pool with ETH/USDC
+    pool2 = MockPool.create_bell_curve_pool(
+        config=PoolConfig(
+            active_bin_id=500,
+            active_price=3500.0,
+            bin_step=0.001,
+            x_token="ETH",
+            y_token="USDC"
+        )
     )
-    pools["ETH-USDC"] = MockPool(eth_usdc_config)
+    pools["ETH-USDC"] = pool2
     
     # ETH/BTC pool
     eth_btc_config = PoolConfig(
         active_bin_id=500,
-        active_price=0.06,  # 1 ETH = 0.06 BTC
+        active_price=0.035,  # 1 ETH = 0.035 BTC (3,500/100,000)
         bin_step=0.001,
         x_token="ETH",
         y_token="BTC"

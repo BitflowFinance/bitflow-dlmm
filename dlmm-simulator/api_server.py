@@ -152,6 +152,19 @@ async def get_quote(request: QuoteRequest):
                 price_impact=step.price_impact
             ))
         
+        # Calculate effective price based on actual amount swapped
+        actual_amount_swapped = sum(step.amount_in for step in quote.steps)
+        effective_price = quote.amount_out / actual_amount_swapped if actual_amount_swapped > 0 else 0
+        
+        # Debug output
+        print(f"DEBUG: Effective price calculation:")
+        print(f"  quote.amount_out: {quote.amount_out}")
+        print(f"  actual_amount_swapped: {actual_amount_swapped}")
+        print(f"  effective_price: {effective_price}")
+        print(f"  Steps:")
+        for i, step in enumerate(quote.steps):
+            print(f"    Step {i}: amount_in={step.amount_in}, amount_out={step.amount_out}")
+        
         return QuoteResponse(
             success=True,
             token_in=quote.token_in,
@@ -162,7 +175,7 @@ async def get_quote(request: QuoteRequest):
             route_type=quote.route_type.value,
             estimated_gas=quote.estimated_gas,
             steps=steps,
-            effective_price=quote.amount_out / quote.amount_in if quote.amount_in > 0 else 0
+            effective_price=effective_price
         )
         
     except Exception as e:

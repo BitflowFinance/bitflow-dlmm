@@ -91,24 +91,17 @@ class DLMMMath:
         """
         if is_x_to_y:
             # Swapping X for Y: Δy = min(P_i * Δx, y_i)
-            # In right bins, X in bin may be zero, but you can still swap input X for Y up to y_amount
-            if bin_data.y_amount == 0:
-                return 0, amount_in
-            # Max X you can use in this bin is y_amount / price
-            max_x_usable = bin_data.y_amount / bin_data.price
-            x_to_use = min(amount_in, max_x_usable)
-            y_out = x_to_use * bin_data.price
-            remaining_amount = amount_in - x_to_use
+            # User inputs X tokens, gets Y tokens at bin price
+            y_out = min(amount_in * bin_data.price, bin_data.y_amount)
+            x_used = y_out / bin_data.price if bin_data.price > 0 else 0
+            remaining_amount = amount_in - x_used
             return y_out, remaining_amount
         else:
             # Swapping Y for X: Δx = min(Δy / P_i, x_i)
-            # In left bins, Y in bin may be zero, but you can still swap input Y for X up to x_amount
-            if bin_data.x_amount == 0:
-                return 0, amount_in
-            max_y_usable = bin_data.x_amount * bin_data.price
-            y_to_use = min(amount_in, max_y_usable)
-            x_out = y_to_use / bin_data.price
-            remaining_amount = amount_in - y_to_use
+            # User inputs Y tokens, gets X tokens at bin price
+            x_out = min(amount_in / bin_data.price, bin_data.x_amount) if bin_data.price > 0 else 0
+            y_used = x_out * bin_data.price
+            remaining_amount = amount_in - y_used
             return x_out, remaining_amount
     
     @staticmethod

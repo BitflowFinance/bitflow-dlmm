@@ -116,7 +116,7 @@ def demo_multi_pool_same_pair_quotes():
     # Create two BTC/USDC pools with different configurations
     config1 = PoolConfig(
         active_bin_id=500,
-        active_price=50000.0,
+        active_price=100000.0,
         bin_step=0.001,
         x_token="BTC",
         y_token="USDC"
@@ -124,7 +124,7 @@ def demo_multi_pool_same_pair_quotes():
     
     config2 = PoolConfig(
         active_bin_id=500,
-        active_price=50100.0,  # Slightly different price
+        active_price=100100.0,  # Slightly different price
         bin_step=0.002,        # Different bin step
         x_token="BTC",
         y_token="USDC"

@@ -11,9 +11,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.quote_engine import MockRedisClient, QuoteEngine, RouteType
 
 
-def format_amount(amount: int, decimals: int = 18) -> str:
+def format_amount(amount: float, decimals: int = 18) -> str:
     """Format amount with proper decimal places"""
-    return f"{amount / (10 ** decimals):.6f}"
+    return f"{amount:.6f}"
 
 
 def print_quote_result(quote, title: str):
@@ -58,35 +58,35 @@ def main():
             "title": "Single Pool Quote (BTC → USDC)",
             "token_in": "BTC",
             "token_out": "USDC", 
-            "amount_in": int(1 * 1e18),  # 1 BTC
+            "amount_in": 1.0,  # 1 BTC (remove 1e18 scaling)
             "expected_type": RouteType.MULTI_BIN
         },
         {
             "title": "Multi-Pool Quote (BTC → USDC)",
             "token_in": "BTC",
             "token_out": "USDC",
-            "amount_in": int(5 * 1e18),  # 5 BTC
+            "amount_in": 5.0,  # 5 BTC (remove 1e18 scaling)
             "expected_type": RouteType.MULTI_POOL
         },
         {
             "title": "Multi-Pair Quote (BTC → ETH → USDC)",
             "token_in": "BTC", 
             "token_out": "USDC",
-            "amount_in": int(2 * 1e18),  # 2 BTC
+            "amount_in": 2.0,  # 2 BTC (remove 1e18 scaling)
             "expected_type": RouteType.MULTI_PAIR
         },
         {
             "title": "ETH → USDC Quote",
             "token_in": "ETH",
             "token_out": "USDC", 
-            "amount_in": int(10 * 1e18),  # 10 ETH
+            "amount_in": 10.0,  # 10 ETH (remove 1e18 scaling)
             "expected_type": RouteType.MULTI_BIN
         },
         {
             "title": "Invalid Route Test",
             "token_in": "BTC",
             "token_out": "INVALID",
-            "amount_in": int(1 * 1e18),
+            "amount_in": 1.0,  # Remove 1e18 scaling
             "expected_type": None
         }
     ]
@@ -117,7 +117,7 @@ def main():
             "id": pool_id,
             "tokens": f"{pool_data['token_x']}-{pool_data['token_y']}",
             "bin_step": f"{pool_data['bin_step']} bps",
-            "tvl": format_amount(int(pool_data['total_tvl']))
+            "tvl": float(pool_data['total_tvl'])  # Remove 1e18 scaling
         })
     
     print(f"Available Pools ({len(pools)}):")
@@ -145,12 +145,12 @@ def main():
     for key in redis_client.keys("bin:BTC-USDC-25:*"):
         bin_id = int(key.split(":")[-1])
         bin_data = redis_client.data[key]
-        if int(bin_data["x_amount"]) > 0 or int(bin_data["y_amount"]) > 0:
+        if float(bin_data["x_amount"]) > 0 or float(bin_data["y_amount"]) > 0:
             btc_usdc_bins.append({
                 "id": bin_id,
-                "x": format_amount(int(bin_data["x_amount"])),
-                "y": format_amount(int(bin_data["y_amount"])),
-                "price": format_amount(int(bin_data["price"]))
+                "x": float(bin_data["x_amount"]),  # Remove 1e18 scaling
+                "y": float(bin_data["y_amount"]),  # Remove 1e18 scaling
+                "price": float(bin_data["price"])  # Remove 1e18 scaling
             })
     
     # Show active bin and nearby bins

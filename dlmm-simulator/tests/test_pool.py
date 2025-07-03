@@ -13,7 +13,7 @@ class TestPoolConfig:
         """Test default pool configuration."""
         config = PoolConfig()
         assert config.active_bin_id == 500
-        assert config.active_price == 50000.0
+        assert config.active_price == 100000.0
         assert config.bin_step == 0.001
         assert config.num_bins == 1001
         assert config.x_token == "BTC"
@@ -55,7 +55,7 @@ class TestMockPool:
         
         # Test active bin price
         active_bin = pool.get_active_bin()
-        assert abs(active_bin.price - 50000.0) < 0.01
+        assert abs(active_bin.price - 100000.0) < 0.01
         
         # Test left bin (lower price)
         left_bin = pool.get_bin(499)
@@ -116,6 +116,7 @@ class TestMockPool:
         active_bin = pool.get_active_bin()
         assert active_bin.bin_id == 400
         assert abs(active_bin.price - 1000.0) < 0.01
+        assert active_bin.is_active
 
 
 class TestBinData:
@@ -125,7 +126,7 @@ class TestBinData:
         """Test creating BinData."""
         bin_data = BinData(
             bin_id=500,
-            price=50000.0,
+            price=100000.0,
             x_amount=10.0,
             y_amount=500000.0,
             total_liquidity=1000000.0,
@@ -133,7 +134,7 @@ class TestBinData:
         )
         
         assert bin_data.bin_id == 500
-        assert bin_data.price == 50000.0
+        assert bin_data.price == 100000.0
         assert bin_data.x_amount == 10.0
         assert bin_data.y_amount == 500000.0
         assert bin_data.total_liquidity == 1000000.0

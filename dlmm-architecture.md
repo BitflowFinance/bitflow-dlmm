@@ -1,4 +1,76 @@
-# DLMM Contract Architecture
+# DLMM Architecture
+
+## Overview
+
+This document describes both the **DLMM Contract Architecture** (for blockchain implementation) and the **DLMM Simulator Architecture** (for testing and development).
+
+## DLMM Simulator Architecture
+
+### Components
+
+#### 1. **API Server** (`api_server.py`)
+- **FastAPI-based REST API** for quote calculations
+- **Mock Redis client** for development and testing
+- **Graph-based routing** for multi-hop paths
+- **Real-time quote calculations** with detailed step breakdowns
+
+#### 2. **Quote Engine** (`src/quote_engine.py`)
+- **Core routing logic** using graph-based pathfinding
+- **Simple float arithmetic** (no 1e18 scaling)
+- **Multi-hop support** for complex routes
+- **Fee calculation** (10 basis points)
+- **Price impact calculation**
+
+#### 3. **Mathematical Engine** (`src/math.py`)
+- **DLMM mathematical formulas** for bin calculations
+- **Constant sum AMM logic** for swaps within bins
+- **Price calculation** using bin step formulas
+- **Liquidity calculation** and composition factors
+
+#### 4. **Streamlit Frontend** (`app.py`)
+- **Interactive web interface** for testing quotes
+- **Real-time visualization** of pool states
+- **Multi-token support** (BTC, ETH, USDC, SOL)
+- **Route visualization** with step-by-step breakdowns
+
+### Data Flow
+
+```
+User Input → Streamlit Frontend → API Server → Quote Engine → Mathematical Engine → Response
+```
+
+### Key Features
+
+✅ **Simple Float Arithmetic**: No 1e18 scaling - all calculations use human-readable floats  
+✅ **Multi-hop Routing**: Support for complex routes like BTC → ETH → USDC  
+✅ **Real-time Quotes**: Instant quote calculations with detailed breakdowns  
+✅ **Interactive UI**: Streamlit-based frontend for easy testing  
+✅ **REST API**: FastAPI-based API for integration  
+✅ **Graph-based Routing**: Efficient pathfinding through liquidity networks  
+✅ **Multi-pool Support**: Compare rates across multiple pools for the same pair  
+✅ **Price Impact Calculation**: Realistic price impact based on liquidity depth  
+✅ **Route Visualization**: Step-by-step breakdown of swap routes  
+
+### Route Types Supported
+
+| Type | Description | Implementation Status |
+|------|-------------|---------------------|
+| **Type 1** | Single pair, single pool, single bin | ✅ Complete |
+| **Type 2** | Single pair, single pool, multi bin | ✅ Complete |
+| **Type 3** | Single pair, multi pool, multi bin | ✅ Complete |
+| **Type 4** | Multi pair, multi pool, multi bin | ✅ Complete |
+
+### Sample Pools
+
+- **BTC-USDC-25**: 25 bps fee, ~$50,000 BTC price, $1M TVL
+- **BTC-USDC-50**: 50 bps fee, ~$50,000 BTC price, $500K TVL  
+- **ETH-USDC-25**: 25 bps fee, ~$3,000 ETH price, $800K TVL
+- **BTC-ETH-25**: 25 bps fee, ~16.67 ETH per BTC, $600K TVL
+- **SOL-USDC-25**: 25 bps fee, ~$150 SOL price, $100K TVL
+
+---
+
+## DLMM Contract Architecture
 
 ## 1. Contracts
 
