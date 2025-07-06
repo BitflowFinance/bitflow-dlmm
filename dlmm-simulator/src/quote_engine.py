@@ -239,19 +239,11 @@ class MockRedisClient:
         # Create pair indices
         self.data["pairs:BTC:USDC"] = {
             "pools": ["BTC-USDC-25", "BTC-USDC-50"],
-            "best_pool": "BTC-USDC-25",
-            "last_updated": "2024-01-01T00:00:00Z"
-        }
-        
-        self.data["pairs:BTC:USDC"] = {
-            "pools": ["BTC-USDC-25", "BTC-USDC-50"],
-            "best_pool": "BTC-USDC-25",
             "last_updated": "2024-01-01T00:00:00Z"
         }
         
         self.data["pairs:SOL:USDC"] = {
             "pools": ["SOL-USDC-25"],
-            "best_pool": "SOL-USDC-25",
             "last_updated": "2024-01-01T00:00:00Z"
         }
     

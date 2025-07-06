@@ -54,13 +54,17 @@ class QuoteEngineAPI:
         
         # Extract pairs
         for key in self.redis_client.keys("pairs:*"):
-            tokens_list = key.split(":")[1:]
-            if len(tokens_list) == 2:
-                pairs.append({
-                    "token1": tokens_list[0],
-                    "token2": tokens_list[1],
-                    "pools": self.redis_client.data[key]["pools"]
-                })
+            tokens = key.split(":")[1:]
+            pair_data = self.redis_client.data[key]
+            pairs.append({
+                "pair": f"{tokens[0]}-{tokens[1]}",
+                "pools": pair_data["pools"],
+                "last_updated": pair_data["last_updated"]
+            })
+        
+        print("📊 Pairs Data:")
+        for pair in pairs:
+            print(f"  • {pair['pair']}: {pair['pools']} pools")
         
         return {
             "tokens": list(tokens),
@@ -154,7 +158,7 @@ def main():
     print(f"Tokens: {', '.join(tokens_info['tokens'])}")
     print("Pairs:")
     for pair in tokens_info["pairs"]:
-        print(f"  • {pair['token1']}-{pair['token2']}: {len(pair['pools'])} pools")
+        print(f"  • {pair['pair']}: {pair['pools']} pools")
     
     # Example 2: Get quote for BTC to USDC
     print("\n💰 Quote Examples:")

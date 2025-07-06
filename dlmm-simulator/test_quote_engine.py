@@ -131,13 +131,13 @@ def main():
         pair_data = redis_client.data[key]
         pairs.append({
             "pair": f"{tokens[0]}-{tokens[1]}",
-            "pools": len(pair_data["pools"]),
-            "best_pool": pair_data["best_pool"]
+            "pools": pair_data["pools"],
+            "last_updated": pair_data["last_updated"]
         })
     
-    print(f"\nAvailable Pairs ({len(pairs)}):")
+    print("📊 Pairs Data:")
     for pair in pairs:
-        print(f"  • {pair['pair']}: {pair['pools']} pools (best: {pair['best_pool']})")
+        print(f"  • {pair['pair']}: {pair['pools']} pools")
     
     # Show bin distribution for BTC-USDC-25
     print(f"\nBin Distribution (BTC-USDC-25):")

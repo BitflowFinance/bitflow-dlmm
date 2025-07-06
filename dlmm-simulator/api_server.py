@@ -280,14 +280,12 @@ async def get_pairs():
     
     for key in redis_client.keys("pairs:*"):
         tokens = key.split(":")[1:]
-        if len(tokens) == 2:
-            pair_data = redis_client.data[key]
-            pairs.append({
-                "token1": tokens[0],
-                "token2": tokens[1],
-                "pools": pair_data["pools"],
-                "best_pool": pair_data["best_pool"]
-            })
+        pair_data = redis_client.data[key]
+        pairs.append({
+            "pair": f"{tokens[0]}-{tokens[1]}",
+            "pools": pair_data["pools"],
+            "last_updated": pair_data["last_updated"]
+        })
     
     return {"pairs": pairs}
 
