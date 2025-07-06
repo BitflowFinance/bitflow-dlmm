@@ -200,8 +200,9 @@ class MockRedisClient:
                 "token_x": "BTC",
                 "token_y": "USDC",
                 "bin_step": 25,
-                "active_bin_id": 500,
-                "active_bin_price": 100000.0,  # 100,000 USDC per BTC
+                "initial_active_bin_id": 500,  # Initial active bin when pool was created
+                "active_bin_id": 500,  # Current active bin (can change over time)
+                "active_bin_price": 100000.0,  # Initial active bin price
                 "status": "active",
                 "total_tvl": 1000000.0,
                 "created_at": "2024-01-01T00:00:00Z"
@@ -211,8 +212,9 @@ class MockRedisClient:
                 "token_x": "BTC",
                 "token_y": "USDC",
                 "bin_step": 50,
-                "active_bin_id": 500,
-                "active_bin_price": 100000.0,  # 100,000 USDC per BTC
+                "initial_active_bin_id": 500,  # Initial active bin when pool was created
+                "active_bin_id": 500,  # Current active bin (can change over time)
+                "active_bin_price": 100000.0,  # Initial active bin price
                 "status": "active", 
                 "total_tvl": 500000.0,
                 "created_at": "2024-01-01T00:00:00Z"
@@ -222,8 +224,9 @@ class MockRedisClient:
                 "token_x": "SOL",
                 "token_y": "USDC",
                 "bin_step": 25,
-                "active_bin_id": 500,
-                "active_bin_price": 200.0,  # 200 USDC per SOL
+                "initial_active_bin_id": 500,  # Initial active bin when pool was created
+                "active_bin_id": 500,  # Current active bin (can change over time)
+                "active_bin_price": 200.0,  # Initial active bin price
                 "status": "active",
                 "total_tvl": 100000.0,
                 "created_at": "2024-01-01T00:00:00Z"
@@ -250,9 +253,14 @@ class MockRedisClient:
     def _create_bin_data(self, pool: Dict):
         """Create sample bin data for a pool"""
         pool_id = pool["pool_id"]
-        active_bin_id = pool["active_bin_id"]
-        active_price = float(pool["active_bin_price"])  # Price is already stored as float
-        bin_step = pool["bin_step"] / 1000000  # Convert bps to decimal (25 bps = 0.000025)
+        initial_active_bin_id = pool["initial_active_bin_id"]
+        current_active_bin_id = pool["active_bin_id"]
+        initial_active_price = float(pool["active_bin_price"])  # Initial price
+        bin_step = pool["bin_step"] / 10000  # Convert bps to decimal (25 bps = 0.0025)
+        
+        # Calculate current active bin price based on how far it has moved from initial
+        # P_current = P_initial * (1 + s)^(current_bin - initial_bin)
+        current_active_price = initial_active_price * ((1 + bin_step) ** (current_active_bin_id - initial_active_bin_id))
         
         # Define token decimals
         token_decimals = {
@@ -267,18 +275,19 @@ class MockRedisClient:
         y_decimals = token_decimals.get(token_y, 18)
         
         print(f"DEBUG: Creating bins for {pool_id}")
-        print(f"DEBUG: active_price: {active_price}")
+        print(f"DEBUG: initial_active_price: {initial_active_price}")
+        print(f"DEBUG: current_active_price: {current_active_price}")
         print(f"DEBUG: bin_step: {bin_step}")
         print(f"DEBUG: {token_x} decimals: {x_decimals}, {token_y} decimals: {y_decimals}")
         
-        # Create bins around active bin
-        for bin_id in range(active_bin_id - 50, active_bin_id + 51):
-            # Calculate bin price using DLMMMath
-            bin_price = DLMMMath.calculate_bin_price(active_price, bin_step, bin_id, active_bin_id)
+        # Create bins around current active bin
+        for bin_id in range(current_active_bin_id - 50, current_active_bin_id + 51):
+            # Calculate bin price using DLMMMath with current active bin price
+            bin_price = DLMMMath.calculate_bin_price(current_active_price, bin_step, bin_id, current_active_bin_id)
             if bin_id in [499, 500, 501]:
-                print(f"DEBUG: {pool_id} bin {bin_id}: calculated price = {bin_price} (active_price={active_price}, bin_step={bin_step})")
-            # Create liquidity distribution (bell curve around active bin)
-            distance = abs(bin_id - active_bin_id)
+                print(f"DEBUG: {pool_id} bin {bin_id}: calculated price = {bin_price} (current_active_price={current_active_price}, bin_step={bin_step})")
+            # Create liquidity distribution (bell curve around current active bin)
+            distance = abs(bin_id - current_active_bin_id)
             liquidity_factor = max(0.1, 1 - (distance / 50) ** 2)
             # Create realistic liquidity amounts based on token decimals
             if token_x == "BTC" and token_y == "USDC":
@@ -290,16 +299,16 @@ class MockRedisClient:
             else:
                 base_x_amount = 1000 * liquidity_factor
                 base_y_amount = 1000000 * liquidity_factor
-            if bin_id < active_bin_id:
+            if bin_id < current_active_bin_id:
                 # Left bins: only X tokens
                 x_amount = base_x_amount
                 y_amount = 0
-            elif bin_id > active_bin_id:
+            elif bin_id > current_active_bin_id:
                 # Right bins: only Y tokens
                 x_amount = 0
                 y_amount = base_y_amount
             else:
-                # Active bin: both tokens
+                # Current active bin: both tokens
                 x_amount = base_x_amount
                 y_amount = base_y_amount
             bin_data = {
@@ -309,7 +318,7 @@ class MockRedisClient:
                 "y_amount": y_amount,
                 "price": bin_price,
                 "total_liquidity": x_amount + y_amount,
-                "is_active": bin_id == active_bin_id
+                "is_active": bin_id == current_active_bin_id
             }
             self.data[f"bin:{pool_id}:{bin_id}"] = bin_data
         # After all bins are created, print debug info for bins 499, 500, 501
@@ -522,15 +531,22 @@ class QuoteEngine:
                     error=f"Hop {i+1} failed: {hop_quote.error}"
                 )
             all_steps.extend(hop_quote.steps)
-            # For theoretical output: use active bin price for the full input of this hop
+            # For theoretical output: use current active bin price for the full input of this hop
             pool_data = json.loads(self.redis.get(f"pool:{pool_id}"))
-            active_price = float(pool_data["active_bin_price"])
+            initial_active_bin_id = pool_data["initial_active_bin_id"]
+            current_active_bin_id = pool_data["active_bin_id"]
+            initial_active_price = float(pool_data["active_bin_price"])
+            bin_step = pool_data["bin_step"] / 10000  # Convert bps to decimal
+            
+            # Calculate current active bin price
+            current_active_price = initial_active_price * ((1 + bin_step) ** (current_active_bin_id - initial_active_bin_id))
+            
             if hop_token_in == pool_data["token_x"] and hop_token_out == pool_data["token_y"]:
                 # X→Y
-                theoretical_amount = theoretical_amount * active_price
+                theoretical_amount = theoretical_amount * current_active_price
             else:
                 # Y→X
-                theoretical_amount = theoretical_amount / active_price if active_price > 0 else 0
+                theoretical_amount = theoretical_amount / current_active_price if current_active_price > 0 else 0
             current_amount = hop_quote.amount_out
         
         # Calculate price impact as described
@@ -563,29 +579,50 @@ class QuoteEngine:
                 error="Pool not found"
             )
         
+        # Extract pool configuration
+        initial_active_bin_id = pool_data["initial_active_bin_id"]  # Should be stored in pool data
+        initial_active_bin_price = float(pool_data["active_bin_price"])  # Initial price
+        current_active_bin_id = pool_data["active_bin_id"]  # Current active bin
+        bin_step = pool_data["bin_step"] / 10000  # Convert bps to decimal (25 bps = 0.0025)
+        
+        # Calculate current active bin price based on how far it has moved from initial
+        # P_current = P_initial * (1 + s)^(current_bin - initial_bin)
+        current_active_bin_price = initial_active_bin_price * ((1 + bin_step) ** (current_active_bin_id - initial_active_bin_id))
+        
+        print(f"DEBUG: Pool {pool_id} pricing:")
+        print(f"  Initial active bin: {initial_active_bin_id} @ ${initial_active_bin_price}")
+        print(f"  Current active bin: {current_active_bin_id} @ ${current_active_bin_price}")
+        print(f"  Bin step: {bin_step}")
+        
         # Create a MockPool instance for the SinglePoolRouter
         from .pool import MockPool, PoolConfig, BinData
         config = PoolConfig(
-            active_bin_id=pool_data["active_bin_id"],
-            active_price=float(pool_data["active_bin_price"]),
-            bin_step=pool_data["bin_step"] / 1000000,  # Convert bps to decimal (25 bps = 0.000025)
+            pool_id=pool_id,  # Pass the actual pool_id
+            active_bin_id=current_active_bin_id,
+            active_price=current_active_bin_price,  # Use calculated current price
+            bin_step=bin_step,
             num_bins=1000,  # Default value, could be made configurable
             x_token=pool_data["token_x"],
             y_token=pool_data["token_y"]
         )
         pool = MockPool(config)
         
-        # Clear the default bins and add our custom bins
+        # Clear the default bins and add our custom bins with recalculated prices
         pool.bins = {}
         bins = self._get_pool_bins(pool_id)
+        
+        # Recalculate all bin prices based on current active bin price
         for bin_id, bin_data in bins.items():
+            # Calculate bin price relative to current active bin
+            bin_price = DLMMMath.calculate_bin_price(current_active_bin_price, bin_step, bin_id, current_active_bin_id)
+            
             pool.bins[bin_id] = BinData(
                 bin_id=bin_id,
                 x_amount=float(bin_data["x_amount"]),
                 y_amount=float(bin_data["y_amount"]),
-                price=float(bin_data["price"]),
-                total_liquidity=float(bin_data["x_amount"]) + float(bin_data["y_amount"]) / float(bin_data["price"]),
-                is_active=bin_id == pool_data["active_bin_id"]
+                price=bin_price,  # Use recalculated price
+                total_liquidity=float(bin_data["x_amount"]) + float(bin_data["y_amount"]) / bin_price,
+                is_active=bin_id == current_active_bin_id
             )
         
         # Determine swap direction
@@ -690,4 +727,30 @@ class QuoteEngine:
             steps=[],
             success=False,
             error="No valid multi-pool quote"
-        ) 
+        )
+
+    def simulate_active_bin_movement(self, pool_id: str, new_active_bin_id: int):
+        """
+        Simulate active bin movement for testing purposes.
+        This would be called after a swap to update the active bin position.
+        
+        Args:
+            pool_id: Pool ID to update
+            new_active_bin_id: New active bin ID
+        """
+        pool_key = f"pool:{pool_id}"
+        if pool_key not in self.redis.data:
+            print(f"ERROR: Pool {pool_id} not found")
+            return
+        
+        # Update the active bin ID
+        self.redis.data[pool_key]["active_bin_id"] = new_active_bin_id
+        
+        # Recreate bin data with new active bin
+        pool_data = self.redis.data[pool_key]
+        self.redis._create_bin_data(pool_data)
+        
+        print(f"DEBUG: Updated {pool_id} active bin from {pool_data['initial_active_bin_id']} to {new_active_bin_id}")
+        
+        # Rebuild the graph with updated data
+        self._build_graph() 

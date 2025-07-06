@@ -165,7 +165,7 @@ class SinglePoolRouter:
                     amount_used, amount_out, is_x_to_y, self.pool.config.active_price
                 )
                 step = RouteStep(
-                    pool_id=f"{self.pool.config.x_token}-{self.pool.config.y_token}",
+                    pool_id=self.pool.config.pool_id,
                     bin_id=bin_id,
                     token_in=self.pool.config.x_token if is_x_to_y else self.pool.config.y_token,
                     token_out=self.pool.config.y_token if is_x_to_y else self.pool.config.x_token,
