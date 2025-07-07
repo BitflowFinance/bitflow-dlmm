@@ -19,7 +19,6 @@ import threading
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.quote_engine import MockRedisClient, QuoteEngine
-from src.quote_engine_optimized import OptimizedMockRedisClient, OptimizedQuoteEngine
 
 
 @dataclass
@@ -51,8 +50,9 @@ class QuoteEngineBenchmark:
         self.api_url = api_url
         self.redis_client = MockRedisClient()
         self.quote_engine = QuoteEngine(self.redis_client)
-        self.optimized_redis_client = OptimizedMockRedisClient()
-        self.optimized_quote_engine = OptimizedQuoteEngine(self.optimized_redis_client)
+        # Note: Now using the same optimized engine for both tests since we've consolidated
+        self.optimized_redis_client = MockRedisClient()
+        self.optimized_quote_engine = QuoteEngine(self.optimized_redis_client)
         
     def benchmark_original_engine(self, test_cases: List[Dict]) -> List[BenchmarkResult]:
         """Benchmark original quote engine calls"""

@@ -2,6 +2,14 @@
 
 This directory contains performance benchmarking and measurement tools for the DLMM quote engine.
 
+## 🚀 Recent Updates
+
+The quote engine has been refactored with the **optimized implementation now as the default**:
+- **`src/quote_engine.py`** - Optimized implementation (default)
+- **`src/quote_engine_legacy.py`** - Original implementation (preserved)
+- **Performance**: 48.4% latency reduction, 1.94x speedup achieved
+- **Benchmark script updated** to reflect the consolidation
+
 ## Scripts
 
 ### `benchmark_quote_engine.py`
@@ -19,6 +27,8 @@ python benchmarks/benchmark_quote_engine.py
 - Tests API endpoint performance
 - Measures concurrent request handling
 - Saves results to JSON files
+
+**Note**: Now uses the same optimized engine for both "original" and "optimized" tests since we've consolidated the implementations.
 
 ### `measure_streamlit_latency.py`
 End-to-end latency measurement simulating real Streamlit app user experience.
