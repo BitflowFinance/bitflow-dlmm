@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
 import logging
 from dataclasses import dataclass
+import random
 
 from .client import RedisClient, RedisConfig
 from .schemas import (
@@ -116,11 +117,11 @@ class DataManager:
         ]
         
         for pool_id in pools_to_update:
-            # Simulate active bin movement
-            self._simulate_active_bin_movement(pool_id)
+            # Simulate actual swaps that may cause active bin movement
+            self._simulate_swap_execution(pool_id)
     
-    def _simulate_active_bin_movement(self, pool_id: str):
-        """Simulate active bin movement for a pool"""
+    def _simulate_swap_execution(self, pool_id: str):
+        """Simulate random bin state updates while maintaining DLMM invariants"""
         try:
             # Get current pool data
             pool_key = RedisSchema.get_pool_key(pool_id)
@@ -131,33 +132,43 @@ class DataManager:
                 return
             
             pool_data = json.loads(pool_data_str)
-            
-            # Simulate small movement in active bin
             current_active_bin = pool_data["active_bin_id"]
-            new_active_bin = current_active_bin + (1 if time.time() % 10 > 5 else -1)
             
-            # Update pool data
-            pool_data["active_bin_id"] = new_active_bin
-            pool_data["last_updated"] = get_current_timestamp()
+            # Randomly move active bin left or right
+            direction = random.choice([-1, 1])
+            new_active_bin = current_active_bin + direction
             
-            # Save to Redis
-            self.redis_client.set(pool_key, json.dumps(pool_data))
+            # Keep active bin within reasonable bounds
+            if new_active_bin < 450 or new_active_bin > 550:
+                new_active_bin = current_active_bin  # Stay put if too far
             
-            # Update bins for this pool
-            self._update_pool_bins(pool_id, new_active_bin)
-            
-            # Trigger event
-            self._trigger_event(DataUpdateEvent(
-                event_type="pool_updated",
-                pool_id=pool_id,
-                timestamp=time.time(),
-                data=pool_data
-            ))
-            
-            self.stats["pools_updated"] += 1
+            # Update pool data if active bin changed
+            if new_active_bin != current_active_bin:
+                pool_data["active_bin_id"] = new_active_bin
+                pool_data["last_updated"] = get_current_timestamp()
+                
+                # Save to Redis
+                self.redis_client.set(pool_key, json.dumps(pool_data))
+                
+                # Update bins for this pool with new active bin
+                self._update_pool_bins(pool_id, new_active_bin)
+                
+                # Trigger event
+                self._trigger_event(DataUpdateEvent(
+                    event_type="pool_updated",
+                    pool_id=pool_id,
+                    timestamp=time.time(),
+                    data=pool_data
+                ))
+                
+                self.stats["pools_updated"] += 1
+                logger.info(f"Active bin moved from {current_active_bin} to {new_active_bin} for pool {pool_id}")
+            else:
+                # Just update existing bins with random liquidity changes
+                self._update_pool_bins(pool_id, current_active_bin)
             
         except Exception as e:
-            logger.error(f"Error simulating active bin movement for {pool_id}: {e}")
+            logger.error(f"Error simulating bin state updates for {pool_id}: {e}")
             self.stats["errors_count"] += 1
     
     def _update_pool_bins(self, pool_id: str, new_active_bin_id: int):
@@ -190,27 +201,46 @@ class DataManager:
             self.stats["errors_count"] += 1
     
     def _update_single_bin(self, pool_id: str, bin_id: int, active_bin_id: int, active_price: float, bin_step: float):
-        """Update a single bin"""
+        """Update a single bin with random liquidity changes"""
         try:
             from src.math import DLMMMath
             
             # Calculate bin price
             bin_price = DLMMMath.calculate_bin_price(active_price, bin_step, bin_id, active_bin_id)
             
-            # Calculate liquidity distribution
+            # Calculate base liquidity distribution
             distance = abs(bin_id - active_bin_id)
             liquidity_factor = max(0.1, 1 - (distance / 50) ** 2)
             
-            # Determine token amounts based on bin position
-            if bin_id < active_bin_id:
+            # Add random variation to liquidity (±20%)
+            random_factor = random.uniform(0.8, 1.2)
+            liquidity_factor *= random_factor
+            
+            # Determine token amounts based on bin position (DLMM invariant)
+            if bin_id == active_bin_id:
+                # Active bin: BOTH X and Y tokens
+                x_amount = 1000 * liquidity_factor
+                # Adjust Y amount based on token price to create balanced liquidity
+                if active_price > 10000:  # BTC-like tokens
+                    y_amount = 100000000 * liquidity_factor  # ~$100M USDC
+                elif active_price > 100:  # SOL-like tokens  
+                    y_amount = 200000 * liquidity_factor  # ~$40M USDC for SOL at $200
+                else:  # Low-value tokens
+                    y_amount = 1000000 * liquidity_factor  # Default
+            elif bin_id < active_bin_id:
+                # Bins to the left of active bin: only X tokens
                 x_amount = 1000 * liquidity_factor
                 y_amount = 0
-            elif bin_id > active_bin_id:
-                x_amount = 0
-                y_amount = 100000000 * liquidity_factor
             else:
-                x_amount = 1000 * liquidity_factor
-                y_amount = 100000000 * liquidity_factor
+                # Bins to the right of active bin: only Y tokens
+                x_amount = 0
+                # Adjust Y amount based on token price
+                if active_price > 10000:  # BTC-like tokens
+                    y_amount = 100000000 * liquidity_factor  # ~$100M USDC
+                elif active_price > 100:  # SOL-like tokens
+                    y_amount = 200000 * liquidity_factor  # ~$40M USDC for SOL at $200
+                else:  # Low-value tokens
+                    y_amount = 1000000 * liquidity_factor  # Default
             
             # Create bin data
             bin_data = {

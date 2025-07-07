@@ -15,7 +15,8 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uvicorn
 
-from src.quote_engine import MockRedisClient, QuoteEngine, RouteType
+from src.quote_engine import QuoteEngine, RouteType
+from src.redis import RedisConfig, create_redis_client
 
 
 # Pydantic models for API requests/responses
@@ -83,15 +84,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize quote engine
-redis_client = MockRedisClient()
+# Initialize Redis client and quote engine
+try:
+    config = RedisConfig(host="localhost", port=6379, ssl=False)
+    redis_client = create_redis_client(config, fallback_to_mock=True)
+    print("✅ Connected to Redis successfully")
+except Exception as e:
+    print(f"⚠️ Failed to connect to Redis, using mock client: {e}")
+    from src.quote_engine import MockRedisClient
+    redis_client = MockRedisClient()
+
 quote_engine = QuoteEngine(redis_client)
 
-# Print the actual in-memory bin data for the active bin of BTC-USDC-25
-active_bin_key = f"bin:BTC-USDC-25:500"
-if active_bin_key in redis_client.data:
-    print("DEBUG: In-memory active bin data for BTC-USDC-25:")
-    print(redis_client.data[active_bin_key])
+# Print the actual bin data for the active bin of BTC-USDC-25
+try:
+    active_bin_key = "bin:BTC-USDC-25:500"
+    active_bin_data = redis_client.get(active_bin_key)
+    if active_bin_data:
+        print("DEBUG: Active bin data for BTC-USDC-25:")
+        print(active_bin_data)
+    else:
+        print("DEBUG: No active bin data found")
+except Exception as e:
+    print(f"DEBUG: Error getting active bin data: {e}")
 
 
 @app.get("/")
@@ -189,9 +204,12 @@ async def get_tokens():
     
     # Extract tokens from pool data
     for key in redis_client.keys("pool:*"):
-        pool_data = redis_client.data[key]
-        tokens.add(pool_data["token_x"])
-        tokens.add(pool_data["token_y"])
+        pool_data_str = redis_client.get(key)
+        if pool_data_str:
+            import json
+            pool_data = json.loads(pool_data_str)
+            tokens.add(pool_data["token_x"])
+            tokens.add(pool_data["token_y"])
     
     return {
         "tokens": [
@@ -212,18 +230,21 @@ async def get_pools():
     
     for key in redis_client.keys("pool:*"):
         pool_id = key.split(":")[1]
-        pool_data = redis_client.data[key]
-        
-        pools.append({
-            "pool_id": pool_id,
-            "token_x": pool_data["token_x"],
-            "token_y": pool_data["token_y"],
-            "bin_step": pool_data["bin_step"],
-            "active_bin_id": pool_data["active_bin_id"],
-            "active_bin_price": float(pool_data["active_bin_price"]),  # Already a float
-            "total_tvl": float(pool_data["total_tvl"]),  # Already a float
-            "status": pool_data["status"]
-        })
+        pool_data_str = redis_client.get(key)
+        if pool_data_str:
+            import json
+            pool_data = json.loads(pool_data_str)
+            
+            pools.append({
+                "pool_id": pool_id,
+                "token_x": pool_data["token_x"],
+                "token_y": pool_data["token_y"],
+                "bin_step": pool_data["bin_step"],
+                "active_bin_id": pool_data["active_bin_id"],
+                "active_bin_price": float(pool_data["active_bin_price"]),
+                "total_tvl": float(pool_data["total_tvl"]),
+                "status": pool_data["status"]
+            })
     
     return {"pools": pools}
 
@@ -233,32 +254,36 @@ async def get_pool_info(pool_id: str):
     """Get detailed information about a specific pool"""
     pool_key = f"pool:{pool_id}"
     
-    if pool_key not in redis_client.data:
+    pool_data_str = redis_client.get(pool_key)
+    if not pool_data_str:
         raise HTTPException(status_code=404, detail="Pool not found")
     
-    pool_data = redis_client.data[pool_key]
+    import json
+    pool_data = json.loads(pool_data_str)
     
     # Get bin information
     bins = []
     for key in redis_client.keys(f"bin:{pool_id}:*"):
         bin_id = int(key.split(":")[-1])
-        bin_data = redis_client.data[key]
-        # Only show bins with nonzero liquidity
-        if float(bin_data["x_amount"]) > 0 or float(bin_data["y_amount"]) > 0:
-            # Debug: Print raw bin data
-            print(f"DEBUG: Raw bin data for {key}:")
-            print(f"  x_amount: {bin_data['x_amount']}")
-            print(f"  y_amount: {bin_data['y_amount']}")
-            print(f"  price: {bin_data['price']}")
-            print(f"  is_active: {bin_data['is_active']}")
-            
-            bins.append({
-                "bin_id": bin_id,
-                "x_amount": float(bin_data["x_amount"]),  # Already a float
-                "y_amount": float(bin_data["y_amount"]),  # Already a float
-                "price": float(bin_data["price"]),  # Already a float
-                "is_active": bin_data["is_active"]
-            })
+        bin_data_str = redis_client.get(key)
+        if bin_data_str:
+            bin_data = json.loads(bin_data_str)
+            # Only show bins with nonzero liquidity
+            if float(bin_data["x_amount"]) > 0 or float(bin_data["y_amount"]) > 0:
+                # Debug: Print raw bin data
+                print(f"DEBUG: Raw bin data for {key}:")
+                print(f"  x_amount: {bin_data['x_amount']}")
+                print(f"  y_amount: {bin_data['y_amount']}")
+                print(f"  price: {bin_data['price']}")
+                print(f"  is_active: {bin_data['is_active']}")
+                
+                bins.append({
+                    "bin_id": bin_id,
+                    "x_amount": float(bin_data["x_amount"]),
+                    "y_amount": float(bin_data["y_amount"]),
+                    "price": float(bin_data["price"]),
+                    "is_active": bin_data["is_active"]
+                })
     
     return {
         "pool_id": pool_id,
@@ -266,8 +291,8 @@ async def get_pool_info(pool_id: str):
         "token_y": pool_data["token_y"],
         "bin_step": pool_data["bin_step"],
         "active_bin_id": pool_data["active_bin_id"],
-        "active_bin_price": float(pool_data["active_bin_price"]),  # Already a float
-        "total_tvl": float(pool_data["total_tvl"]),  # Already a float
+        "active_bin_price": float(pool_data["active_bin_price"]),
+        "total_tvl": float(pool_data["total_tvl"]),
         "status": pool_data["status"],
         "bins": bins
     }
@@ -280,12 +305,15 @@ async def get_pairs():
     
     for key in redis_client.keys("pairs:*"):
         tokens = key.split(":")[1:]
-        pair_data = redis_client.data[key]
-        pairs.append({
-            "pair": f"{tokens[0]}-{tokens[1]}",
-            "pools": pair_data["pools"],
-            "last_updated": pair_data["last_updated"]
-        })
+        pair_data_str = redis_client.get(key)
+        if pair_data_str:
+            import json
+            pair_data = json.loads(pair_data_str)
+            pairs.append({
+                "pair": f"{tokens[0]}-{tokens[1]}",
+                "pools": pair_data["pools"],
+                "last_updated": pair_data["last_updated"]
+            })
     
     return {"pairs": pairs}
 
