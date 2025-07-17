@@ -40,10 +40,9 @@
 (define-data-var x-token principal tx-sender)
 (define-data-var y-token principal tx-sender)
 
-(define-data-var x-balance uint u0)
-(define-data-var y-balance uint u0)
-
 (define-data-var bin-step uint u0)
+
+(define-data-var initial-price uint u0)
 
 (define-data-var active-bin-id uint u0)
 
@@ -121,9 +120,8 @@
     x-token: (var-get x-token),
     y-token: (var-get y-token),
     pool-token: (as-contract tx-sender),
-    x-balance: (var-get x-balance),
-    y-balance: (var-get y-balance),
     bin-step: (var-get bin-step),
+    initial-price: (var-get initial-price),
     active-bin-id: (var-get active-bin-id),
     x-protocol-fee: (var-get x-protocol-fee),
     x-provider-fee: (var-get x-provider-fee),
@@ -278,22 +276,17 @@
 )
 
 ;; Update bin balances via DLMM Core
-(define-public (update-bin-balances
-    (bin-data {id: uint, x-balance: uint, y-balance: uint})
-    (pool-data {x-balance: uint, y-balance: uint})
-  )
+(define-public (update-bin-balances (bin-id uint) (x-balance uint) (y-balance uint))
   (let (
     (caller contract-caller)
   )
     (begin
       ;; Assert that caller is core address before setting vars
       (asserts! (is-eq caller CORE_ADDRESS) ERR_NOT_AUTHORIZED)
-      (map-set balances-at-bin (get id bin-data) (merge (unwrap-panic (get-bin-balances (get id bin-data))) {x-balance: (get x-balance bin-data), y-balance: (get y-balance bin-data)}))
-      (var-set x-balance (get x-balance pool-data))
-      (var-set y-balance (get y-balance pool-data))
+      (map-set balances-at-bin bin-id (merge (unwrap-panic (get-bin-balances bin-id)) {x-balance: x-balance, y-balance: y-balance}))
 
       ;; Print function data and return true
-      (print {action: "update-bin-balances", data: {bin-data: bin-data, pool-data: pool-data}})
+      (print {action: "update-bin-balances", data: {bin-id: bin-id, x-balance: x-balance, y-balance: y-balance}})
       (ok true)
     )
   )
@@ -442,7 +435,7 @@
 ;; Create pool using this pool contract via DLMM Core
 (define-public (create-pool
     (x-token-contract principal) (y-token-contract principal)
-    (variable-fees-mgr principal) (step uint) (fee-addr principal) (core-caller principal)
+    (variable-fees-mgr principal) (step uint) (price uint) (fee-addr principal) (core-caller principal)
     (id uint) (name (string-ascii 32)) (symbol (string-ascii 32)) (uri (string-ascii 256))
   )
   (let (
@@ -461,6 +454,7 @@
       (var-set x-token x-token-contract)
       (var-set y-token y-token-contract)
       (var-set bin-step step)
+      (var-set initial-price price)
       (var-set variable-fees-manager variable-fees-mgr)
       (var-set fee-address fee-addr)
       (ok true)

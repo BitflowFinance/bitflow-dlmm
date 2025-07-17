@@ -27,9 +27,8 @@
       x-token: principal,
       y-token: principal,
       pool-token: principal,
-      x-balance: uint,
-      y-balance: uint,
       bin-step: uint,
+      initial-price: uint,
       active-bin-id: uint,
       x-protocol-fee: uint,
       x-provider-fee: uint,
@@ -52,7 +51,7 @@
     (set-variable-fees (uint uint) (response bool uint))
     (set-variable-fees-cooldown (uint) (response bool uint))
     (set-freeze-variable-fees-manager () (response bool uint))
-    (update-bin-balances ({id: uint, x-balance: uint, y-balance: uint} {x-balance: uint, y-balance: uint}) (response bool uint))
+    (update-bin-balances (uint uint uint) (response bool uint))
     (transfer (uint uint principal principal) (response bool uint))
     (transfer-memo (uint uint principal principal (buff 34)) (response bool uint))
     (transfer-many ((list 200 {token-id: uint, amount: uint, sender: principal, recipient: principal})) (response bool uint))
@@ -60,6 +59,6 @@
     (pool-transfer (<sip-010-trait> uint principal) (response bool uint))
     (pool-mint (uint uint principal) (response bool uint))
     (pool-burn (uint uint principal) (response bool uint))
-    (create-pool (principal principal principal uint principal principal uint (string-ascii 32) (string-ascii 32) (string-ascii 256)) (response bool uint))
+    (create-pool (principal principal principal uint uint principal principal uint (string-ascii 32) (string-ascii 32) (string-ascii 256)) (response bool uint))
   )
 )
