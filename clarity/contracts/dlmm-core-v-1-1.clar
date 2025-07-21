@@ -3,6 +3,7 @@
 ;; Use DLLM pool trait and SIP 010 trait
 (use-trait dlmm-pool-trait .dlmm-pool-trait-v-1-1.dlmm-pool-trait)
 (use-trait sip-010-trait .sip-010-trait-ft-standard-v-1-1.sip-010-trait)
+(use-trait dlmm-pre-swap-hook .dlmm-pre-swap-hook-trait-v-1-1.dlmm-pre-swap-hook)
 
 ;; Error constants
 ;; @NOTE cleanup and set proper error codes
@@ -34,6 +35,8 @@
 (define-constant ERR_MINIMUM_Y_AMOUNT (err u0))
 (define-constant ERR_INVALID_LIQUIDITY_VALUE (err u0))
 (define-constant ERR_MINIMUM_LP_AMOUNT (err u0))
+(define-constant ERR_INVALID_HOOK (err u0))
+(define-constant ERR_HOOK_NOT_AUTHORIZED (err u0))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -68,6 +71,10 @@
 
 ;; Data var used to enable or disable pool creation by anyone
 (define-data-var public-pool-creation bool false)
+
+;; Pre-swap variable config hook
+(define-data-var pre-swap-hook (optional principal) none)
+
 
 ;; Define pools map
 (define-map pools uint {
@@ -557,6 +564,24 @@
   )
 )
 
+
+(define-private (check-and-call-hook-if-needed (provided-hook (optional <dlmm-pre-swap-hook>)))
+  (let ((current-hook (var-get pre-swap-hook)))
+    (ok (if (is-some current-hook)
+      (let (
+          (checked-provided-hook (unwrap! provided-hook ERR_INVALID_HOOK))
+          (checked-current-hook-principal (unwrap! current-hook ERR_INVALID_HOOK))
+        )
+        (asserts! (is-eq (contract-of checked-provided-hook) checked-current-hook-principal) ERR_HOOK_NOT_AUTHORIZED)
+        (try! (as-contract (contract-call? checked-provided-hook execute-hook)))
+        true
+      )
+      true
+    ))
+  )
+)
+
+
 ;; @NOTE create-pool
 
 ;; Swap x token for y token via a bin in a pool
@@ -564,8 +589,10 @@
     (pool-trait <dlmm-pool-trait>)
     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
     (bin-id uint) (x-amount uint)
+    (provided-hook (optional <dlmm-pre-swap-hook>))
   )
   (let (
+    (check-hook (try! (check-and-call-hook-if-needed provided-hook)))
     ;; Gather all pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL))
