@@ -355,8 +355,7 @@
       ;; Assert that caller is core address before transferring tokens
       (asserts! (is-eq caller CORE_ADDRESS) ERR_NOT_AUTHORIZED)
 
-      ;; Assert that token and recipient addresses are standard principals
-      (asserts! (is-standard token-contract) ERR_INVALID_PRINCIPAL)
+      ;; Assert that recipient address is standard principal
       (asserts! (is-standard recipient) ERR_INVALID_PRINCIPAL)
 
       ;; Assert that amount is greater than 0
@@ -435,7 +434,8 @@
 ;; Create pool using this pool contract via DLMM Core
 (define-public (create-pool
     (x-token-contract principal) (y-token-contract principal)
-    (variable-fees-mgr principal) (step uint) (price uint) (fee-addr principal) (core-caller principal)
+    (variable-fees-mgr principal) (fee-addr principal) (core-caller principal)
+    (step uint) (price uint)
     (id uint) (name (string-ascii 32)) (symbol (string-ascii 32)) (uri (string-ascii 256))
   )
   (let (
