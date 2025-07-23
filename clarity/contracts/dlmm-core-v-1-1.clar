@@ -171,13 +171,10 @@
 )
 
 ;; Get price a specific bin
-(define-read-only (get-bin-price (initial-price uint) (active-bin-id uint) (bin-step uint) (bin-id uint))
+(define-read-only (get-bin-price (initial-price uint) (bin-step uint) (bin-id uint))
   (let (
-    (bin-factor-index (if (> active-bin-id bin-id)
-                          (- CENTER_BIN_ID (- active-bin-id bin-id))
-                          (+ CENTER_BIN_ID (- bin-id active-bin-id))))
     (bin-factors-list (unwrap! (map-get? bin-factors bin-step) ERR_NO_BIN_FACTORS))
-    (bin-factor (unwrap! (element-at? bin-factors-list bin-factor-index) ERR_INVALID_BIN_FACTOR))
+    (bin-factor (unwrap! (element-at? bin-factors-list bin-id) ERR_INVALID_BIN_FACTOR))
   )
     (ok (/ (* initial-price bin-factor) BIN_PRICE_BPS))
   )
@@ -447,8 +444,12 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait),
-          x-fee: x-fee,
-          y-fee: y-fee
+          x-protocol-fee: x-protocol-fee,
+          x-provider-fee: x-provider-fee,
+          x-variable-fee: x-fee,
+          y-protocol-fee: y-protocol-fee,
+          y-provider-fee: y-provider-fee,
+          y-variable-fee: y-fee
         }
       })
       (ok true)
@@ -484,8 +485,9 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait),
-          protocol-fee: protocol-fee,
-          provider-fee: provider-fee
+          x-protocol-fee: protocol-fee,
+          x-provider-fee: provider-fee,
+          x-variable-fee: x-variable-fee
         }
       })
       (ok true)
@@ -521,8 +523,9 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait),
-          protocol-fee: protocol-fee,
-          provider-fee: provider-fee
+          y-protocol-fee: protocol-fee,
+          y-provider-fee: provider-fee,
+          y-variable-fee: y-variable-fee
         }
       })
       (ok true)
@@ -562,7 +565,7 @@
   )
 )
 
-;; Set freeze variable fees manager for a pool
+;; Make variable fees manager immutable for a pool
 (define-public (set-freeze-variable-fees-manager (pool-trait <dlmm-pool-trait>))
   (let (
     ;; Gather all pool data
@@ -607,8 +610,7 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
-      (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
+      ;; Assert that pool is created and valid
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
@@ -738,8 +740,10 @@
           y-token: y-token-contract,
           x-protocol-fee: x-protocol-fee,
           x-provider-fee: x-provider-fee,
+          x-variable-fee: u0,
           y-protocol-fee: y-protocol-fee,
           y-provider-fee: y-provider-fee,
+          y-variable-fee: u0,
           x-amount-active-bin: x-amount-active-bin,
           y-amount-active-bin: y-amount-active-bin,
           x-amount-per-bin: x-amount-per-bin,
@@ -794,7 +798,7 @@
     (y-balance (get y-balance bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price active-bin-id bin-step bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum x-amount with fees and dx
     (max-x-amount (/ (* y-balance x-decimals-scaled) bin-price))
@@ -926,7 +930,7 @@
     (y-balance (get y-balance bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price active-bin-id bin-step bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum y-amount with fees and dy
     (max-y-amount (/ (* x-balance bin-price) x-decimals-scaled))
@@ -1055,7 +1059,7 @@
     (total-shares (get total-shares bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price active-bin-id bin-step bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Scale up y-amount and y-balance
     (y-amount-scaled (* y-amount x-decimals-scaled))
@@ -1426,7 +1430,7 @@
         (caller (get caller ok-value))
 
         ;; Get price at bin
-        (bin-price (unwrap! (get-bin-price initial-price CENTER_BIN_ID bin-step bin-id) ERR_INVALID_BIN_PRICE))
+        (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
         ;; Calculate amounts to add based on bin-id
         (x-amount-to-add (if (>= bin-id CENTER_BIN_ID)
@@ -1444,7 +1448,7 @@
         (dlp (sqrti add-liquidity-value))
       )
         ;; Assert that dlp minted meets minimum total shares required
-        (asserts! (>= dlp (var-get minimum-total-shares)) ERR_MINIMUM_LP_AMOUNT)
+        (asserts! (>= dlp (var-get minimum-total-shares)) ERR_MINIMUM_LP_AMOUNT) ;; @NOTE All total-shares -> bin-shares
 
         ;; Assert that dlp is greater than or equal to 0 after subtracting burn amount
         (asserts! (>= (- dlp burn-amount-per-bin) u0) ERR_MINIMUM_LP_AMOUNT)
