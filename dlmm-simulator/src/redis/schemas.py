@@ -14,33 +14,35 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PoolData:
-    """Pool data structure for Redis storage"""
+    """Pool data structure for Redis storage - Updated Schema"""
     pool_id: str
-    token_x: str
-    token_y: str
-    bin_step: int
-    initial_active_bin_id: int
-    active_bin_id: int
-    active_bin_price: float
-    status: str
-    total_tvl: float
-    created_at: str
-    last_updated: str
+    token0: str  # Changed from token_x
+    token1: str  # Changed from token_y
+    bin_step: float  # Changed from int to float
+    active_bin: int  # Changed from active_bin_id
+    active: bool  # Changed from status string
+    x_protocol_fee: int  # New field
+    x_provider_fee: int  # New field
+    x_variable_fee: int  # New field
+    y_protocol_fee: int  # New field
+    y_provider_fee: int  # New field
+    y_variable_fee: int  # New field
     
     def to_redis_hash(self) -> Dict[str, str]:
         """Convert to Redis hash format"""
         return {
             "pool_id": self.pool_id,
-            "token_x": self.token_x,
-            "token_y": self.token_y,
+            "token0": self.token0,
+            "token1": self.token1,
             "bin_step": str(self.bin_step),
-            "initial_active_bin_id": str(self.initial_active_bin_id),
-            "active_bin_id": str(self.active_bin_id),
-            "active_bin_price": str(self.active_bin_price),
-            "status": self.status,
-            "total_tvl": str(self.total_tvl),
-            "created_at": self.created_at,
-            "last_updated": self.last_updated
+            "active_bin": str(self.active_bin),
+            "active": str(self.active).lower(),
+            "x_protocol_fee": str(self.x_protocol_fee),
+            "x_provider_fee": str(self.x_provider_fee),
+            "x_variable_fee": str(self.x_variable_fee),
+            "y_protocol_fee": str(self.y_protocol_fee),
+            "y_provider_fee": str(self.y_provider_fee),
+            "y_variable_fee": str(self.y_variable_fee)
         }
     
     @classmethod
@@ -48,30 +50,34 @@ class PoolData:
         """Create PoolData from Redis hash"""
         return cls(
             pool_id=data["pool_id"],
-            token_x=data["token_x"],
-            token_y=data["token_y"],
-            bin_step=int(data["bin_step"]),
-            initial_active_bin_id=int(data["initial_active_bin_id"]),
-            active_bin_id=int(data["active_bin_id"]),
-            active_bin_price=float(data["active_bin_price"]),
-            status=data["status"],
-            total_tvl=float(data["total_tvl"]),
-            created_at=data["created_at"],
-            last_updated=data["last_updated"]
+            token0=data["token0"],
+            token1=data["token1"],
+            bin_step=float(data["bin_step"]),
+            active_bin=int(data["active_bin"]),
+            active=data["active"].lower() == "true",
+            x_protocol_fee=int(data["x_protocol_fee"]),
+            x_provider_fee=int(data["x_provider_fee"]),
+            x_variable_fee=int(data["x_variable_fee"]),
+            y_protocol_fee=int(data["y_protocol_fee"]),
+            y_provider_fee=int(data["y_provider_fee"]),
+            y_variable_fee=int(data["y_variable_fee"])
         )
     
     def validate(self) -> bool:
         """Validate pool data"""
         try:
             assert self.pool_id and len(self.pool_id) > 0
-            assert self.token_x and len(self.token_x) > 0
-            assert self.token_y and len(self.token_y) > 0
+            assert self.token0 and len(self.token0) > 0
+            assert self.token1 and len(self.token1) > 0
             assert self.bin_step > 0
-            assert self.initial_active_bin_id >= 0
-            assert self.active_bin_id >= 0
-            assert self.active_bin_price > 0
-            assert self.status in ["active", "inactive", "paused"]
-            assert self.total_tvl >= 0
+            assert self.active_bin >= 0
+            assert isinstance(self.active, bool)
+            assert self.x_protocol_fee >= 0
+            assert self.x_provider_fee >= 0
+            assert self.x_variable_fee >= 0
+            assert self.y_protocol_fee >= 0
+            assert self.y_provider_fee >= 0
+            assert self.y_variable_fee >= 0
             return True
         except Exception as e:
             logger.error(f"Pool data validation failed: {e}")
@@ -80,27 +86,21 @@ class PoolData:
 
 @dataclass
 class BinData:
-    """Bin data structure for Redis storage"""
+    """Bin data structure for Redis storage - Updated Schema"""
     pool_id: str
     bin_id: int
-    x_amount: float
-    y_amount: float
-    price: float
-    total_liquidity: float
-    is_active: bool
-    last_updated: str
+    reserve_x: int  # Changed from x_amount (float to int)
+    reserve_y: int  # Changed from y_amount (float to int)
+    liquidity: int  # Changed from total_liquidity (float to int)
     
     def to_redis_hash(self) -> Dict[str, str]:
         """Convert to Redis hash format"""
         return {
             "pool_id": self.pool_id,
             "bin_id": str(self.bin_id),
-            "x_amount": str(self.x_amount),
-            "y_amount": str(self.y_amount),
-            "price": str(self.price),
-            "total_liquidity": str(self.total_liquidity),
-            "is_active": str(self.is_active).lower(),
-            "last_updated": self.last_updated
+            "reserve_x": str(self.reserve_x),
+            "reserve_y": str(self.reserve_y),
+            "liquidity": str(self.liquidity)
         }
     
     @classmethod
@@ -109,12 +109,9 @@ class BinData:
         return cls(
             pool_id=data["pool_id"],
             bin_id=int(data["bin_id"]),
-            x_amount=float(data["x_amount"]),
-            y_amount=float(data["y_amount"]),
-            price=float(data["price"]),
-            total_liquidity=float(data["total_liquidity"]),
-            is_active=data["is_active"].lower() == "true",
-            last_updated=data["last_updated"]
+            reserve_x=int(data["reserve_x"]),
+            reserve_y=int(data["reserve_y"]),
+            liquidity=int(data["liquidity"])
         )
     
     def validate(self) -> bool:
@@ -122,11 +119,9 @@ class BinData:
         try:
             assert self.pool_id and len(self.pool_id) > 0
             assert self.bin_id >= 0
-            assert self.x_amount >= 0
-            assert self.y_amount >= 0
-            assert self.price > 0
-            assert self.total_liquidity >= 0
-            assert isinstance(self.is_active, bool)
+            assert self.reserve_x >= 0
+            assert self.reserve_y >= 0
+            assert self.liquidity >= 0
             return True
         except Exception as e:
             logger.error(f"Bin data validation failed: {e}")
@@ -164,16 +159,53 @@ class Metadata:
         )
 
 
+@dataclass
+class TokenGraphData:
+    """Token graph data structure for Redis storage"""
+    version: str
+    token_pairs: Dict[str, List[str]]  # "tokenA->tokenB" -> ["pool_id1", "pool_id2"]
+    
+    def to_redis_hash(self) -> Dict[str, str]:
+        """Convert to Redis hash format"""
+        result = {}
+        for pair, pools in self.token_pairs.items():
+            result[pair] = json.dumps(pools)
+        return result
+    
+    @classmethod
+    def from_redis_hash(cls, data: Dict[str, str], version: str) -> 'TokenGraphData':
+        """Create TokenGraphData from Redis hash"""
+        token_pairs = {}
+        for key, value in data.items():
+            if key != "version":
+                token_pairs[key] = json.loads(value)
+        return cls(version=version, token_pairs=token_pairs)
+    
+    def validate(self) -> bool:
+        """Validate token graph data"""
+        try:
+            assert self.version and len(self.version) > 0
+            assert isinstance(self.token_pairs, dict)
+            for pair, pools in self.token_pairs.items():
+                assert "->" in pair, f"Invalid pair format: {pair}"
+                assert isinstance(pools, list)
+                for pool_id in pools:
+                    assert isinstance(pool_id, str) and len(pool_id) > 0
+            return True
+        except Exception as e:
+            logger.error(f"Token graph data validation failed: {e}")
+            return False
+
+
 class RedisSchema:
-    """Redis schema definitions and key patterns"""
+    """Redis schema definitions and key patterns - Updated Schema"""
     
     # Key patterns
     POOL_KEY_PATTERN = "pool:{pool_id}"
     BIN_KEY_PATTERN = "bin:{pool_id}:{bin_id}"
-    BINS_HASH_PATTERN = "bins:{pool_id}"
+    BIN_PRICE_ZSET_PATTERN = "pool:{pool_id}:bins"  # New ZSET for bin prices
+    TOKEN_GRAPH_KEY_PATTERN = "token_graph:{version}"  # New token graph key
     METADATA_KEY = "metadata"
-    TOKEN_INDEX_PATTERN = "tokens:{token}"
-    PAIR_INDEX_PATTERN = "pairs:{token_x}:{token_y}"
     
     @staticmethod
     def get_pool_key(pool_id: str) -> str:
@@ -186,19 +218,14 @@ class RedisSchema:
         return f"bin:{pool_id}:{bin_id}"
     
     @staticmethod
-    def get_bins_hash_key(pool_id: str) -> str:
-        """Get Redis key for bins hash"""
-        return f"bins:{pool_id}"
+    def get_bin_price_zset_key(pool_id: str) -> str:
+        """Get Redis key for bin price ZSET"""
+        return f"pool:{pool_id}:bins"
     
     @staticmethod
-    def get_token_index_key(token: str) -> str:
-        """Get Redis key for token index"""
-        return f"tokens:{token}"
-    
-    @staticmethod
-    def get_pair_index_key(token_x: str, token_y: str) -> str:
-        """Get Redis key for pair index"""
-        return f"pairs:{token_x}:{token_y}"
+    def get_token_graph_key(version: str = "1") -> str:
+        """Get Redis key for token graph"""
+        return f"token_graph:{version}"
     
     @staticmethod
     def get_metadata_key() -> str:
@@ -207,16 +234,16 @@ class RedisSchema:
 
 
 class DataValidator:
-    """Data validation utilities"""
+    """Data validation utilities - Updated for new schema"""
     
     @staticmethod
     def validate_pool_data(data: Dict[str, Any]) -> bool:
         """Validate pool data structure"""
         try:
             required_fields = [
-                "pool_id", "token_x", "token_y", "bin_step",
-                "initial_active_bin_id", "active_bin_id", "active_bin_price",
-                "status", "total_tvl"
+                "pool_id", "token0", "token1", "bin_step", "active_bin", "active",
+                "x_protocol_fee", "x_provider_fee", "x_variable_fee",
+                "y_protocol_fee", "y_provider_fee", "y_variable_fee"
             ]
             
             for field in required_fields:
@@ -228,14 +255,27 @@ class DataValidator:
             if not isinstance(data["pool_id"], str) or len(data["pool_id"]) == 0:
                 return False
             
-            if not isinstance(data["bin_step"], int) or data["bin_step"] <= 0:
+            if not isinstance(data["token0"], str) or len(data["token0"]) == 0:
+                return False
+                
+            if not isinstance(data["token1"], str) or len(data["token1"]) == 0:
                 return False
             
-            if not isinstance(data["active_bin_price"], (int, float)) or data["active_bin_price"] <= 0:
+            if not isinstance(data["bin_step"], (int, float)) or data["bin_step"] <= 0:
                 return False
             
-            if data["status"] not in ["active", "inactive", "paused"]:
+            if not isinstance(data["active_bin"], int) or data["active_bin"] < 0:
                 return False
+            
+            if not isinstance(data["active"], bool):
+                return False
+            
+            # Fee validation
+            fee_fields = ["x_protocol_fee", "x_provider_fee", "x_variable_fee", 
+                         "y_protocol_fee", "y_provider_fee", "y_variable_fee"]
+            for field in fee_fields:
+                if not isinstance(data[field], int) or data[field] < 0:
+                    return False
             
             return True
             
@@ -248,8 +288,7 @@ class DataValidator:
         """Validate bin data structure"""
         try:
             required_fields = [
-                "pool_id", "bin_id", "x_amount", "y_amount",
-                "price", "total_liquidity", "is_active"
+                "pool_id", "bin_id", "reserve_x", "reserve_y", "liquidity"
             ]
             
             for field in required_fields:
@@ -264,16 +303,13 @@ class DataValidator:
             if not isinstance(data["bin_id"], int) or data["bin_id"] < 0:
                 return False
             
-            if not isinstance(data["x_amount"], (int, float)) or data["x_amount"] < 0:
+            if not isinstance(data["reserve_x"], int) or data["reserve_x"] < 0:
                 return False
             
-            if not isinstance(data["y_amount"], (int, float)) or data["y_amount"] < 0:
+            if not isinstance(data["reserve_y"], int) or data["reserve_y"] < 0:
                 return False
             
-            if not isinstance(data["price"], (int, float)) or data["price"] <= 0:
-                return False
-            
-            if not isinstance(data["is_active"], bool):
+            if not isinstance(data["liquidity"], int) or data["liquidity"] < 0:
                 return False
             
             return True
@@ -288,11 +324,15 @@ class DataValidator:
         sanitized = {}
         
         # Convert numeric fields
-        numeric_fields = ["bin_step", "initial_active_bin_id", "active_bin_id", "active_bin_price", "total_tvl"]
+        numeric_fields = ["bin_step", "active_bin", "x_protocol_fee", "x_provider_fee", 
+                         "x_variable_fee", "y_protocol_fee", "y_provider_fee", "y_variable_fee"]
         for field in numeric_fields:
             if field in data:
                 try:
-                    if field in ["bin_step", "initial_active_bin_id", "active_bin_id"]:
+                    if field == "active_bin":
+                        sanitized[field] = int(data[field])
+                    elif field in ["x_protocol_fee", "x_provider_fee", "x_variable_fee", 
+                                  "y_protocol_fee", "y_provider_fee", "y_variable_fee"]:
                         sanitized[field] = int(data[field])
                     else:
                         sanitized[field] = float(data[field])
@@ -301,10 +341,14 @@ class DataValidator:
                     continue
         
         # Copy string fields
-        string_fields = ["pool_id", "token_x", "token_y", "status", "created_at", "last_updated"]
+        string_fields = ["pool_id", "token0", "token1"]
         for field in string_fields:
             if field in data:
                 sanitized[field] = str(data[field])
+        
+        # Handle boolean field
+        if "active" in data:
+            sanitized["active"] = bool(data["active"])
         
         return sanitized
     
@@ -314,27 +358,20 @@ class DataValidator:
         sanitized = {}
         
         # Convert numeric fields
-        numeric_fields = ["bin_id", "x_amount", "y_amount", "price", "total_liquidity"]
+        numeric_fields = ["bin_id", "reserve_x", "reserve_y", "liquidity"]
         for field in numeric_fields:
             if field in data:
                 try:
-                    if field == "bin_id":
-                        sanitized[field] = int(data[field])
-                    else:
-                        sanitized[field] = float(data[field])
+                    sanitized[field] = int(data[field])
                 except (ValueError, TypeError):
                     logger.warning(f"Invalid numeric value for {field}: {data[field]}")
                     continue
         
         # Copy string fields
-        string_fields = ["pool_id", "last_updated"]
+        string_fields = ["pool_id"]
         for field in string_fields:
             if field in data:
                 sanitized[field] = str(data[field])
-        
-        # Handle boolean field
-        if "is_active" in data:
-            sanitized["is_active"] = bool(data["is_active"])
         
         return sanitized
 

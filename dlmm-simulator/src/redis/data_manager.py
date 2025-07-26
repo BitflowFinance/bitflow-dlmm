@@ -14,7 +14,7 @@ import random
 
 from .client import RedisClient, RedisConfig
 from .schemas import (
-    PoolData, BinData, Metadata, RedisSchema, DataValidator,
+    PoolData, BinData, TokenGraphData, Metadata, RedisSchema, DataValidator,
     get_current_timestamp, create_metadata
 )
 
@@ -206,7 +206,7 @@ class DataManager:
             from src.math import DLMMMath
             
             # Calculate bin price
-            bin_price = DLMMMath.calculate_bin_price(active_price, bin_step, bin_id, active_bin_id)
+            bin_price = DLMMath.calculate_bin_price(active_price, bin_step, bin_id, active_bin_id)
             
             # Calculate base liquidity distribution
             distance = abs(bin_id - active_bin_id)
@@ -466,4 +466,312 @@ class DataManager:
             
         except Exception as e:
             logger.error(f"Error getting metadata: {e}")
-            return None 
+            return None
+
+    # ===== NEW METHODS FOR UPDATED SCHEMA =====
+
+    def store_pool_data(self, pool_data: PoolData) -> bool:
+        """Store pool data as Redis Hash"""
+        try:
+            pool_key = RedisSchema.get_pool_key(pool_data.pool_id)
+            pool_hash = pool_data.to_redis_hash()
+            
+            # Use HSET to store pool data
+            for field, value in pool_hash.items():
+                self.redis_client.hset(pool_key, field, value)
+            
+            logger.debug(f"Stored pool data for {pool_data.pool_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing pool data for {pool_data.pool_id}: {e}")
+            return False
+
+    def get_pool_data_hash(self, pool_id: str) -> Optional[PoolData]:
+        """Get pool data as PoolData object from Redis Hash"""
+        try:
+            pool_key = RedisSchema.get_pool_key(pool_id)
+            pool_hash = self.redis_client.hgetall(pool_key)
+            
+            if pool_hash:
+                return PoolData.from_redis_hash(pool_hash)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting pool data hash for {pool_id}: {e}")
+            return None
+
+    def store_bin_data(self, bin_data: BinData) -> bool:
+        """Store bin data as Redis Hash"""
+        try:
+            bin_key = RedisSchema.get_bin_key(bin_data.pool_id, bin_data.bin_id)
+            bin_hash = bin_data.to_redis_hash()
+            
+            # Use HSET to store bin data
+            for field, value in bin_hash.items():
+                self.redis_client.hset(bin_key, field, value)
+            
+            logger.debug(f"Stored bin data for {bin_data.pool_id}:{bin_data.bin_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing bin data for {bin_data.pool_id}:{bin_data.bin_id}: {e}")
+            return False
+
+    def get_bin_data_hash(self, pool_id: str, bin_id: int) -> Optional[BinData]:
+        """Get bin data as BinData object from Redis Hash"""
+        try:
+            bin_key = RedisSchema.get_bin_key(pool_id, bin_id)
+            bin_hash = self.redis_client.hgetall(bin_key)
+            
+            if bin_hash:
+                return BinData.from_redis_hash(bin_hash)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting bin data hash for {pool_id}:{bin_id}: {e}")
+            return None
+
+    def store_bin_price(self, pool_id: str, bin_id: int, price: float) -> bool:
+        """Store bin price in ZSET"""
+        try:
+            zset_key = RedisSchema.get_bin_price_zset_key(pool_id)
+            self.redis_client.zadd(zset_key, {str(bin_id): price})
+            logger.debug(f"Stored bin price for {pool_id}:{bin_id} = {price}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing bin price for {pool_id}:{bin_id}: {e}")
+            return False
+
+    def get_bin_prices(self, pool_id: str, min_price: float = None, max_price: float = None) -> Dict[int, float]:
+        """Get bin prices from ZSET with optional price range"""
+        try:
+            zset_key = RedisSchema.get_bin_price_zset_key(pool_id)
+            
+            if min_price is not None and max_price is not None:
+                # Get bins within price range
+                bin_scores = self.redis_client.zrangebyscore(zset_key, min_price, max_price, withscores=True)
+            else:
+                # Get all bins
+                bin_scores = self.redis_client.zrange(zset_key, 0, -1, withscores=True)
+            
+            result = {}
+            for bin_id_str, price in bin_scores:
+                result[int(bin_id_str)] = float(price)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error getting bin prices for {pool_id}: {e}")
+            return {}
+
+    def get_bin_price(self, pool_id: str, bin_id: int) -> Optional[float]:
+        """Get specific bin price from ZSET"""
+        try:
+            zset_key = RedisSchema.get_bin_price_zset_key(pool_id)
+            score = self.redis_client.zscore(zset_key, str(bin_id))
+            return float(score) if score is not None else None
+            
+        except Exception as e:
+            logger.error(f"Error getting bin price for {pool_id}:{bin_id}: {e}")
+            return None
+
+    def store_token_graph(self, token_graph: TokenGraphData) -> bool:
+        """Store token graph as Redis Hash"""
+        try:
+            graph_key = RedisSchema.get_token_graph_key(token_graph.version)
+            graph_hash = token_graph.to_redis_hash()
+            
+            # Use HSET to store token graph data
+            for field, value in graph_hash.items():
+                self.redis_client.hset(graph_key, field, value)
+            
+            logger.debug(f"Stored token graph version {token_graph.version}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing token graph version {token_graph.version}: {e}")
+            return False
+
+    def get_token_graph(self, version: str = "1") -> Optional[TokenGraphData]:
+        """Get token graph as TokenGraphData object from Redis Hash"""
+        try:
+            graph_key = RedisSchema.get_token_graph_key(version)
+            graph_hash = self.redis_client.hgetall(graph_key)
+            
+            if graph_hash:
+                return TokenGraphData.from_redis_hash(graph_hash, version)
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting token graph version {version}: {e}")
+            return None
+
+    def get_pools_for_pair(self, token0: str, token1: str, version: str = "1") -> List[str]:
+        """Get pool IDs for a token pair from token graph"""
+        try:
+            token_graph = self.get_token_graph(version)
+            if token_graph:
+                pair_key = f"{token0}->{token1}"
+                return token_graph.token_pairs.get(pair_key, [])
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error getting pools for pair {token0}->{token1}: {e}")
+            return []
+
+    def update_bin_reserves(self, pool_id: str, bin_id: int, reserve_x: int = None, reserve_y: int = None, liquidity: int = None) -> bool:
+        """Update bin reserves using HINCRBY"""
+        try:
+            bin_key = RedisSchema.get_bin_key(pool_id, bin_id)
+            
+            if reserve_x is not None:
+                self.redis_client.hincrby(bin_key, "reserve_x", reserve_x)
+            
+            if reserve_y is not None:
+                self.redis_client.hincrby(bin_key, "reserve_y", reserve_y)
+            
+            if liquidity is not None:
+                self.redis_client.hincrby(bin_key, "liquidity", liquidity)
+            
+            logger.debug(f"Updated bin reserves for {pool_id}:{bin_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating bin reserves for {pool_id}:{bin_id}: {e}")
+            return False
+
+    def create_test_pool(self, pool_id: str, token0: str, token1: str, bin_step_bps: int):
+        """
+        Create a single test pool with the new schema
+        
+        NOTE: This is for testing purposes only. In production, pools will be created
+        by a separate microservice handling blockchain events.
+        
+        Args:
+            pool_id: Unique pool identifier
+            token0: First token symbol
+            token1: Second token symbol  
+            bin_step_bps: Bin step in basis points (e.g., 25 = 0.25%, 50 = 0.5%)
+        """
+        try:
+            # Convert basis points to decimal
+            bin_step_decimal = bin_step_bps / 10000
+            
+            # Create pool data
+            pool_data = PoolData(
+                pool_id=pool_id,
+                token0=token0,
+                token1=token1,
+                bin_step=bin_step_decimal,
+                active_bin=500,
+                active=True,
+                x_protocol_fee=4,
+                x_provider_fee=6,
+                x_variable_fee=0,
+                y_protocol_fee=4,
+                y_provider_fee=6,
+                y_variable_fee=0
+            )
+            
+            # Store pool and create bins
+            self.store_pool_data(pool_data)
+            bin_count = self._create_pool_bins_new_schema(pool_data)
+            
+            logger.info(f"Created test pool {pool_id} with {bin_count} bins (bin_step: {bin_step_bps} bps)")
+            
+        except Exception as e:
+            logger.error(f"Error creating test pool {pool_id}: {e}")
+
+    def populate_standard_test_pools(self):
+        """
+        Populate the standard set of test pools used for development/testing
+        
+        Creates:
+        - BTC-USDC-25: 25 bps bin step
+        - BTC-USDC-50: 50 bps bin step  
+        - SOL-USDC-25: 25 bps bin step
+        """
+        try:
+            # Define standard test pools
+            standard_pools = [
+                ("BTC-USDC-25", "BTC", "USDC", 25),
+                ("BTC-USDC-50", "BTC", "USDC", 50),
+                ("SOL-USDC-25", "SOL", "USDC", 25)
+            ]
+            
+            # Create each pool
+            for pool_id, token0, token1, bps in standard_pools:
+                self.create_test_pool(pool_id, token0, token1, bps)
+            
+            # Create token graph for standard pools
+            token_graph = TokenGraphData(
+                version="1",
+                token_pairs={
+                    "BTC->USDC": ["BTC-USDC-25", "BTC-USDC-50"],
+                    "SOL->USDC": ["SOL-USDC-25"]
+                }
+            )
+            self.store_token_graph(token_graph)
+            
+            logger.info("Standard test pools populated successfully")
+            
+        except Exception as e:
+            logger.error(f"Error populating standard test pools: {e}")
+
+    def _create_pool_bins_new_schema(self, pool: PoolData) -> int:
+        """Create bin data for a pool using new schema"""
+        try:
+            bin_count = 0
+            active_bin_id = pool.active_bin
+            bin_step = pool.bin_step
+            
+            # Calculate active bin price (using a reasonable default)
+            active_price = 50000.0  # $50,000 for BTC, will be adjusted per pool
+            
+            # Create bins around active bin
+            for bin_id in range(active_bin_id - 50, active_bin_id + 51):
+                # Calculate bin price
+                from ..math import DLMMMath
+                bin_price = DLMMath.calculate_bin_price(active_price, bin_step, bin_id, active_bin_id)
+                
+                # Store bin price in ZSET
+                self.store_bin_price(pool.pool_id, bin_id, bin_price)
+                
+                # Create bin data with realistic reserves
+                distance = abs(bin_id - active_bin_id)
+                liquidity_factor = max(0.1, 1 - (distance / 50) ** 2)
+                
+                if pool.token0 == "BTC" and pool.token1 == "USDC":
+                    base_x_amount = int(1000 * liquidity_factor)  # BTC amount
+                    base_y_amount = int(50000000 * liquidity_factor)  # USDC amount
+                    # Liquidity rebased in USDC: Y + X * price
+                    liquidity_usdc = base_y_amount + int(base_x_amount * bin_price)
+                elif pool.token0 == "SOL" and pool.token1 == "USDC":
+                    base_x_amount = int(100000 * liquidity_factor)  # SOL amount
+                    base_y_amount = int(20000000 * liquidity_factor)  # USDC amount
+                    # Liquidity rebased in USDC: Y + X * price
+                    liquidity_usdc = base_y_amount + int(base_x_amount * bin_price)
+                else:
+                    base_x_amount = int(1000 * liquidity_factor)
+                    base_y_amount = int(1000000 * liquidity_factor)
+                    # Liquidity rebased in Y: Y + X * price
+                    liquidity_usdc = base_y_amount + int(base_x_amount * bin_price)
+                
+                bin_data = BinData(
+                    pool_id=pool.pool_id,
+                    bin_id=bin_id,
+                    reserve_x=base_x_amount,
+                    reserve_y=base_y_amount,
+                    liquidity=liquidity_usdc  # Rebased in terms of Y
+                )
+                
+                self.store_bin_data(bin_data)
+                bin_count += 1
+            
+            return bin_count
+            
+        except Exception as e:
+            logger.error(f"Error creating pool bins for {pool.pool_id}: {e}")
+            return 0 

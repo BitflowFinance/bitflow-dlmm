@@ -15,8 +15,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import uvicorn
 
-from src.quote_engine import QuoteEngine, RouteType
-from src.redis import RedisConfig, create_redis_client
+from src.quote_engine import QuoteEngine, RouteType, MockRedisClient
 
 
 # Pydantic models for API requests/responses
@@ -59,13 +58,17 @@ class TokenInfo(BaseModel):
 
 class PoolInfo(BaseModel):
     pool_id: str
-    token_x: str
-    token_y: str
-    bin_step: int
-    active_bin_id: int
-    active_bin_price: float
-    total_tvl: float
-    status: str
+    token0: str
+    token1: str
+    bin_step: float
+    active_bin: int
+    active: bool
+    x_protocol_fee: int
+    x_provider_fee: int
+    x_variable_fee: int
+    y_protocol_fee: int
+    y_provider_fee: int
+    y_variable_fee: int
 
 
 # Initialize FastAPI app
@@ -86,12 +89,11 @@ app.add_middleware(
 
 # Initialize Redis client and quote engine
 try:
-    config = RedisConfig(host="localhost", port=6379, ssl=False)
-    redis_client = create_redis_client(config, fallback_to_mock=True)
-    print("✅ Connected to Redis successfully")
+    # Use MockRedisClient for testing
+    redis_client = MockRedisClient()
+    print("✅ Using MockRedisClient for testing")
 except Exception as e:
-    print(f"⚠️ Failed to connect to Redis, using mock client: {e}")
-    from src.quote_engine import MockRedisClient
+    print(f"⚠️ Failed to initialize MockRedisClient: {e}")
     redis_client = MockRedisClient()
 
 quote_engine = QuoteEngine(redis_client)
@@ -99,10 +101,10 @@ quote_engine = QuoteEngine(redis_client)
 # Print the actual bin data for the active bin of BTC-USDC-25
 try:
     active_bin_key = "bin:BTC-USDC-25:500"
-    active_bin_data = redis_client.get(active_bin_key)
-    if active_bin_data:
+    active_bin_hash = redis_client.hgetall(active_bin_key)
+    if active_bin_hash:
         print("DEBUG: Active bin data for BTC-USDC-25:")
-        print(active_bin_data)
+        print(active_bin_hash)
     else:
         print("DEBUG: No active bin data found")
 except Exception as e:
@@ -204,12 +206,10 @@ async def get_tokens():
     
     # Extract tokens from pool data
     for key in redis_client.keys("pool:*"):
-        pool_data_str = redis_client.get(key)
-        if pool_data_str:
-            import json
-            pool_data = json.loads(pool_data_str)
-            tokens.add(pool_data["token_x"])
-            tokens.add(pool_data["token_y"])
+        pool_hash = redis_client.hgetall(key)
+        if pool_hash:
+            tokens.add(pool_hash["token0"])
+            tokens.add(pool_hash["token1"])
     
     return {
         "tokens": [
@@ -230,20 +230,21 @@ async def get_pools():
     
     for key in redis_client.keys("pool:*"):
         pool_id = key.split(":")[1]
-        pool_data_str = redis_client.get(key)
-        if pool_data_str:
-            import json
-            pool_data = json.loads(pool_data_str)
-            
+        pool_hash = redis_client.hgetall(key)
+        if pool_hash:
             pools.append({
                 "pool_id": pool_id,
-                "token_x": pool_data["token_x"],
-                "token_y": pool_data["token_y"],
-                "bin_step": pool_data["bin_step"],
-                "active_bin_id": pool_data["active_bin_id"],
-                "active_bin_price": float(pool_data["active_bin_price"]),
-                "total_tvl": float(pool_data["total_tvl"]),
-                "status": pool_data["status"]
+                "token0": pool_hash["token0"],
+                "token1": pool_hash["token1"],
+                "bin_step": float(pool_hash["bin_step"]),
+                "active_bin": int(pool_hash["active_bin"]),
+                "active": pool_hash["active"].lower() == "true",
+                "x_protocol_fee": int(pool_hash["x_protocol_fee"]),
+                "x_provider_fee": int(pool_hash["x_provider_fee"]),
+                "x_variable_fee": int(pool_hash["x_variable_fee"]),
+                "y_protocol_fee": int(pool_hash["y_protocol_fee"]),
+                "y_provider_fee": int(pool_hash["y_provider_fee"]),
+                "y_variable_fee": int(pool_hash["y_variable_fee"])
             })
     
     return {"pools": pools}
@@ -254,46 +255,48 @@ async def get_pool_info(pool_id: str):
     """Get detailed information about a specific pool"""
     pool_key = f"pool:{pool_id}"
     
-    pool_data_str = redis_client.get(pool_key)
-    if not pool_data_str:
+    pool_hash = redis_client.hgetall(pool_key)
+    if not pool_hash:
         raise HTTPException(status_code=404, detail="Pool not found")
-    
-    import json
-    pool_data = json.loads(pool_data_str)
     
     # Get bin information
     bins = []
     for key in redis_client.keys(f"bin:{pool_id}:*"):
         bin_id = int(key.split(":")[-1])
-        bin_data_str = redis_client.get(key)
-        if bin_data_str:
-            bin_data = json.loads(bin_data_str)
+        bin_hash = redis_client.hgetall(key)
+        if bin_hash:
             # Only show bins with nonzero liquidity
-            if float(bin_data["x_amount"]) > 0 or float(bin_data["y_amount"]) > 0:
-                # Debug: Print raw bin data
-                print(f"DEBUG: Raw bin data for {key}:")
-                print(f"  x_amount: {bin_data['x_amount']}")
-                print(f"  y_amount: {bin_data['y_amount']}")
-                print(f"  price: {bin_data['price']}")
-                print(f"  is_active: {bin_data['is_active']}")
+            reserve_x = int(bin_hash["reserve_x"])
+            reserve_y = int(bin_hash["reserve_y"])
+            if reserve_x > 0 or reserve_y > 0:
+                # Get bin price from ZSET
+                zset_key = f"pool:{pool_id}:bins"
+                bin_price = redis_client.zscore(zset_key, str(bin_id))
+                if bin_price is None:
+                    bin_price = 0.0  # Fallback
                 
                 bins.append({
                     "bin_id": bin_id,
-                    "x_amount": float(bin_data["x_amount"]),
-                    "y_amount": float(bin_data["y_amount"]),
-                    "price": float(bin_data["price"]),
-                    "is_active": bin_data["is_active"]
+                    "reserve_x": reserve_x,
+                    "reserve_y": reserve_y,
+                    "liquidity": int(bin_hash["liquidity"]),
+                    "price": float(bin_price),
+                    "is_active": bin_id == int(pool_hash["active_bin"])
                 })
     
     return {
         "pool_id": pool_id,
-        "token_x": pool_data["token_x"],
-        "token_y": pool_data["token_y"],
-        "bin_step": pool_data["bin_step"],
-        "active_bin_id": pool_data["active_bin_id"],
-        "active_bin_price": float(pool_data["active_bin_price"]),
-        "total_tvl": float(pool_data["total_tvl"]),
-        "status": pool_data["status"],
+        "token0": pool_hash["token0"],
+        "token1": pool_hash["token1"],
+        "bin_step": float(pool_hash["bin_step"]),
+        "active_bin": int(pool_hash["active_bin"]),
+        "active": pool_hash["active"].lower() == "true",
+        "x_protocol_fee": int(pool_hash["x_protocol_fee"]),
+        "x_provider_fee": int(pool_hash["x_provider_fee"]),
+        "x_variable_fee": int(pool_hash["x_variable_fee"]),
+        "y_protocol_fee": int(pool_hash["y_protocol_fee"]),
+        "y_provider_fee": int(pool_hash["y_provider_fee"]),
+        "y_variable_fee": int(pool_hash["y_variable_fee"]),
         "bins": bins
     }
 
@@ -303,16 +306,16 @@ async def get_pairs():
     """Get available trading pairs"""
     pairs = []
     
-    for key in redis_client.keys("pairs:*"):
-        tokens = key.split(":")[1:]
-        pair_data_str = redis_client.get(key)
-        if pair_data_str:
+    # Get pairs from token graph
+    token_graph = redis_client.hgetall("token_graph:1")
+    if token_graph:
+        for pair, pools_json in token_graph.items():
             import json
-            pair_data = json.loads(pair_data_str)
+            pool_list = json.loads(pools_json)
             pairs.append({
-                "pair": f"{tokens[0]}-{tokens[1]}",
-                "pools": pair_data["pools"],
-                "last_updated": pair_data["last_updated"]
+                "pair": pair,
+                "pools": pool_list,
+                "last_updated": "2024-01-01T00:00:00Z"
             })
     
     return {"pairs": pairs}

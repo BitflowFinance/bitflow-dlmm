@@ -112,46 +112,50 @@ def main():
     pools = []
     for key in redis_client.keys("pool:*"):
         pool_id = key.split(":")[1]
-        pool_data = redis_client.data[key]
-        pools.append({
-            "id": pool_id,
-            "tokens": f"{pool_data['token_x']}-{pool_data['token_y']}",
-            "bin_step": f"{pool_data['bin_step']} bps",
-            "tvl": float(pool_data['total_tvl'])  # Remove 1e18 scaling
-        })
+        pool_hash = redis_client.hgetall(key)
+        if pool_hash:
+            pools.append({
+                "id": pool_id,
+                "tokens": f"{pool_hash['token0']}-{pool_hash['token1']}",
+                "bin_step": f"{float(pool_hash['bin_step']) * 10000:.0f} bps",
+                "active": pool_hash['active']
+            })
     
     print(f"Available Pools ({len(pools)}):")
     for pool in pools:
-        print(f"  • {pool['id']}: {pool['tokens']} ({pool['bin_step']}) - TVL: ${pool['tvl']}")
+        print(f"  • {pool['id']}: {pool['tokens']} ({pool['bin_step']}) - Active: {pool['active']}")
     
-    # Show available pairs
-    pairs = []
-    for key in redis_client.keys("pairs:*"):
-        tokens = key.split(":")[1:]
-        pair_data = redis_client.data[key]
-        pairs.append({
-            "pair": f"{tokens[0]}-{tokens[1]}",
-            "pools": pair_data["pools"],
-            "last_updated": pair_data["last_updated"]
-        })
-    
-    print("📊 Pairs Data:")
-    for pair in pairs:
-        print(f"  • {pair['pair']}: {pair['pools']} pools")
+    # Show available pairs from token graph
+    token_graph = redis_client.hgetall("token_graph:1")
+    if token_graph:
+        print("📊 Token Graph Data:")
+        for pair, pools_json in token_graph.items():
+            import json
+            pool_list = json.loads(pools_json)
+            print(f"  • {pair}: {pool_list} pools")
     
     # Show bin distribution for BTC-USDC-25
     print(f"\nBin Distribution (BTC-USDC-25):")
     btc_usdc_bins = []
     for key in redis_client.keys("bin:BTC-USDC-25:*"):
         bin_id = int(key.split(":")[-1])
-        bin_data = redis_client.data[key]
-        if float(bin_data["x_amount"]) > 0 or float(bin_data["y_amount"]) > 0:
-            btc_usdc_bins.append({
-                "id": bin_id,
-                "x": float(bin_data["x_amount"]),  # Remove 1e18 scaling
-                "y": float(bin_data["y_amount"]),  # Remove 1e18 scaling
-                "price": float(bin_data["price"])  # Remove 1e18 scaling
-            })
+        bin_hash = redis_client.hgetall(key)
+        if bin_hash:
+            reserve_x = int(bin_hash["reserve_x"])
+            reserve_y = int(bin_hash["reserve_y"])
+            if reserve_x > 0 or reserve_y > 0:
+                # Get price from ZSET
+                zset_key = "pool:BTC-USDC-25:bins"
+                bin_price = redis_client.zscore(zset_key, str(bin_id))
+                if bin_price is None:
+                    bin_price = 0.0
+                
+                btc_usdc_bins.append({
+                    "id": bin_id,
+                    "x": reserve_x,
+                    "y": reserve_y,
+                    "price": float(bin_price)
+                })
     
     # Show active bin and nearby bins
     active_bin = next((b for b in btc_usdc_bins if b["id"] == 500), None)

@@ -2,8 +2,24 @@
 
 This directory contains comprehensive documentation for the DLMM quote engine implementation.
 
-## 🚀 Recent Updates (Latest Refactoring)
+## 🚀 Recent Updates
 
+### Redis Schema Update (Task 001) - Latest
+The Redis schema has been successfully updated to match the new infrastructure requirements:
+
+- **New Schema Structure**: Migrated from JSON to Redis Hash/ZSET format
+- **6-Directional Fee Support**: Protocol, provider, and variable fees for both X and Y directions
+- **Improved Performance**: ZSET-based price indexing for efficient queries
+- **Token Graph**: New routing structure for multi-path discovery
+- **API Compatibility**: All endpoints updated while maintaining backward compatibility
+
+#### ✅ Schema Changes Completed
+- **Pool Data**: `token_x/token_y` → `token0/token1`, added 6 fee fields
+- **Bin Data**: `x_amount/y_amount` → `reserve_x/reserve_y`, removed price field
+- **Price Storage**: Moved to ZSET for efficient range queries
+- **Token Graph**: New structure for routing with versioning support
+
+### Latest Refactoring (Previous Major Update)
 The quote engine has been refactored to consolidate the optimized implementation as the default:
 
 - **`src/quote_engine.py`** - Now contains the optimized implementation with caching and performance improvements
@@ -11,27 +27,28 @@ The quote engine has been refactored to consolidate the optimized implementation
 - **Performance improvements**: 48.4% latency reduction, 1.94x speedup
 - **Backward compatibility**: All existing imports continue to work
 
-## 🆕 Redis Integration (Latest Feature)
+## 🆕 Redis Integration (Production Ready)
 
-Complete Redis integration has been implemented for production-ready deployment:
+Complete Redis integration with new schema has been implemented:
 
-- **Real-time data updates** every 5 seconds
+- **Real-time data updates** with new Hash/ZSET operations
 - **Intelligent caching strategies** for optimal performance
 - **Graph-based routing** with cache invalidation
-- **Fallback mechanisms** for development and testing
+- **MockRedisClient fallback** for development and testing
 - **Production-ready configuration** with Docker support
 
 ## 📊 Current System Status
 
 ### ✅ Working Components
-- **Quote Engine**: Fully optimized with 1.7x performance improvement
-- **Redis Integration**: Working with MockRedisClient fallback
-- **API Server**: Running on port 8000
+- **Quote Engine**: Fully updated with new schema support
+- **Redis Integration**: Working with new Hash/ZSET operations
+- **API Server**: Running on port 8000 with updated endpoints
+- **Streamlit App**: Running on port 8501 with new schema
 - **Graph Routing**: Multi-path discovery working
 - **Caching**: Path and quote caching operational
 
 ### 🔧 Known Issues
-- **Redis Connection**: SSL parameter issue (using fallback)
+- **Redis Module**: Missing `redis` module dependency (using MockRedisClient)
 - **Streamlit Port Conflicts**: Sometimes port 8501 conflicts
 - **Import Issues**: Some relative imports in Redis integration
 
@@ -47,18 +64,12 @@ Complete Redis integration has been implemented for production-ready deployment:
 
 ### [REDIS_INTEGRATION.md](./REDIS_INTEGRATION.md)
 Complete guide to Redis integration and production deployment.
+- **NEW**: Updated schema structure and field mappings
 - Architecture overview and key components
 - Cache strategy and performance optimization
 - Quick start guide and configuration
 - Monitoring, troubleshooting, and production deployment
 - Migration guide from MockRedisClient
-
-### [REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)
-Complete summary of the recent refactoring changes and consolidation.
-- File structure changes and class renaming
-- Performance improvements achieved
-- Backward compatibility verification
-- Benefits and next steps
 
 ### [PERFORMANCE_ANALYSIS.md](./PERFORMANCE_ANALYSIS.md)
 Complete performance analysis and optimization results for the quote engine.
@@ -69,6 +80,7 @@ Complete performance analysis and optimization results for the quote engine.
 
 ### [QUOTE_ENGINE_IMPLEMENTATION.md](./QUOTE_ENGINE_IMPLEMENTATION.md)
 Detailed technical implementation guide for the quote engine.
+- **NEW**: Updated for new Redis schema
 - Architecture overview
 - Core components and their interactions
 - Data flow and processing logic
@@ -76,6 +88,7 @@ Detailed technical implementation guide for the quote engine.
 
 ### [FRONTEND_TESTING_GUIDE.md](./FRONTEND_TESTING_GUIDE.md)
 Guide for testing the Streamlit frontend application.
+- **NEW**: Updated for new schema compatibility
 - Frontend testing strategies
 - User interface testing
 - Integration testing with the API
@@ -83,6 +96,7 @@ Guide for testing the Streamlit frontend application.
 
 ### [DEBUGGING_NOTES.md](./DEBUGGING_NOTES.md)
 Debugging and troubleshooting guide for the quote engine.
+- **NEW**: Updated for new schema debugging
 - Common issues and solutions
 - Debugging techniques
 - Log analysis
@@ -100,7 +114,7 @@ Debugging and troubleshooting guide for the quote engine.
 ## Related Directories
 
 - `../src/` - Core implementation code
-- `../src/redis/` - Redis integration layer
+- `../src/redis/` - Redis integration layer with new schema
 - `../infrastructure/` - Redis setup and configuration
 - `../scripts/` - Operational scripts
 - `../config/` - Configuration management

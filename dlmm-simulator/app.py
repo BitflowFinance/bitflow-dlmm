@@ -158,7 +158,7 @@ def calculate_quoted_bin_state(current_bins, quote_data, direction):
     return quoted_bins, used_bin_ids, new_active_bin_id
 
 
-def create_tvl_histogram(bins_data, title, token_x="BTC", token_y="USDC", used_bin_ids=None, bin_step=None):
+def create_tvl_histogram(bins_data, title, token0="BTC", token1="USDC", used_bin_ids=None, bin_step=None):
     """Create TVL histogram using Plotly."""
     if not bins_data:
         return go.Figure()
@@ -190,7 +190,7 @@ def create_tvl_histogram(bins_data, title, token_x="BTC", token_y="USDC", used_b
         
         # Add X tokens if present
         if x_amount > 0:
-            trace_name = f'X Tokens ({token_x})'
+            trace_name = f'X Tokens ({token0})'
             if is_active:
                 trace_name += ' - Active'
             
@@ -201,7 +201,7 @@ def create_tvl_histogram(bins_data, title, token_x="BTC", token_y="USDC", used_b
                 marker_color='#ff7f0e',
                 opacity=0.8,
                 hovertemplate=f'<b>Price: $%{{x:,.2f}}</b><br>' +
-                             f'X Tokens: %{{customdata[0]:.4f}} {token_x}<br>' +
+                             f'X Tokens: %{{customdata[0]:.4f}} {token0}<br>' +
                              f'X Value: $%{{y:,.0f}}<br>' +
                              f'Bin ID: %{{customdata[1]}}<extra></extra>',
                 customdata=[[x_amount, bin_id]],
@@ -210,7 +210,7 @@ def create_tvl_histogram(bins_data, title, token_x="BTC", token_y="USDC", used_b
         
         # Add Y tokens if present
         if y_amount > 0:
-            trace_name = f'Y Tokens ({token_y})'
+            trace_name = f'Y Tokens ({token1})'
             if is_active:
                 trace_name += ' - Active'
             
@@ -221,7 +221,7 @@ def create_tvl_histogram(bins_data, title, token_x="BTC", token_y="USDC", used_b
                 marker_color='#1f77b4',
                 opacity=0.8,
                 hovertemplate=f'<b>Price: $%{{x:,.2f}}</b><br>' +
-                             f'Y Tokens: %{{y:,.0f}} {token_y}<br>' +
+                             f'Y Tokens: %{{y:,.0f}} {token1}<br>' +
                              f'Y Value: $%{{y:,.0f}}<br>' +
                              f'Bin ID: %{{customdata}}<extra></extra>',
                 customdata=[bin_id],
@@ -260,7 +260,7 @@ def create_tvl_histogram(bins_data, title, token_x="BTC", token_y="USDC", used_b
     
     fig.update_layout(
         title=title,
-        xaxis_title=f"{token_x}/USD Price",
+        xaxis_title=f"{token0}/USD Price",
         yaxis_title="TVL (USD)",
         barmode='stack',
         height=400,
@@ -279,23 +279,27 @@ def generate_random_fuzz_swap(pool_data):
     # Random direction
     direction = random.choice(['X→Y', 'Y→X'])
     
-    # Generate large random amounts based on token type
-    if direction == 'X→Y':
-        token_in, token_out = token_x, token_y
-        if token_x == 'BTC':
-            amount_in = random.uniform(5.0, 50.0)  # 5-50 BTC
-        elif token_x == 'ETH':
-            amount_in = random.uniform(50.0, 200.0)  # 50-200 ETH
-        elif token_x == 'SOL':
-            amount_in = random.uniform(500.0, 2000.0)  # 500-2000 SOL
+    # Extract token information
+    token0 = pool_data.get('token0', 'BTC')
+    token1 = pool_data.get('token1', 'USDC')
+    
+    # Determine swap direction based on token types
+    if direction == "X to Y":
+        token_in, token_out = token0, token1
+        if token0 == 'BTC':
+            amount_in = 1.0
+        elif token0 == 'ETH':
+            amount_in = 10.0
+        elif token0 == 'SOL':
+            amount_in = 100.0
         else:
-            amount_in = random.uniform(1000.0, 10000.0)  # Default large amount
-    else:  # Y→X
-        token_in, token_out = token_y, token_x
-        if token_y == 'USDC':
-            amount_in = random.uniform(500000.0, 5000000.0)  # 500K-5M USDC
+            amount_in = 1.0
+    else:  # Y to X
+        token_in, token_out = token1, token0
+        if token1 == 'USDC':
+            amount_in = 50000.0
         else:
-            amount_in = random.uniform(100000.0, 1000000.0)  # Default large amount
+            amount_in = 1000.0
     
     return {
         'token_in': token_in,
@@ -353,7 +357,7 @@ def main():
     st.subheader("🧪 Real-Time Fuzz Testing")
     
     # Pool selection for fuzz testing
-    pool_options = [f"{pool['pool_id']} ({pool['token_x']}/{pool['token_y']})" for pool in available_pools]
+    pool_options = [f"{pool['pool_id']} ({pool['token0']}/{pool['token1']})" for pool in available_pools]
     # Default to BTC-USDC-25 if present
     default_pool_id = "BTC-USDC-25"
     default_index = 0
@@ -477,10 +481,10 @@ def main():
                     st.metric("Total TVL", f"${total_tvl_usd:,.0f}")
                 
                 with col2:
-                    st.metric(f"Total {selected_pool['token_x']}", f"{total_x:.2f}")
+                    st.metric(f"Total {selected_pool['token0']}", f"{total_x:.2f}")
                 
                 with col3:
-                    st.metric(f"Total {selected_pool['token_y']}", f"{total_y:,.0f}")
+                    st.metric(f"Total {selected_pool['token1']}", f"{total_y:,.0f}")
                 
                 with col4:
                     if active_bin:
@@ -492,7 +496,7 @@ def main():
                 
                 # Create the histogram with auto-refresh container
                 st.subheader("Current Pool Liquidity Distribution")
-                st.markdown(f"*Note: Chart shows TVL in USD with {selected_pool['token_x']}/USD price on X-axis. Updates every 5 seconds during fuzz testing.*")
+                st.markdown(f"*Note: Chart shows TVL in USD with {selected_pool['token0']}/USD price on X-axis. Updates every 5 seconds during fuzz testing.*")
                 
                 # Use a container for the chart that can be updated
                 chart_container = st.empty()
@@ -500,8 +504,8 @@ def main():
                 current_fig = create_tvl_histogram(
                     current_bins, 
                     f"Real-Time Pool Liquidity - {selected_pool_id} (Update #{st.session_state.update_counter})", 
-                    token_x=selected_pool['token_x'],
-                    token_y=selected_pool['token_y'],
+                    token0=selected_pool['token0'],
+                    token1=selected_pool['token1'],
                     bin_step=pool_data.get('bin_step', 25) if pool_data else 25
                 )
                 chart_container.plotly_chart(current_fig, use_container_width=True)
