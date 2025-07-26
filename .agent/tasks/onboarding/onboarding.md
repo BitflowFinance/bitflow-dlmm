@@ -15,7 +15,44 @@
 
 This rule is absolute and non-negotiable. The Clarity smart contracts are production-ready blockchain code and must remain untouched.
 
-## 🎯 Core Purpose
+## 📋 Task Management Structure
+
+**⚠️ CRITICAL: Every task must follow this structure:**
+
+When working on a new task, you MUST:
+
+1. **Create a task directory**: `.agent/tasks/[TASK_ID]/`
+   - Use numbered task IDs (e.g., `001-redis-schema-update`)
+   - Include descriptive name after the number
+
+2. **Create task-specific onboarding**: `.agent/tasks/[TASK_ID]/onboarding.md`
+   - Document the specific task requirements
+   - Record current state analysis
+   - Plan implementation steps
+   - List success criteria
+   - Note any constraints or open questions
+
+3. **Follow the task structure**:
+   ```
+   .agent/tasks/
+   ├── onboarding/                    # General project onboarding
+   │   └── onboarding.md
+   ├── 001-redis-schema-update/       # Task-specific directory
+   │   └── onboarding.md
+   ├── 002-feature-name/              # Future tasks
+   │   └── onboarding.md
+   └── ...
+   ```
+
+4. **Update task status** in the task-specific onboarding file as work progresses
+
+**This structure ensures:**
+- Each task has its own documented context
+- Future agents can quickly onboard to specific tasks
+- Task history and decisions are preserved
+- No context is lost between sessions
+
+## �� Core Purpose
 
 This is a **high-performance Python-based Distributed Liquidity Market Maker (DLMM) Quote Engine** that simulates DeFi liquidity pools with:
 - **Dynamic pricing** based on bin-based liquidity distribution
@@ -330,4 +367,27 @@ curl -s http://localhost:8000/health
 **Onboarding Date**: January 2024  
 **Agent Status**: Fully Onboarded  
 **Next Action**: Ready for task assignment  
-**Repository State**: Production Ready (with MockRedisClient) 
+**Repository State**: Production Ready (with MockRedisClient)
+
+## 🎯 Current Active Tasks
+
+### Task 001: Redis Schema Update
+- **Status**: Planning Phase
+- **Location**: `.agent/tasks/001-redis-schema-update/onboarding.md`
+- **Objective**: Update Redis schema to use Hash/ZSET structures instead of JSON
+- **Priority**: High
+
+**Key Changes Required:**
+- Pool data: JSON → Redis Hash (HSET/HGET)
+- Bin data: JSON → Redis Hash + ZSET for prices
+- Field mapping: `token_x`→`token0`, `active_bin_id`→`active_bin`, etc.
+- New token graph structure for routing
+
+**Next Steps:**
+1. Review implementation plan in task onboarding
+2. Answer open questions about fee structure and data migration
+3. Begin Phase 1: Schema Updates
+
+---
+
+**Onboarding Date**: January 2024 
