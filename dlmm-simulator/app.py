@@ -2,6 +2,7 @@
 """
 DLMM Visualization Tool
 Shows current pool state vs quoted swap impact using API data
+Updated for Task 003: Integration with new quote-engine infrastructure
 """
 
 import streamlit as st
@@ -17,16 +18,69 @@ import random
 import time
 import threading
 from datetime import datetime
+import redis
+from typing import Dict, List, Optional, Any
+
+
+# Configuration for new quote-engine integration
+QUOTE_ENGINE_BASE_URL = "http://localhost:8000/api/v1"
+REDIS_CONFIG = {
+    'host': 'localhost',
+    'port': 6379,
+    'db': 0,
+    'decode_responses': True
+}
+
+
+def format_amount(amount_str, token):
+    """Format amount string to human-readable format based on token decimals."""
+    try:
+        amount = int(amount_str)
+        if token == "BTC":
+            return f"{amount / 100000000:.8f} BTC"
+        elif token == "ETH":
+            return f"{amount / 1000000000000000000:.18f} ETH"
+        elif token == "SOL":
+            return f"{amount / 1000000000:.9f} SOL"
+        else:  # USDC
+            return f"{amount / 1000000:.6f} USDC"
+    except:
+        return amount_str
+
+
+def format_number_with_commas(number):
+    """Format number with commas for better readability."""
+    try:
+        return f"{number:,.2f}"
+    except:
+        return str(number)
+
+
+def get_redis_client():
+    """Get Redis client for direct data access"""
+    try:
+        return redis.Redis(**REDIS_CONFIG)
+    except Exception as e:
+        st.error(f"Failed to connect to Redis: {e}")
+        return None
 
 
 def get_pool_data_from_api(pool_id):
-    """Get pool data from the API server."""
+    """Get pool data from the new quote-engine API."""
     try:
-        api_url = f"http://localhost:8000/pools/{pool_id}"
+        # Get all pools and filter by pool_id
+        api_url = f"{QUOTE_ENGINE_BASE_URL}/pools"
         response = requests.get(api_url, timeout=10)
         
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            pools = data.get('pools', [])
+            # Find the specific pool
+            for pool in pools:
+                if pool.get('pool_id') == pool_id:
+                    return pool
+            st.error(f"Pool {pool_id} not found")
+            return None
         else:
             st.error(f"API Error: {response.status_code} - {response.text}")
             return None
@@ -35,42 +89,59 @@ def get_pool_data_from_api(pool_id):
         return None
 
 
-def get_bin_data_from_api(pool_id, bin_range=20):
-    """Get bin data from the API server for visualization."""
+def get_bin_data_from_redis(pool_id, bin_range=20):
+    """Get bin data directly from Redis for visualization."""
     try:
-        # Get pool data first to find active bin
+        redis_client = get_redis_client()
+        if not redis_client:
+            return []
+        
+        # Get pool data to find active bin
         pool_data = get_pool_data_from_api(pool_id)
         if not pool_data:
             return []
         
-        active_bin_id = pool_data.get('active_bin_id', 500)
+        active_bin_id = pool_data.get('active_bin', 500)
         start_bin = active_bin_id - bin_range
         end_bin = active_bin_id + bin_range
         
-        # The API returns all bins for the pool, so we'll filter them
         bins_data = []
-        for bin_data in pool_data.get('bins', []):
-            bin_id = bin_data.get('bin_id', 0)
+        
+        # Get bin prices from ZSET - Fixed key pattern
+        price_key = f"pool:{pool_id}:bins"
+        bin_prices = redis_client.zrangebyscore(price_key, 0, float('inf'), withscores=True)
+        
+        for bin_id_str, price in bin_prices:
+            bin_id = int(bin_id_str)
             if start_bin <= bin_id <= end_bin:
-                bins_data.append({
-                    'bin_id': bin_id,
-                    'x_amount': bin_data.get('x_amount', 0),
-                    'y_amount': bin_data.get('y_amount', 0),
-                    'price': bin_data.get('price', 0),
-                    'total_liquidity': bin_data.get('x_amount', 0) + (bin_data.get('y_amount', 0) / bin_data.get('price', 1)),
-                    'is_active': bin_data.get('is_active', False)
-                })
+                # Get bin reserves
+                bin_key = f"bin:{pool_id}:{bin_id}"
+                bin_data = redis_client.hgetall(bin_key)
+                
+                if bin_data:
+                    reserve_x = int(bin_data.get('reserve_x', 0))
+                    reserve_y = int(bin_data.get('reserve_y', 0))
+                    liquidity = int(bin_data.get('liquidity', 0))
+                    
+                    bins_data.append({
+                        'bin_id': bin_id,
+                        'x_amount': reserve_x,
+                        'y_amount': reserve_y,
+                        'price': price,
+                        'total_liquidity': liquidity,
+                        'is_active': bin_id == active_bin_id
+                    })
         
         return bins_data
     except Exception as e:
-        st.error(f"Failed to get bin data from API: {e}")
+        st.error(f"Failed to get bin data from Redis: {e}")
         return []
 
 
 def get_available_pools_from_api():
-    """Get list of available pools from the API server."""
+    """Get list of available pools from the new quote-engine API."""
     try:
-        api_url = "http://localhost:8000/pools"
+        api_url = f"{QUOTE_ENGINE_BASE_URL}/pools"
         response = requests.get(api_url, timeout=10)
         
         if response.status_code == 200:
@@ -85,13 +156,13 @@ def get_available_pools_from_api():
 
 
 def get_quoted_state_from_api(token_in, token_out, amount_in):
-    """Get quoted state from the API server."""
+    """Get quoted state from the new quote-engine API."""
     try:
-        api_url = "http://localhost:8000/quote"
+        api_url = f"{QUOTE_ENGINE_BASE_URL}/quote"
         payload = {
-            "token_in": token_in,
-            "token_out": token_out,
-            "amount_in": amount_in
+            "input_token": token_in,
+            "output_token": token_out,
+            "amount_in": str(amount_in)
         }
         
         response = requests.post(api_url, json=payload, timeout=10)
@@ -122,192 +193,248 @@ def calculate_quoted_bin_state(current_bins, quote_data, direction):
         bin_id = bin_data['bin_id']
         quoted_bin = bin_data.copy()
         
-        # Find if this bin was used in the quote
-        for step in quote_data.get('steps', []):
+        # Check if this bin is used in the quote execution path
+        execution_path = quote_data.get('execution_path', [])
+        for step in execution_path:
             if step.get('bin_id') == bin_id:
                 used_bin_ids.add(bin_id)
                 
-                # Tokens leaving the bin (input tokens)
-                if direction == "X→Y":
-                    quoted_bin['x_amount'] += step.get('amount_in', 0)  # X tokens added to pool
-                    quoted_bin['y_amount'] -= step.get('amount_out', 0)  # Y tokens removed from pool
-                else:  # Y→X
-                    quoted_bin['y_amount'] += step.get('amount_in', 0)  # Y tokens added to pool
-                    quoted_bin['x_amount'] -= step.get('amount_out', 0)  # X tokens removed from pool
+                # Calculate the impact on this bin
+                x_amount = int(step.get('x_amount', 0))
+                
+                if direction == 'x_to_y':
+                    # X tokens are being swapped for Y tokens
+                    quoted_bin['x_amount'] += x_amount
+                    # Calculate Y tokens received (simplified)
+                    y_received = int(x_amount * quoted_bin['price'])
+                    quoted_bin['y_amount'] -= y_received
+                else:
+                    # Y tokens are being swapped for X tokens
+                    quoted_bin['y_amount'] += x_amount
+                    # Calculate X tokens received (simplified)
+                    x_received = int(x_amount / quoted_bin['price'])
+                    quoted_bin['x_amount'] -= x_received
+                
+                # Ensure amounts don't go negative
+                quoted_bin['x_amount'] = max(0, quoted_bin['x_amount'])
+                quoted_bin['y_amount'] = max(0, quoted_bin['y_amount'])
+                
+                # Recalculate total liquidity
+                quoted_bin['total_liquidity'] = quoted_bin['x_amount'] + quoted_bin['y_amount']
                 break
-        
-        # Ensure amounts don't go negative
-        quoted_bin['x_amount'] = max(0, quoted_bin['x_amount'])
-        quoted_bin['y_amount'] = max(0, quoted_bin['y_amount'])
-        
-        # Recalculate total liquidity based on the new token amounts
-        quoted_bin['total_liquidity'] = quoted_bin['x_amount'] + (quoted_bin['y_amount'] / quoted_bin['price'])
         
         quoted_bins.append(quoted_bin)
     
-    # Determine the new active bin based on the quoted state
-    new_active_bin_id = None
-    if quote_data.get('steps'):
-        # Use the last bin that was used in the swap as the new active bin
-        new_active_bin_id = quote_data['steps'][-1].get('bin_id')
-    
-    # Update the is_active flag for all bins
-    for bin_data in quoted_bins:
-        bin_data['is_active'] = (bin_data['bin_id'] == new_active_bin_id)
-    
-    return quoted_bins, used_bin_ids, new_active_bin_id
+    return quoted_bins, used_bin_ids, quote_data.get('amount_out', '0')
 
 
 def create_tvl_histogram(bins_data, title, token0="BTC", token1="USDC", used_bin_ids=None, bin_step=None):
-    """Create TVL histogram using Plotly."""
+    """Create TVL histogram visualization with stacked bars for active bin."""
     if not bins_data:
         return go.Figure()
     
-    df = pd.DataFrame(bins_data)
+    # Prepare data for plotting
+    bin_ids = [bin_data['bin_id'] for bin_data in bins_data]
+    x_amounts = [bin_data['x_amount'] for bin_data in bins_data]
+    y_amounts = [bin_data['y_amount'] for bin_data in bins_data]
+    prices = [bin_data['price'] for bin_data in bins_data]
+    is_active = [bin_data.get('is_active', False) for bin_data in bins_data]
     
-    # Find the active bin from the data
-    active_bin_data = df[df['is_active']]
-    if len(active_bin_data) == 0:
-        # Fallback to highest liquidity bin if no active bin marked
-        active_bin_data = df.loc[df['total_liquidity'].idxmax()]
-        active_bin_id = active_bin_data['bin_id']
-    else:
-        active_bin_id = active_bin_data['bin_id'].iloc[0]
+    # Convert to human-readable amounts
+    x_amounts_readable = [amount / (10**8) if token0 == "BTC" else amount / (10**18) if token0 == "ETH" else amount / (10**9) if token0 == "SOL" else amount / (10**6) for amount in x_amounts]
+    y_amounts_readable = [amount / (10**6) for amount in y_amounts]  # USDC has 6 decimals
     
-    # Create figure with secondary y-axis
+    # Create figure
     fig = go.Figure()
     
-    # Process each bin based on its actual token content
-    for _, bin_data in df.iterrows():
-        bin_id = bin_data['bin_id']
-        price = bin_data['price']
-        x_amount = bin_data['x_amount']
-        y_amount = bin_data['y_amount']
-        is_active = bin_data['is_active']
-        
-        # Calculate USD values
-        x_usd_value = x_amount * price
-        
-        # Add X tokens if present
-        if x_amount > 0:
-            trace_name = f'X Tokens ({token0})'
-            if is_active:
-                trace_name += ' - Active'
-            
-            fig.add_trace(go.Bar(
-                x=[price],
-                y=[x_usd_value],
-                name=trace_name,
-                marker_color='#ff7f0e',
-                opacity=0.8,
-                hovertemplate=f'<b>Price: $%{{x:,.2f}}</b><br>' +
-                             f'X Tokens: %{{customdata[0]:.4f}} {token0}<br>' +
-                             f'X Value: $%{{y:,.0f}}<br>' +
-                             f'Bin ID: %{{customdata[1]}}<extra></extra>',
-                customdata=[[x_amount, bin_id]],
-                showlegend=False if not is_active else True
-            ))
-        
-        # Add Y tokens if present
-        if y_amount > 0:
-            trace_name = f'Y Tokens ({token1})'
-            if is_active:
-                trace_name += ' - Active'
-            
-            fig.add_trace(go.Bar(
-                x=[price],
-                y=[y_amount],
-                name=trace_name,
-                marker_color='#1f77b4',
-                opacity=0.8,
-                hovertemplate=f'<b>Price: $%{{x:,.2f}}</b><br>' +
-                             f'Y Tokens: %{{y:,.0f}} {token1}<br>' +
-                             f'Y Value: $%{{y:,.0f}}<br>' +
-                             f'Bin ID: %{{customdata}}<extra></extra>',
-                customdata=[bin_id],
-                showlegend=False if not is_active else True
-            ))
+    # Separate active bin data from other bins
+    active_bin_data = []
+    other_bin_data = []
     
-    # Highlight active bin
-    active_bin = df[df['bin_id'] == active_bin_id]
-    if len(active_bin) > 0:
-        active_price = active_bin['price'].iloc[0]
-        fig.add_vline(
-            x=active_price,
-            line_dash="dash",
-            line_color="#2ca02c",
-            annotation_text="Active Bin",
-            annotation_position="top right"
+    for i, (bin_id, x_readable, y_readable, price, active) in enumerate(zip(bin_ids, x_amounts_readable, y_amounts_readable, prices, is_active)):
+        if active:
+            active_bin_data.append({
+                'bin_id': bin_id,
+                'x_amount': x_readable,
+                'y_amount': y_readable,
+                'price': price,
+                'is_used': bin_id in (used_bin_ids or set())
+            })
+        else:
+            # For non-active bins, determine which token is present and calculate total liquidity
+            if x_readable > 0:  # X tokens only
+                total_liquidity = x_readable * price  # Convert to USDC equivalent
+                token_type = 'x'
+            else:  # Y tokens only
+                total_liquidity = y_readable
+                token_type = 'y'
+            
+            other_bin_data.append({
+                'bin_id': bin_id,
+                'total_liquidity': total_liquidity,
+                'price': price,
+                'token_type': token_type,
+                'is_used': bin_id in (used_bin_ids or set())
+            })
+    
+    # Add bars for non-active bins (single color)
+    if other_bin_data:
+        other_bin_ids = [data['bin_id'] for data in other_bin_data]
+        other_liquidity = [data['total_liquidity'] for data in other_bin_data]
+        
+        # Color coding for non-active bins
+        other_colors = []
+        for data in other_bin_data:
+            if data['is_used']:
+                other_colors.append('red')  # Used bins
+            elif data['token_type'] == 'x':
+                other_colors.append('blue')  # X tokens (BTC/ETH/SOL)
+            else:
+                other_colors.append('purple')  # Y tokens (USDC)
+        
+        fig.add_trace(
+            go.Bar(
+                x=other_bin_ids,
+                y=other_liquidity,
+                name='Other Bins',
+                marker_color=other_colors,
+                opacity=0.8,
+                hovertemplate=(
+                    '<b>Bin %{x}</b><br>' +
+                    'Total Liquidity: $%{customdata[0]}<br>' +
+                    'Price: $%{customdata[1]}<br>' +
+                    '<extra></extra>'
+                ),
+                customdata=[[format_number_with_commas(data['total_liquidity']), format_number_with_commas(data['price'])] for data in other_bin_data]
+            )
         )
     
-    # Highlight used bins if provided
-    if used_bin_ids and bin_step is not None:
-        for bin_id in used_bin_ids:
-            bin_data = df[df['bin_id'] == bin_id]
-            if len(bin_data) > 0:
-                bin_price = bin_data['price'].iloc[0]
-                
-                # Calculate proper bin boundaries based on bin step
-                bin_width = bin_price * bin_step * 0.5  # Half the bin step distance
-                
-                fig.add_vrect(
-                    x0=bin_price - bin_width,
-                    x1=bin_price + bin_width,
-                    fillcolor="rgba(44, 160, 44, 0.2)",
-                    layer="below",
-                    line_width=0
-                )
+    # Add stacked bars for active bin
+    if active_bin_data:
+        active_data = active_bin_data[0]  # Should only be one active bin
+        active_bin_id = active_data['bin_id']
+        
+        # Convert X tokens to USDC equivalent for stacking
+        x_usdc_equivalent = active_data['x_amount'] * active_data['price']
+        y_amount = active_data['y_amount']
+        
+        # Color for active bin
+        active_color = 'red' if active_data['is_used'] else 'green'
+        
+        # Add X tokens (bottom of stack)
+        fig.add_trace(
+            go.Bar(
+                x=[active_bin_id],
+                y=[x_usdc_equivalent],
+                name=f'{token0} (Active)',
+                marker_color='blue',
+                opacity=0.8,
+                hovertemplate=(
+                    f'<b>Bin {active_bin_id} - {token0}</b><br>' +
+                    f'{token0}: {active_data["x_amount"]:.4f}<br>' +
+                    'USDC Equivalent: $%{customdata[0]}<br>' +
+                    'Price: $%{customdata[1]}<br>' +
+                    '<extra></extra>'
+                ),
+                customdata=[[format_number_with_commas(x_usdc_equivalent), format_number_with_commas(active_data['price'])]]
+            )
+        )
+        
+        # Add Y tokens (top of stack)
+        fig.add_trace(
+            go.Bar(
+                x=[active_bin_id],
+                y=[y_amount],
+                name=f'{token1} (Active)',
+                marker_color='purple',
+                opacity=0.8,
+                hovertemplate=(
+                    f'<b>Bin {active_bin_id} - {token1}</b><br>' +
+                    f'{token1}: {format_number_with_commas(y_amount)}<br>' +
+                    'Price: $%{customdata}<br>' +
+                    '<extra></extra>'
+                ),
+                customdata=[format_number_with_commas(active_data['price'])]
+            )
+        )
     
+    # Add price line on secondary y-axis
+    fig.add_trace(
+        go.Scatter(
+            x=bin_ids,
+            y=prices,
+            name='Price (USDC)',
+            yaxis='y2',
+            line=dict(color='orange', width=2),
+            mode='lines+markers'
+        )
+    )
+    
+    # Update layout
     fig.update_layout(
         title=title,
-        xaxis_title=f"{token0}/USD Price",
-        yaxis_title="TVL (USD)",
-        barmode='stack',
-        height=400,
+        xaxis_title="Bin ID",
+        yaxis_title="Liquidity (USDC)",
+        yaxis2=dict(
+            title="Price (USDC)",
+            overlaying='y',
+            side='right',
+            showgrid=False
+        ),
         showlegend=True,
-        hovermode='x unified'
+        height=500,
+        hovermode='x unified',
+        barmode='stack'  # Enable stacking for active bin
     )
+    
+    # Add annotation for active bin if present
+    if active_bin_data:
+        active_data = active_bin_data[0]
+        active_bin_id = active_data['bin_id']
+        x_usdc_equivalent = active_data['x_amount'] * active_data['price']
+        y_amount = active_data['y_amount']
+        total_liquidity = x_usdc_equivalent + y_amount
+        
+        fig.add_annotation(
+            x=active_bin_id,
+            y=total_liquidity * 1.05,
+            text=f"Active Bin<br>{token0}: {active_data['x_amount']:.2f}<br>{token1}: {format_number_with_commas(y_amount)}",
+            showarrow=True,
+            arrowhead=2,
+            arrowcolor="green",
+            arrowwidth=2,
+            bgcolor="green",
+            bordercolor="white",
+            borderwidth=1,
+            font=dict(color="white", size=10)
+        )
     
     return fig
 
 
 def generate_random_fuzz_swap(pool_data):
-    """Generate a random large swap for fuzz testing."""
-    token_x = pool_data.get('token_x', 'BTC')
-    token_y = pool_data.get('token_y', 'USDC')
+    """Generate a random fuzz swap for testing."""
+    if not pool_data:
+        return None, None, None
     
-    # Random direction
-    direction = random.choice(['X→Y', 'Y→X'])
-    
-    # Extract token information
     token0 = pool_data.get('token0', 'BTC')
     token1 = pool_data.get('token1', 'USDC')
     
-    # Determine swap direction based on token types
-    if direction == "X to Y":
-        token_in, token_out = token0, token1
-        if token0 == 'BTC':
-            amount_in = 1.0
-        elif token0 == 'ETH':
-            amount_in = 10.0
-        elif token0 == 'SOL':
-            amount_in = 100.0
-        else:
-            amount_in = 1.0
-    else:  # Y to X
-        token_in, token_out = token1, token0
-        if token1 == 'USDC':
-            amount_in = 50000.0
-        else:
-            amount_in = 1000.0
+    # Random direction
+    direction = random.choice(['x_to_y', 'y_to_x'])
     
-    return {
-        'token_in': token_in,
-        'token_out': token_out,
-        'amount_in': amount_in,
-        'direction': direction,
-        'description': f"Random {direction} swap: {amount_in:,.2f} {token_in}"
-    }
+    if direction == 'x_to_y':
+        token_in = token0
+        token_out = token1
+        # Random amount between 0.1 and 10 tokens
+        amount_in = random.randint(10000000, 1000000000)  # 0.1 to 10 BTC in satoshis
+    else:
+        token_in = token1
+        token_out = token0
+        # Random amount between 1000 and 100000 USDC
+        amount_in = random.randint(1000000, 100000000000)  # 1 to 100k USDC in cents
+    
+    return token_in, token_out, amount_in
 
 
 def main():
@@ -319,21 +446,22 @@ def main():
     
     st.title("DLMM Real-Time Fuzz Testing & Pool Visualization")
     st.markdown("Watch pool state change in real-time as automatic fuzz tests are applied")
+    st.markdown("**Updated for Task 003: Integration with new quote-engine infrastructure**")
     
     # Check API connection
     try:
-        health_response = requests.get("http://localhost:8000/health", timeout=5)
+        health_response = requests.get(f"{QUOTE_ENGINE_BASE_URL}/health", timeout=5)
         if health_response.status_code != 200:
-            st.error("❌ API server is not responding properly. Please ensure the API server is running.")
+            st.error("❌ Quote engine API is not responding properly. Please ensure the quote-engine is running.")
             st.stop()
     except Exception as e:
-        st.error("❌ Cannot connect to API server. Please start the API server with: `python api_server.py`")
+        st.error("❌ Cannot connect to quote-engine API. Please start the quote-engine with: `cd quote-engine && python main.py`")
         st.stop()
     
     # Get available pools from API
     available_pools = get_available_pools_from_api()
     if not available_pools:
-        st.error("❌ No pools found via API. Please ensure the API server is running and has data.")
+        st.error("❌ No pools found via API. Please ensure the quote-engine is running and has data.")
         st.stop()
     
     # Initialize session state
@@ -358,13 +486,19 @@ def main():
     
     # Pool selection for fuzz testing
     pool_options = [f"{pool['pool_id']} ({pool['token0']}/{pool['token1']})" for pool in available_pools]
-    # Default to BTC-USDC-25 if present
+    # Default to BTC-USDC-25 if present, otherwise first pool
     default_pool_id = "BTC-USDC-25"
     default_index = 0
     for i, pool in enumerate(available_pools):
         if pool['pool_id'] == default_pool_id:
             default_index = i
             break
+    
+    # Show all available pools
+    st.write("**Available Pools:**")
+    for pool in available_pools:
+        st.write(f"- {pool['pool_id']} ({pool['token0']}/{pool['token1']}) - Active Bin: {pool['active_bin']}")
+    
     selected_pool_option = st.selectbox(
         "Select Pool for Fuzz Testing",
         pool_options,
@@ -410,209 +544,260 @@ def main():
             if st.session_state.fuzz_running:
                 st.success("🟢 **Real-Time Monitoring Active** - Pool state updating every 5 seconds")
                 
-                # Auto-refresh logic using Streamlit's built-in mechanism
+                # Auto-refresh logic
                 current_time = time.time()
-                time_since_update = current_time - st.session_state.last_update
-                
-                # Debug info
-                st.info(f"⏱️ **Debug Info:** Time since last update: {time_since_update:.1f}s | Update counter: {st.session_state.update_counter}")
-                
-                # Auto-refresh the page every 5 seconds when monitoring is active
-                if st.session_state.auto_refresh:
-                    st.markdown("""
-                    <script>
-                    // Auto-refresh every 5 seconds when monitoring is active
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 5000);
-                    </script>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("⏸️ **Real-Time Monitoring Paused** - Click 'Start Monitoring' to begin")
+                if current_time - st.session_state.last_update > 5:  # Update every 5 seconds
+                    st.session_state.last_update = current_time
+                    st.session_state.update_counter += 1
+                    
+                    # Generate random fuzz swap
+                    token_in, token_out, amount_in = generate_random_fuzz_swap(selected_pool)
+                    if token_in and token_out and amount_in:
+                        quote_data = get_quoted_state_from_api(token_in, token_out, amount_in)
+                        
+                        if quote_data and quote_data.get('success'):
+                            fuzz_entry = {
+                                'timestamp': datetime.now().strftime('%H:%M:%S'),
+                                'token_in': token_in,
+                                'token_out': token_out,
+                                'amount_in': amount_in,
+                                'amount_out': quote_data.get('amount_out', '0'),
+                                'fee': quote_data.get('fee', '0'),
+                                'route_path': quote_data.get('route_path', []),
+                                'success': True
+                            }
+                        else:
+                            fuzz_entry = {
+                                'timestamp': datetime.now().strftime('%H:%M:%S'),
+                                'token_in': token_in,
+                                'token_out': token_out,
+                                'amount_in': amount_in,
+                                'amount_out': '0',
+                                'fee': '0',
+                                'route_path': [],
+                                'success': False,
+                                'error': quote_data.get('error', 'Unknown error') if quote_data else 'No response'
+                            }
+                        
+                        st.session_state.fuzz_history.append(fuzz_entry)
+                        
+                        # Keep only last 20 entries
+                        if len(st.session_state.fuzz_history) > 20:
+                            st.session_state.fuzz_history = st.session_state.fuzz_history[-20:]
             
-            # Display current pool state
+            # Display fuzz history
+            if st.session_state.fuzz_history:
+                st.subheader("📊 Fuzz Testing History")
+                
+                # Convert to DataFrame for better display
+                df = pd.DataFrame(st.session_state.fuzz_history)
+                
+                # Create formatted display
+                display_data = []
+                for _, row in df.iterrows():
+                    display_data.append({
+                        'Time': row['timestamp'],
+                        'Swap': f"{format_amount(row['amount_in'], row['token_in'])} → {format_amount(row['amount_out'], row['token_out'])}",
+                        'Route': ' → '.join(row['route_path']),
+                        'Fee': format_amount(row['fee'], row['token_out']),
+                        'Status': '✅' if row['success'] else '❌'
+                    })
+                
+                display_df = pd.DataFrame(display_data)
+                st.dataframe(display_df, use_container_width=True)
+            
+            # Pool Visualization Section
             st.markdown("---")
-            st.subheader(f"📊 Real-Time Pool State: {selected_pool_id}")
+            st.subheader("📈 Pool State Visualization")
             
-            # Get current pool data
-            pool_data = get_pool_data_from_api(selected_pool_id)
+            # Show all pools visualization
+            st.write("**All Available Pools:**")
             
-            # Check if data has changed
-            data_changed = False
-            if pool_data and st.session_state.last_pool_data:
-                if pool_data.get('active_bin_id') != st.session_state.last_pool_data.get('active_bin_id'):
-                    data_changed = True
-                    st.success(f"🔄 **Data Changed!** Active bin moved from {st.session_state.last_pool_data.get('active_bin_id')} to {pool_data.get('active_bin_id')}")
+            # Create tabs for each pool
+            pool_tabs = st.tabs([pool['pool_id'] for pool in available_pools])
             
-            st.session_state.last_pool_data = pool_data
+            for i, (pool, tab) in enumerate(zip(available_pools, pool_tabs)):
+                with tab:
+                    pool_id = pool['pool_id']
+                    current_bins = get_bin_data_from_redis(pool_id, bin_range=20)
+                    
+                    if current_bins:
+                        # Create current state visualization
+                        current_fig = create_tvl_histogram(
+                            current_bins,
+                            f"Pool State - {pool_id}",
+                            pool['token0'],
+                            pool['token1']
+                        )
+                        
+                        st.plotly_chart(current_fig, use_container_width=True)
+                        
+                        # Show pool stats
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Active Bin", pool['active_bin'])
+                        with col2:
+                            st.metric("Bin Step", f"{pool['bin_step']*100:.2f}%")
+                        with col3:
+                            st.metric("Protocol Fee", f"{pool['x_protocol_fee']} bps")
+                        with col4:
+                            st.metric("Provider Fee", f"{pool['x_provider_fee']} bps")
+                    else:
+                        st.error(f"❌ No bin data available for {pool_id}")
             
-            # Sidebar controls for visualization
-            st.sidebar.header("Visualization Controls")
+            # Selected pool detailed view
+            st.markdown("---")
+            st.subheader(f"🔍 Detailed View - {selected_pool_id}")
             
-            # Bin range input
-            bin_range = st.sidebar.number_input(
-                "Bin Range to Display",
-                min_value=10,
-                max_value=500,
-                value=200,
-                step=10,
-                help="Number of bins to show on each side of the active bin"
-            )
-            
-            # Get current state
-            current_bins = get_bin_data_from_api(selected_pool_id, bin_range)
+            # Get current bin data for selected pool
+            current_bins = get_bin_data_from_redis(selected_pool_id, bin_range=20)
             
             if current_bins:
-                # Calculate total TVL
-                total_x = sum(bin['x_amount'] for bin in current_bins)
-                total_y = sum(bin['y_amount'] for bin in current_bins)
+                # Create current state visualization
+                current_fig = create_tvl_histogram(
+                    current_bins,
+                    f"Current Pool State - {selected_pool_id}",
+                    selected_pool['token0'],
+                    selected_pool['token1']
+                )
                 
-                # Calculate total TVL in USD
-                active_bin = next((bin for bin in current_bins if bin['is_active']), None)
-                if active_bin:
-                    total_tvl_usd = (total_x * active_bin['price']) + total_y
-                else:
-                    total_tvl_usd = 0
+                st.plotly_chart(current_fig, use_container_width=True)
                 
-                # Stats bar across the top
-                col1, col2, col3, col4 = st.columns(4)
+                # Manual quote testing
+                st.subheader("🔍 Manual Quote Testing")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                # Get all available tokens from all pools
+                all_tokens = set()
+                for pool in available_pools:
+                    all_tokens.add(pool['token0'])
+                    all_tokens.add(pool['token1'])
+                all_tokens = sorted(list(all_tokens))  # Sort for consistent order
                 
                 with col1:
-                    st.metric("Total TVL", f"${total_tvl_usd:,.0f}")
+                    token_in = st.selectbox(
+                        "Input Token",
+                        all_tokens,
+                        key="manual_token_in"
+                    )
                 
                 with col2:
-                    st.metric(f"Total {selected_pool['token0']}", f"{total_x:.2f}")
+                    token_out = st.selectbox(
+                        "Output Token",
+                        all_tokens,
+                        index=1 if token_in == all_tokens[0] else 0,
+                        key="manual_token_out"
+                    )
                 
                 with col3:
-                    st.metric(f"Total {selected_pool['token1']}", f"{total_y:,.0f}")
+                    # Determine appropriate amount range based on token
+                    if token_in == "BTC":
+                        amount_in = st.number_input(
+                            "Amount In (BTC)",
+                            min_value=0.001,
+                            max_value=100.0,
+                            value=1.0,
+                            step=0.1,
+                            key="manual_amount_in"
+                        )
+                        amount_in_atomic = int(amount_in * 100000000)  # Convert to satoshis
+                    elif token_in == "ETH":
+                        amount_in = st.number_input(
+                            "Amount In (ETH)",
+                            min_value=0.001,
+                            max_value=100.0,
+                            value=1.0,
+                            step=0.1,
+                            key="manual_amount_in"
+                        )
+                        amount_in_atomic = int(amount_in * 1000000000000000000)  # Convert to wei
+                    elif token_in == "SOL":
+                        amount_in = st.number_input(
+                            "Amount In (SOL)",
+                            min_value=0.001,
+                            max_value=1000.0,
+                            value=10.0,
+                            step=1.0,
+                            key="manual_amount_in"
+                        )
+                        amount_in_atomic = int(amount_in * 1000000000)  # Convert to lamports
+                    else:  # USDC
+                        amount_in = st.number_input(
+                            "Amount In (USDC)",
+                            min_value=1.0,
+                            max_value=1000000.0,
+                            value=1000.0,
+                            step=100.0,
+                            key="manual_amount_in"
+                        )
+                        amount_in_atomic = int(amount_in * 1000000)  # Convert to cents
                 
-                with col4:
-                    if active_bin:
-                        st.metric("Active Bin Price", f"${active_bin['price']:,.2f}")
-                    else:
-                        st.metric("Active Bin Price", "N/A")
-                
-                st.markdown("---")
-                
-                # Create the histogram with auto-refresh container
-                st.subheader("Current Pool Liquidity Distribution")
-                st.markdown(f"*Note: Chart shows TVL in USD with {selected_pool['token0']}/USD price on X-axis. Updates every 5 seconds during fuzz testing.*")
-                
-                # Use a container for the chart that can be updated
-                chart_container = st.empty()
-                
-                current_fig = create_tvl_histogram(
-                    current_bins, 
-                    f"Real-Time Pool Liquidity - {selected_pool_id} (Update #{st.session_state.update_counter})", 
-                    token0=selected_pool['token0'],
-                    token1=selected_pool['token1'],
-                    bin_step=pool_data.get('bin_step', 25) if pool_data else 25
-                )
-                chart_container.plotly_chart(current_fig, use_container_width=True)
-                
-                # Show data freshness info
-                if pool_data:
-                    st.info(f"📅 **Pool Active Bin:** {pool_data.get('active_bin_id', 'Unknown')} | **Price:** ${pool_data.get('active_bin_price', 0):,.2f}")
-            else:
-                st.error(f"No bin data found for pool {selected_pool_id}")
-        else:
-            st.error("Selected pool not found")
-    else:
-        st.info("Please select a pool to begin fuzz testing")
-    
-    # Manual Quote Engine Section (for comparison)
-    st.markdown("---")
-    st.subheader("🚀 Manual Quote Engine (for comparison)")
-    
-    # Quote Engine Interface
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        token_in = st.selectbox(
-            "Token In",
-            ["BTC", "ETH", "USDC", "SOL"],
-            key="token_in_select"
-        )
-    
-    with col2:
-        token_out = st.selectbox(
-            "Token Out", 
-            ["BTC", "ETH", "USDC", "SOL"],
-            key="token_out_select"
-        )
-    
-    with col3:
-        amount_in = st.number_input(
-            "Amount In",
-            min_value=0.01,
-            value=1.0,
-            step=0.01,
-            key="amount_in_input"
-        )
-    
-    # Get Quote Button
-    if st.button("Get Manual Quote", key="get_quote_btn"):
-        if token_in == token_out:
-            st.error("Token In and Token Out must be different!")
-        else:
-            quote_data = get_quoted_state_from_api(token_in, token_out, amount_in)
-            if quote_data:
-                st.session_state.last_quote = quote_data
-                st.rerun()
-    
-    # Display Quote Results
-    if 'last_quote' in st.session_state and st.session_state.last_quote:
-        quote = st.session_state.last_quote
-        
-        if quote.get('success'):
-            st.success("✅ Manual Quote Retrieved Successfully!")
-            
-            # Quote details in columns
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric(
-                    "Amount Out",
-                    f"{quote.get('amount_out', 0):.6f} {token_out}",
-                    help="Amount of output tokens you'll receive"
-                )
-            
-            with col2:
-                effective_price = quote.get('amount_out', 0) / quote.get('amount_in', 1) if quote.get('amount_in', 0) > 0 else 0
-                st.metric(
-                    "Effective Price",
-                    f"${effective_price:.2f}",
-                    help="Price per input token"
-                )
-            
-            with col3:
-                st.metric(
-                    "Price Impact",
-                    f"{quote.get('price_impact', 0):.4f}%",
-                    help="Price impact of this trade"
-                )
-            
-            with col4:
-                st.metric(
-                    "Route Type",
-                    quote.get('route_type', 'unknown'),
-                    help="Type of routing used"
-                )
-            
-            # Show route steps
-            if quote.get('steps'):
-                st.subheader("Manual Quote Route Steps")
-                for i, step in enumerate(quote['steps']):
-                    with st.expander(f"Step {i+1}: {step.get('pool_id', '')} (Bin {step.get('bin_id', '')})"):
-                        col1, col2, col3 = st.columns(3)
+                if st.button("Get Quote", key="manual_quote_btn"):
+                    quote_data = get_quoted_state_from_api(token_in, token_out, amount_in_atomic)
+                    
+                    if quote_data and quote_data.get('success'):
+                        st.success("✅ Quote Generated Successfully!")
+                        
+                        # Display quote details
+                        col1, col2, col3, col4 = st.columns(4)
+                        
                         with col1:
-                            st.write(f"**Input:** {step.get('amount_in', 0):.6f} {step.get('token_in', '')}")
+                            st.metric(
+                                "Amount Out",
+                                format_amount(quote_data['amount_out'], token_out)
+                            )
+                        
                         with col2:
-                            st.write(f"**Output:** {step.get('amount_out', 0):.6f} {step.get('token_out', '')}")
+                            st.metric(
+                                "Fee",
+                                format_amount(quote_data['fee'], token_out)
+                            )
+                        
                         with col3:
-                            st.write(f"**Price:** ${step.get('price', 0):.2f}")
+                            st.metric(
+                                "Route",
+                                " → ".join(quote_data['route_path'])
+                            )
+                        
+                        with col4:
+                            st.metric(
+                                "Price Impact",
+                                f"{quote_data.get('price_impact_bps', 0)} bps"
+                            )
+                        
+                        # Show execution path
+                        st.subheader("🔧 Execution Path")
+                        execution_path = quote_data.get('execution_path', [])
+                        for i, step in enumerate(execution_path):
+                            st.write(f"**Step {i+1}:** {step.get('function_name', 'Unknown')} on {step.get('pool_trait', 'Unknown')} (Bin {step.get('bin_id', 'Unknown')})")
+                        
+                        # Calculate and show quoted state
+                        direction = 'x_to_y' if token_in == selected_pool['token0'] else 'y_to_x'
+                        quoted_bins, used_bin_ids, amount_out = calculate_quoted_bin_state(
+                            current_bins, quote_data, direction
+                        )
+                        
+                        if quoted_bins:
+                            quoted_fig = create_tvl_histogram(
+                                quoted_bins,
+                                f"Quoted Pool State - {selected_pool_id}",
+                                selected_pool['token0'],
+                                selected_pool['token1'],
+                                used_bin_ids
+                            )
+                            
+                            st.plotly_chart(quoted_fig, use_container_width=True)
+                    else:
+                        st.error("❌ Failed to generate quote")
+                        if quote_data:
+                            st.error(f"Error: {quote_data.get('error', 'Unknown error')}")
+            else:
+                st.error("❌ No bin data available for visualization")
         else:
-            st.error(f"❌ Manual Quote Failed: {quote.get('error', 'Unknown error')}")
+            st.error("❌ Selected pool not found")
+    else:
+        st.error("❌ No pools available")
 
 
 if __name__ == "__main__":

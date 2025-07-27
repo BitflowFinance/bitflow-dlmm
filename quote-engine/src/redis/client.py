@@ -102,15 +102,20 @@ class RedisClient:
         try:
             pattern = "pool:*"
             keys = self.client.keys(pattern)
-            pool_ids = []
+            pool_ids = set()  # Use set to avoid duplicates
             for key in keys:
                 if isinstance(key, bytes):
                     key_str = key.decode('utf-8')
                 else:
                     key_str = str(key)
-                pool_id = key_str.split(':')[1]
-                pool_ids.append(pool_id)
-            return pool_ids
+                
+                # Only include keys that match the pool pattern (not bin price ZSETs)
+                parts = key_str.split(':')
+                if len(parts) == 2 and not key_str.endswith(':bins'):
+                    pool_id = parts[1]
+                    pool_ids.add(pool_id)
+            
+            return list(pool_ids)
         except Exception as e:
             logger.error(f"Error getting pool IDs: {e}")
             return []

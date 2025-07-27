@@ -88,7 +88,7 @@ def populate_pool_data(redis_client):
 
 
 def populate_bin_data(redis_client):
-    """Populate bin data in Redis"""
+    """Populate bin data in Redis with proper DLMM bin distribution"""
     # Define pool configurations with realistic market prices and correct decimal places
     pool_configs = [
         {
@@ -138,14 +138,23 @@ def populate_bin_data(redis_client):
             bin_id = active_bin + i
             price = base_price * ((1 + bin_step) ** i)
             
-            # Calculate reserves (simplified)
-            if i == 0:  # Active bin
+            # DLMM Bin Distribution Rules:
+            # - Active bin (i=0): Contains both X and Y tokens
+            # - Bins to the right (i>0): Higher prices, contain only X tokens (BTC/ETH/SOL)
+            # - Bins to the left (i<0): Lower prices, contain only Y tokens (USDC)
+            
+            if i == 0:  # Active bin - contains both tokens
                 reserve_x = base_reserve_x
                 reserve_y = base_reserve_y
-            else:
+            elif i > 0:  # Right side - higher prices, only X tokens
                 # Decreasing liquidity as we move away from active bin
                 liquidity_factor = max(0.1, 1.0 - abs(i) * 0.02)
                 reserve_x = int(base_reserve_x * liquidity_factor)
+                reserve_y = 0  # No Y tokens in higher-priced bins
+            else:  # Left side - lower prices, only Y tokens
+                # Decreasing liquidity as we move away from active bin
+                liquidity_factor = max(0.1, 1.0 - abs(i) * 0.02)
+                reserve_x = 0  # No X tokens in lower-priced bins
                 reserve_y = int(base_reserve_y * liquidity_factor)
             
             # Calculate liquidity (rebased in terms of Y)
@@ -167,7 +176,7 @@ def populate_bin_data(redis_client):
             zset_key = RedisSchema.get_bin_price_zset_key(pool_id)
             redis_client.client.zadd(zset_key, {str(bin_id): price})
         
-        logger.info(f"Added bins for pool: {pool_id}")
+        logger.info(f"Added bins for pool: {pool_id} with proper DLMM distribution")
 
 
 def populate_token_graph(redis_client):
