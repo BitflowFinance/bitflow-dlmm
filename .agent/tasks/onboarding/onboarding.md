@@ -52,7 +52,25 @@ When working on a new task, you MUST:
 - Task history and decisions are preserved
 - No context is lost between sessions
 
-## �� Core Purpose
+## 🚨 Critical Rules (NEVER BREAK)
+
+### Rule 1: Never Modify Clarity Smart Contracts
+**NEVER modify any files in the `clarity/` folder under any circumstances.** This is the most critical rule that can never be broken.
+
+### Rule 2: Always Check Current Directory
+**ALWAYS check your current working directory before running any commands.** Use `pwd` or similar to verify you're in the correct directory for the task at hand.
+
+### Rule 3: Use Virtual Environment
+**ALWAYS use the `.venv` virtual environment instead of installing packages globally.** This prevents conflicts and keeps the project isolated.
+
+### Rule 4: Task Context Preservation
+**ALWAYS update the task onboarding file with progress and decisions.** This ensures context is preserved if tasks need to be handed over.
+
+### Rule 5: No Rule Removal
+**Rules can never be removed except by the user.** New rules can be added as needed, but existing rules are permanent.
+
+
+##  Core Purpose
 
 This is a **high-performance Python-based Distributed Liquidity Market Maker (DLMM) Quote Engine** that simulates DeFi liquidity pools with:
 - **Dynamic pricing** based on bin-based liquidity distribution
@@ -64,15 +82,46 @@ This is a **high-performance Python-based Distributed Liquidity Market Maker (DL
 
 ## 🏗️ Architecture Overview
 
-### Dual Implementation
-The project contains **two implementations**:
+### Current Project Structure
+The project now contains **three main implementations**:
 
-1. **Python Simulator** (`dlmm-simulator/`) - For testing, development, and API services
-2. **Clarity Smart Contracts** (`clarity/`) - For blockchain deployment on Stacks
+1. **Python Simulator** (`dlmm-simulator/`) - Legacy simulator (preserved)
+2. **Quote Engine** (`quote-engine/`) - NEW: Grok's modular implementation
+3. **Clarity Smart Contracts** (`clarity/`) - For blockchain deployment on Stacks
+
+### Project Directory Structure
+```
+bitflow-dlmm/
+├── .agent/                          # Agent task management
+├── clarity/                         # Smart contracts (never touch)
+├── dlmm-simulator/                  # Legacy simulator (preserved)
+│   ├── src/
+│   │   ├── quote_engine.py          # Optimized quote engine
+│   │   ├── quote_engine_legacy.py   # Original implementation
+│   │   ├── pool.py                  # Pool and bin data structures
+│   │   ├── routing.py               # Single pool router
+│   │   ├── math.py                  # DLMM mathematical functions
+│   │   └── redis/                   # Redis integration
+│   ├── api_server.py                # FastAPI REST API
+│   ├── app.py                       # Streamlit web interface
+│   └── docs/                        # Comprehensive documentation
+├── quote-engine/                    # NEW: Grok's implementation
+│   ├── src/
+│   │   ├── core/                    # Core functions (graph, quote, data)
+│   │   ├── api/                     # FastAPI models and routes
+│   │   ├── redis/                   # Redis client and schemas
+│   │   └── utils/                   # Config and trait mappings
+│   ├── infrastructure/              # Local Redis setup
+│   ├── tests/                       # Test suite
+│   └── main.py                      # FastAPI app entry point
+├── .venv/                           # Virtual environment (project root)
+├── requirements.txt                 # Root requirements (project root)
+└── README.md                        # Main repo README
+```
 
 ### Key Components
 
-#### Python Simulator
+#### Legacy Python Simulator (dlmm-simulator/)
 ```
 dlmm-simulator/
 ├── src/
@@ -85,6 +134,30 @@ dlmm-simulator/
 ├── api_server.py                # FastAPI REST API
 ├── app.py                       # Streamlit web interface
 └── docs/                        # Comprehensive documentation
+```
+
+#### New Quote Engine (quote-engine/)
+```
+quote-engine/
+├── src/
+│   ├── core/
+│   │   ├── graph.py             # build_token_graph, enumerate_paths
+│   │   ├── quote.py             # compute_quote, find_best_route
+│   │   └── data.py              # pre_fetch_shared_data
+│   ├── api/
+│   │   ├── models.py            # Pydantic models
+│   │   └── routes.py            # FastAPI endpoints
+│   ├── redis/
+│   │   ├── client.py            # Redis connection management
+│   │   └── schemas.py           # Data schemas
+│   └── utils/
+│       ├── traits.py            # Trait mappings
+│       └── config.py            # Configuration management
+├── infrastructure/
+│   └── scripts/
+│       └── populate_test_data.py
+├── tests/
+└── main.py                      # FastAPI app entry point
 ```
 
 #### Clarity Smart Contracts
@@ -193,6 +266,8 @@ clarity/contracts/
 ## 📊 Current System Status
 
 ### ✅ Working Components
+
+#### Legacy Simulator (dlmm-simulator/)
 - **Quote Engine**: Fully optimized with 1.7x performance improvement
 - **Redis Integration**: Working with MockRedisClient fallback
 - **API Server**: Running on port 8000
@@ -200,16 +275,26 @@ clarity/contracts/
 - **Caching**: Path and quote caching operational
 - **Streamlit App**: Running on port 8501
 
+#### New Quote Engine (quote-engine/)
+- **Modular Architecture**: Following Grok's design exactly
+- **Core Functions**: build_token_graph, enumerate_paths, pre_fetch_shared_data, compute_quote, find_best_route
+- **FastAPI App**: Complete implementation with Pydantic models
+- **Redis Integration**: Batch operations with pipelines
+- **Trait Mappings**: Router contract integration ready
+- **Decimal Precision**: All financial calculations using Decimal
+- **NetworkX**: Industry-standard graph library for routing
+
 ### 🔧 Known Issues
 - **Redis Connection**: SSL parameter issue (using fallback)
 - **Streamlit Port Conflicts**: Sometimes port 8501 conflicts
 - **Import Issues**: Some relative imports in Redis integration
 
 ### 📈 Performance Metrics
-- **Quote Response Time**: ~4.5ms (first), ~2.6ms (cached)
+- **Legacy Quote Response Time**: ~4.5ms (first), ~2.6ms (cached)
 - **Supported Pools**: 3 (BTC-USDC-25, BTC-USDC-50, SOL-USDC-25)
 - **Route Types**: Single-bin, Multi-bin, Multi-pool
 - **Cache Hit Rate**: ~60% for repeated requests
+- **New Engine**: Ready for testing with local Redis
 
 ## 🛠️ Development Environment
 
@@ -224,21 +309,26 @@ clarity/contracts/
 # Navigate to project root
 cd /Users/dylanfloyd/Documents/Bitflow/git/bitflow-dlmm
 
-# Activate virtual environment
+# Check current directory (CRITICAL RULE)
+pwd
+
+# Activate virtual environment (from project root)
 source .venv/bin/activate
 
-# Navigate to simulator
-cd dlmm-simulator
-
-# Install dependencies
+# Install dependencies (from project root)
 pip install -r requirements.txt
+
+# For legacy simulator
+cd dlmm-simulator
+python3 api_server.py &  # Port 8000
+streamlit run app.py --server.port 8501  # Port 8501
+
+# For new quote engine
+cd ../quote-engine
+python3 main.py  # Port 8000 (different from legacy)
 
 # Start Redis (optional)
 brew services start redis
-
-# Start services
-python3 api_server.py &  # Port 8000
-streamlit run app.py --server.port 8501  # Port 8501
 ```
 
 ### Key Dependencies
@@ -251,6 +341,8 @@ plotly>=5.17.0
 fastapi>=0.104.0
 uvicorn>=0.24.0
 pydantic>=2.0.0
+redis>=5.0.0
+networkx>=3.0
 requests>=2.31.0
 pytest>=7.0.0
 ```
@@ -372,22 +464,17 @@ curl -s http://localhost:8000/health
 ## 🎯 Current Active Tasks
 
 ### Task 001: Redis Schema Update
-- **Status**: Planning Phase
+- **Status**: ✅ COMPLETE
 - **Location**: `.agent/tasks/001-redis-schema-update/onboarding.md`
 - **Objective**: Update Redis schema to use Hash/ZSET structures instead of JSON
-- **Priority**: High
+- **Result**: Successfully implemented new schema with 6-directional fees and ZSET price indexing
 
-**Key Changes Required:**
-- Pool data: JSON → Redis Hash (HSET/HGET)
-- Bin data: JSON → Redis Hash + ZSET for prices
-- Field mapping: `token_x`→`token0`, `active_bin_id`→`active_bin`, etc.
-- New token graph structure for routing
-
-**Next Steps:**
-1. Review implementation plan in task onboarding
-2. Answer open questions about fee structure and data migration
-3. Begin Phase 1: Schema Updates
-
----
-
-**Onboarding Date**: January 2024 
+### Task 002: Quote Engine Update
+- **Status**: 🚀 IMPLEMENTATION PHASE
+- **Location**: `.agent/tasks/002-quote-engine-update/onboarding.md`
+- **Objective**: Implement new quote engine following Grok's modular design
+- **Progress**: 
+  - ✅ Phase 1 Complete: Directory structure and infrastructure setup
+  - ✅ Phase 2 Complete: Core implementation following Grok's design
+  - 🔄 Phase 3: Production readiness and testing (in progress)
+- **Key Achievement**: Successfully implemented modular quote engine with NetworkX, Decimal precision, and router integration 
