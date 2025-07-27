@@ -1,0 +1,155 @@
+# Redis Schema Specification for DLMM Infrastructure
+
+## Overview
+This schema defines the Redis data structures for the Distributed Liquidity Market Maker (DLMM) system. The schema uses Redis Hash and ZSET operations for efficient data storage and retrieval.
+
+## Schema Structure
+
+### 1. Pool Data
+**Key Pattern**: `pool:{pool_id}`  
+**Type**: Redis Hash (HSET/HGET/HGETALL)
+
+**Fields**:
+- `token0`: String (from PoolCreated)
+- `token1`: String (from PoolCreated)  
+- `bin_step`: Float (from PoolCreated) - Bin step in basis points
+- `active_bin`: Integer (from PoolCreated or Swap) - Currently active bin ID
+- `active`: Boolean (from PoolActivated/PoolDeactivated) - Pool status
+- `x_protocol_fee`: Integer (from PoolCreated) - Protocol fee for X→Y swaps (basis points)
+- `x_provider_fee`: Integer (from PoolCreated) - Provider fee for X→Y swaps (basis points)
+- `x_variable_fee`: Integer (from PoolCreated) - Variable fee for X→Y swaps (basis points)
+- `y_protocol_fee`: Integer (from PoolCreated) - Protocol fee for Y→X swaps (basis points)
+- `y_provider_fee`: Integer (from PoolCreated) - Provider fee for Y→X swaps (basis points)
+- `y_variable_fee`: Integer (from PoolCreated) - Variable fee for Y→X swaps (basis points)
+
+**Default Fee Values**:
+- Protocol fees: 4 basis points
+- Provider fees: 6 basis points  
+- Variable fees: 0 basis points
+
+### 2. Bin Price Index
+**Key Pattern**: `pool:{pool_id}:bins`  
+**Type**: Redis ZSET (ZADD/ZRANGE/ZREVRANGE/ZSCORE)
+
+**Structure**:
+- **Member**: `bin_id` (Integer) - Bin identifier
+- **Score**: `price` (Float) - Price in Y/X format (e.g., 120,000 USDC per 1 BTC)
+
+**Purpose**: Efficient price-based queries and range searches
+
+### 3. Bin Reserves
+**Key Pattern**: `bin:{pool_id}:{bin_id}`  
+**Type**: Redis Hash (HINCRBY/HGETALL)
+
+**Fields**:
+- `reserve_x`: Integer (from AddLiquidity/RemoveLiquidity/Swap) - X token reserves
+- `reserve_y`: Integer (from AddLiquidity/RemoveLiquidity/Swap) - Y token reserves
+- `liquidity`: Integer (from AddLiquidity/RemoveLiquidity) - Total liquidity (rebased in Y)
+
+**Liquidity Calculation**: `liquidity = Y + X * price` (rebased in terms of Y token)
+
+### 4. Token Graph
+**Key Pattern**: `token_graph:{version}`  
+**Type**: Redis Hash (HSET/HGET)
+
+**Structure**:
+- **Key**: `tokenA->tokenB` (String) - Token pair identifier
+- **Value**: List of pool IDs (Array of Strings) - Available pools for this pair
+
+**Example**: `{"BTC->USDC": ["BTC-USDC-25", "BTC-USDC-50"]}`
+
+**Version**: Currently using `token_graph:1` for schema evolution support
+
+## Redis Operations Used
+
+### Hash Operations
+- `HSET` - Set individual hash fields
+- `HGET` - Get individual hash fields  
+- `HGETALL` - Get all hash fields
+- `HINCRBY` - Increment hash field values (for reserve updates)
+
+### Sorted Set Operations
+- `ZADD` - Add members with scores
+- `ZRANGE` - Get members by rank
+- `ZREVRANGE` - Get members by reverse rank
+- `ZSCORE` - Get score for specific member
+- `ZRANGEBYSCORE` - Get members within score range
+
+### Key Operations
+- `KEYS` - Pattern matching for finding pools and bins
+
+## Example Data
+
+### Pool Example
+```
+Key: pool:BTC-USDC-25
+Hash Fields:
+  token0: "BTC"
+  token1: "USDC"
+  bin_step: 0.0025
+  active_bin: 500
+  active: true
+  x_protocol_fee: 4
+  x_provider_fee: 6
+  x_variable_fee: 0
+  y_protocol_fee: 4
+  y_provider_fee: 6
+  y_variable_fee: 0
+```
+
+### Bin Price Index Example
+```
+Key: pool:BTC-USDC-25:bins
+ZSET Members:
+  500: 50000.0  (active bin)
+  501: 50125.0
+  502: 50250.0
+  499: 49875.0
+  498: 49750.0
+```
+
+### Bin Reserves Example
+```
+Key: bin:BTC-USDC-25:500
+Hash Fields:
+  reserve_x: 1000
+  reserve_y: 50000000
+  liquidity: 100000000
+```
+
+### Token Graph Example
+```
+Key: token_graph:1
+Hash Fields:
+  BTC->USDC: ["BTC-USDC-25", "BTC-USDC-50"]
+  SOL->USDC: ["SOL-USDC-25"]
+```
+
+## Important Notes
+
+1. **Price Format**: All prices are stored as Y/X (e.g., USDC per BTC)
+2. **Liquidity Calculation**: Liquidity is rebased in terms of the Y token
+3. **Fee Structure**: 6 separate fee fields allow for directional fee management
+4. **Read-Only Quote Engine**: The quote engine only reads from Redis, never writes
+5. **Testing Data**: All data population functions are for testing only
+6. **Versioning**: Token graph versioning allows for future schema evolution
+
+## Migration from Previous Schema
+
+**Field Renames**:
+- `token_x` → `token0`
+- `token_y` → `token1`  
+- `active_bin_id` → `active_bin`
+- `x_amount` → `reserve_x`
+- `y_amount` → `reserve_y`
+- `total_liquidity` → `liquidity`
+
+**Removed Fields**:
+- `price` (moved to ZSET)
+- `is_active` (derived from `bin_id == active_bin`)
+- `status` (replaced with `active` boolean)
+- `total_tvl`, `created_at`, `last_updated`
+
+**Storage Changes**:
+- JSON objects → Redis Hash/ZSET structures
+- `get()`/`set()` → `hgetall()`/`hset()`/`zadd()` operations 
