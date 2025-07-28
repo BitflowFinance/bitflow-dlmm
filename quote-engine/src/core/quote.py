@@ -155,20 +155,32 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
             
             if swap_for_y:
                 # X → Y swap
-                max_in = reserve_x
+                # The limiting factor is how much Y (output) is available
+                # Calculate how much X can be swapped for the available Y
+                available_y = reserve_y
+                max_x_for_available_y = available_y / price if price > 0 else Decimal('0')
+                # For X→Y swaps, we don't need X tokens in the bin - user provides X tokens
+                # Only constrain by remaining input and max X for available Y
+                max_in = min(remaining, max_x_for_available_y)
                 in_effective = min(remaining, max_in)
                 out_this = in_effective * price
                 amount_key = 'x_amount'
                 function_name = 'swap-x-for-y'
-                logger.info(f"X→Y: max_in={max_in}, in_effective={in_effective}, out_this={out_this}")
+                logger.info(f"X→Y: available_y={available_y}, max_x_for_available_y={max_x_for_available_y}, max_in={max_in}, in_effective={in_effective}, out_this={out_this}")
             else:
                 # Y → X swap
-                max_in = reserve_y
+                # The limiting factor is how much X (output) is available
+                # Calculate how much Y can be swapped for the available X
+                available_x = reserve_x
+                max_y_for_available_x = available_x * price
+                # For Y→X swaps, we don't need Y tokens in the bin - user provides Y tokens
+                # Only constrain by remaining input and max Y for available X
+                max_in = min(remaining, max_y_for_available_x)
                 in_effective = min(remaining, max_in)
                 out_this = in_effective / price
                 amount_key = 'y_amount'
                 function_name = 'swap-y-for-x'
-                logger.info(f"Y→X: max_in={max_in}, in_effective={in_effective}, out_this={out_this}")
+                logger.info(f"Y→X: available_x={available_x}, max_y_for_available_x={max_y_for_available_x}, max_in={max_in}, in_effective={in_effective}, out_this={out_this}")
             
             if in_effective > 0:
                 # Calculate partial amount (including fee adjustment)

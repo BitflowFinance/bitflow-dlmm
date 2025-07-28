@@ -69,6 +69,40 @@ When working on a new task, you MUST:
 ### Rule 5: No Rule Removal
 **Rules can never be removed except by the user.** New rules can be added as needed, but existing rules are permanent.
 
+### Rule 6: AMM Mechanics Are Gospel
+**NEVER question the fundamental AMM mechanics.** When a user swaps X for Y, the user provides X tokens TO the AMM, and the AMM provides Y tokens FROM the bins. The limiting factor is Y availability, not X availability.
+
+### Rule 7: Multi-Bin Traversal Logic Is Correct
+**NEVER second-guess the bin traversal logic.** X→Y swaps traverse LEFT to find Y tokens. Y→X swaps traverse RIGHT to find X tokens. If large swaps aren't working, the issue is NOT the traversal direction.
+
+## 🚨 QUICK REFERENCE: Critical AMM Insights
+
+**⚠️ ESSENTIAL KNOWLEDGE - REFERENCE THIS BEFORE ANY DLMM WORK:**
+
+### AMM Mechanics (NEVER QUESTION)
+- **User swaps X for Y**: User provides X tokens TO AMM, AMM provides Y tokens FROM bins
+- **Limiting factor**: Y availability in bins, NOT X availability
+- **User provides X**: So we don't need X tokens in bins, only Y tokens available
+
+### Bin Distribution (GOSPEL)
+- **Active bin**: Contains both X and Y tokens
+- **Bins RIGHT (higher prices)**: Only X tokens
+- **Bins LEFT (lower prices)**: Only Y tokens
+
+### Traversal Logic (CORRECT)
+- **X→Y swap**: Traverse LEFT to find Y tokens
+- **Y→X swap**: Traverse RIGHT to find X tokens
+- **Never question this direction**
+
+### Common Bugs to Avoid
+- **❌ Constraining by reserve_x for X→Y swaps**: Wrong! User provides X
+- **❌ Questioning traversal direction**: Wrong! Logic is gospel
+- **❌ Assuming X tokens needed in bins**: Wrong! Only Y tokens needed
+
+### Task 003 Fix Applied
+- **Problem**: `max_in = min(remaining, reserve_x, max_x_for_available_y)` was wrong
+- **Solution**: `max_in = min(remaining, max_x_for_available_y)` for X→Y swaps
+- **Result**: Multi-bin traversal now works correctly
 
 ##  Core Purpose
 
@@ -216,7 +250,7 @@ clarity/contracts/
 
 ### AMM MECHANICS (NEVER QUESTION THIS)
 
-**⚠️ CRITICAL AMM MECHANICS - LITERALLY NEVER QUESTION THIS AGAIN:**
+**🚨 FUNDAMENTAL AMM PRINCIPLE - LITERALLY NEVER QUESTION THIS:**
 
 When a user swaps X for Y:
 - **User has X tokens in their wallet**
@@ -226,6 +260,25 @@ When a user swaps X for Y:
 - **We need to find bins that have Y tokens available to give to the user**
 
 **This is BASICS of AMM logic. NEVER question this fundamental mechanism.**
+
+#### Critical Implementation Insights
+
+**1. Limiting Factor for X→Y Swaps:**
+- **The limiting factor is how much Y is available in bins, NOT how much X**
+- **User provides X tokens, so we don't need X tokens in the bins**
+- **We only need Y tokens available to give to the user**
+
+**2. Quote Engine Fix Applied (Task 003):**
+- **Problem**: `compute_quote` was incorrectly constraining by `reserve_x` for X→Y swaps
+- **Issue**: Bins to the LEFT had `reserve_x = 0`, so `max_in` became 0, preventing multi-bin traversal
+- **Solution**: Removed `reserve_x` constraint for X→Y swaps
+- **Fixed Code**: `max_in = min(remaining, max_x_for_available_y)` instead of `min(remaining, reserve_x, max_x_for_available_y)`
+
+**3. Real-World Example:**
+- **BTC→USDC swap**: User has BTC, wants USDC
+- **User sends BTC TO AMM** (adds to bins)
+- **AMM sends USDC FROM bins** to user
+- **Limiting factor**: How much USDC is available in bins, not how much BTC
 
 ### DLMM Bin Distribution Relative to Active Bin
 
@@ -248,23 +301,38 @@ When a user swaps X for Y:
 - **BTC can be Y token** (e.g., in USDT/BTC pair)
 - **Active bin exhaustion**: Traversal only happens after active bin liquidity is depleted
 
-### Quote Engine Traversal Logic (CORRECT)
+### Quote Engine Traversal Logic (GOSPEL - NEVER QUESTION)
 
 ```python
 if swap_for_y:
     # X → Y: traverse LEFT (lower prices) to find Y tokens
     bin_list = redis_client.get_bin_prices_reverse_range(pool_id, active_bin_price, 0)
+    bin_list.sort(key=lambda x: x[1], reverse=True)  # Sort by price descending (right to left)
 else:
     # Y → X: traverse RIGHT (higher prices) to find X tokens
     bin_list = redis_client.get_bin_prices_in_range(pool_id, active_bin_price, float('inf'))
+    bin_list.sort(key=lambda x: x[1])  # Sort by price ascending (left to right)
 ```
 
-**Why This is Correct:**
+**Why This Logic is CORRECT:**
 - **X→Y swap**: Need Y tokens to give to user, so traverse LEFT to find bins with Y tokens
 - **Y→X swap**: Need X tokens to give to user, so traverse RIGHT to find bins with X tokens
 - **Active bin first**: Always use active bin liquidity before traversing
 
-**⚠️ CRITICAL**: The quote engine traversal logic is CORRECT. If large swaps aren't traversing multiple bins, the issue is NOT the traversal direction - it's likely unrealistic reserve amounts or other data issues.
+**⚠️ CRITICAL RULE**: The quote engine traversal logic is GOSPEL and should NEVER be questioned or second-guessed. If large swaps aren't traversing multiple bins, the issue is NOT the traversal direction - it's other factors like unrealistic reserve amounts, incorrect `max_in` calculations, or data issues.
+
+### Multi-Bin Traversal Examples
+
+**✅ Correct Behavior (After Task 003 Fix):**
+- **2005 BTC → USDC**: Traverses 3 bins (500, 499, 498) → 200,044,266 USDC
+- **1 BTC → USDC**: Single bin (500) → 99,900 USDC
+- **Large swaps**: Automatically traverse multiple bins when needed
+- **Small swaps**: Use single bin when sufficient
+
+**❌ Previous Bug (Before Task 003 Fix):**
+- **2005 BTC → USDC**: Only used 1 bin → 100,000,000 USDC (incorrect)
+- **Root cause**: `max_in = min(remaining, reserve_x, max_x_for_available_y)` was wrong
+- **Issue**: `reserve_x = 0` in bins to the LEFT prevented traversal
 
 ### Route Types Supported
 

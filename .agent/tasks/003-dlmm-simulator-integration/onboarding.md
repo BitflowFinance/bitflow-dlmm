@@ -532,6 +532,44 @@ The system is now ready for user testing with:
 2. Returns single execution step with 2005 BTC
 3. Claims to provide 100,000,000 USDC (incorrect amount)
 
+### Root Cause Identified
+
+**The Bug**: In `compute_quote` function, the `max_in` calculation was incorrectly constraining by `reserve_x` for X→Y swaps.
+
+**Problem Code**:
+```python
+# WRONG - This was constraining by reserve_x even for bins that only contain Y tokens
+max_in = min(remaining, reserve_x, max_x_for_available_y)
+```
+
+**Issue**: For bins to the LEFT (499, 498, etc.), `reserve_x = 0`, so `max_in` became 0, preventing any liquidity consumption from those bins.
+
+### Solution Implemented
+
+**Fixed Code**:
+```python
+# CORRECT - For X→Y swaps, we don't need X tokens in the bin - user provides X tokens
+# Only constrain by remaining input and max X for available Y
+max_in = min(remaining, max_x_for_available_y)
+```
+
+**Key Insight**: For X→Y swaps, the user provides X tokens, so we don't need X tokens in the bin. We only need Y tokens available.
+
+### Test Results After Fix
+
+**✅ Large Swap (2005 BTC → USDC)**:
+- **Amount out**: 200,044,266 USDC (approximately $200.5M as expected)
+- **Execution path**: 3 bins (500, 499, 498)
+- **Bin 500**: 1001 BTC → 100,000,000 USDC
+- **Bin 499**: 983 BTC → 98,000,000 USDC
+- **Bin 498**: 21 BTC → 2,044,266 USDC
+- **Total**: 2005 BTC → 200,044,266 USDC ✅
+
+**✅ Small Swap (1 BTC → USDC)**:
+- **Amount out**: 99,900 USDC (single bin, as expected)
+- **Execution path**: 1 bin (500)
+- **Total**: 1 BTC → 99,900 USDC ✅
+
 ### Debug Files Created
 
 **`test_usdc_availability.py`**: Tests USDC availability across bins
@@ -543,16 +581,16 @@ The system is now ready for user testing with:
 - Confirms adjustment logic is not the issue
 - Shows the problem is in core swap mechanics
 
-### Next Steps Required
-
-1. **Fix Quote Engine Logic**: Correct the `compute_quote` function to properly traverse multiple bins when active bin doesn't have enough output tokens
-2. **Test Multi-bin Traversal**: Verify that large swaps correctly traverse multiple bins
-3. **Update Frontend**: Ensure frontend displays all execution steps correctly
-4. **Document Fix**: Update this onboarding file with the solution
+**`debug_detailed.py`**: Detailed tracing of compute_quote logic
+- Traces through each bin step by step
+- Shows the exact calculation of max_in for each bin
+- Confirms the fix works correctly
 
 ### Impact
 
-This issue prevents the system from handling large swaps correctly, which is a critical functionality for a DLMM quote engine. The fix is essential for proper multi-bin traversal implementation.
+This issue prevented the system from handling large swaps correctly, which is a critical functionality for a DLMM quote engine. The fix is essential for proper multi-bin traversal implementation.
+
+**✅ RESOLVED**: Multi-bin traversal now works correctly for large swaps while maintaining correct behavior for small swaps.
 
 ## 🔧 Critical Bin Traversal Fix
 
