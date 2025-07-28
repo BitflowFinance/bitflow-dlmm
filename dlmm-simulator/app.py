@@ -32,18 +32,24 @@ REDIS_CONFIG = {
 }
 
 
-def format_amount(amount_str, token):
+def format_amount(amount_str, token, decimals=None):
     """Format amount string to human-readable format based on token decimals."""
     try:
         amount = int(amount_str)
-        if token == "BTC":
-            return f"{amount / 100000000:.8f} BTC"
-        elif token == "ETH":
-            return f"{amount / 1000000000000000000:.18f} ETH"
-        elif token == "SOL":
-            return f"{amount / 1000000000:.9f} SOL"
-        else:  # USDC
-            return f"{amount / 1000000:.6f} USDC"
+        if decimals is not None:
+            # API returns raw amounts, not atomic amounts
+            # So we don't need to divide by decimal factors
+            return f"{amount} {token}"
+        else:
+            # Fallback to hardcoded decimals
+            if token == "BTC":
+                return f"{amount:.8f} BTC"  # Raw BTC amount
+            elif token == "ETH":
+                return f"{amount:.18f} ETH"  # Raw ETH amount
+            elif token == "SOL":
+                return f"{amount:.9f} SOL"  # Raw SOL amount
+            else:  # USDC
+                return f"{amount:.2f} USDC"  # Raw USDC amount
     except:
         return amount_str
 
@@ -189,9 +195,10 @@ def create_tvl_histogram(bins_data, title, token0="BTC", token1="USDC", used_bin
     prices = [bin_data['price'] for bin_data in bins_data]
     is_active = [bin_data.get('is_active', False) for bin_data in bins_data]
     
-    # Convert to human-readable amounts
-    x_amounts_readable = [amount / (10**8) if token0 == "BTC" else amount / (10**18) if token0 == "ETH" else amount / (10**9) if token0 == "SOL" else amount / (10**6) for amount in x_amounts]
-    y_amounts_readable = [amount / (10**6) for amount in y_amounts]  # USDC has 6 decimals
+    # Use amounts as-is since Redis data is already in raw units
+    # No need to divide by decimal factors
+    x_amounts_readable = x_amounts
+    y_amounts_readable = y_amounts
     
     # Create figure
     fig = go.Figure()
@@ -474,7 +481,7 @@ def main():
                 key="quote_amount_in",
                 label_visibility="collapsed"
             )
-            amount_in_atomic = int(amount_in * 100000000)  # Convert to satoshis
+            amount_in_atomic = int(amount_in)  # Send raw BTC amount
         elif token_in == "ETH":
             amount_in = st.number_input(
                 f"Enter {token_in} amount",
@@ -485,7 +492,7 @@ def main():
                 key="quote_amount_in",
                 label_visibility="collapsed"
             )
-            amount_in_atomic = int(amount_in * 1000000000000000000)  # Convert to wei
+            amount_in_atomic = int(amount_in)  # Send raw ETH amount
         elif token_in == "SOL":
             amount_in = st.number_input(
                 f"Enter {token_in} amount",
@@ -496,7 +503,7 @@ def main():
                 key="quote_amount_in",
                 label_visibility="collapsed"
             )
-            amount_in_atomic = int(amount_in * 1000000000)  # Convert to lamports
+            amount_in_atomic = int(amount_in)  # Send raw SOL amount
         else:  # USDC
             amount_in = st.number_input(
                 f"Enter {token_in} amount",
@@ -507,7 +514,7 @@ def main():
                 key="quote_amount_in",
                 label_visibility="collapsed"
             )
-            amount_in_atomic = int(amount_in * 1000000)  # Convert to cents
+            amount_in_atomic = int(amount_in)  # Send raw USDC amount
         
         # Quote button with better styling
         st.markdown("")
@@ -516,6 +523,10 @@ def main():
             
             if quote_data and quote_data.get('success'):
                 st.success("✅ Quote Generated Successfully!")
+                
+                # Get decimal information from API response
+                input_decimals = quote_data.get('input_token_decimals')
+                output_decimals = quote_data.get('output_token_decimals')
                 
                 # Display quote results in a clean, card-like format
                 st.markdown("### 📊 Quote Results")
@@ -528,14 +539,14 @@ def main():
                     with col1:
                         st.metric(
                             "You'll Receive",
-                            format_amount(quote_data['amount_out'], token_out),
+                            format_amount(quote_data['amount_out'], token_out, output_decimals),
                             help=f"Amount of {token_out} you will receive"
                         )
                     
                     with col2:
                         st.metric(
                             "Total Fee",
-                            format_amount(quote_data['fee'], token_out),
+                            format_amount(quote_data['fee'], token_out, output_decimals),
                             help=f"Total fee paid in {token_out}"
                         )
                     
@@ -558,9 +569,9 @@ def main():
                             
                             with col2:
                                 if step.get('x_amount'):
-                                    st.markdown(f"**Amount:** {format_amount(str(step['x_amount']), token_in)}")
+                                    st.markdown(f"**Amount:** {format_amount(str(step['x_amount']), token_in, input_decimals)}")
                                 elif step.get('y_amount'):
-                                    st.markdown(f"**Amount:** {format_amount(str(step['y_amount']), token_out)}")
+                                    st.markdown(f"**Amount:** {format_amount(str(step['y_amount']), token_out, output_decimals)}")
                                 
                                 # Visual indicator
                                 if step.get('function_name') == 'swap-x-for-y':

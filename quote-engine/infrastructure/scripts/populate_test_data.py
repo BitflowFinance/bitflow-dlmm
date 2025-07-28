@@ -13,10 +13,26 @@ from decimal import Decimal
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.redis.client import RedisClient
-from src.redis.schemas import PoolData, BinData, TokenGraphData, RedisSchema
+from src.redis.schemas import PoolData, BinData, TokenGraphData, TokenData, RedisSchema
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def populate_token_data(redis_client):
+    """Populate token data in Redis"""
+    tokens = [
+        {"symbol": "BTC", "name": "Bitcoin", "decimals": 8, "total_supply": 21000000},
+        {"symbol": "ETH", "name": "Ethereum", "decimals": 18, "total_supply": 120000000},
+        {"symbol": "SOL", "name": "Solana", "decimals": 9, "total_supply": 1000000000},
+        {"symbol": "USDC", "name": "USD Coin", "decimals": 6, "total_supply": 10000000000}
+    ]
+    
+    for token_data in tokens:
+        token = TokenData(**token_data)
+        key = RedisSchema.get_token_key(token.symbol)
+        redis_client.client.hset(key, mapping=token.to_redis_hash())
+        logger.info(f"Added token: {token.symbol} with {token.decimals} decimals")
 
 
 def populate_pool_data(redis_client):
@@ -89,39 +105,39 @@ def populate_pool_data(redis_client):
 
 def populate_bin_data(redis_client):
     """Populate bin data in Redis with proper DLMM bin distribution"""
-    # Define pool configurations with realistic market prices and correct decimal places
+    # Define pool configurations with realistic market prices and REALISTIC amounts
     pool_configs = [
         {
             "pool_id": "BTC-USDC-25",
             "active_bin": 500,
             "base_price": 100000.0,  # $100,000 per BTC (realistic 2024 price)
             "bin_step": 0.0025,     # 25 bps
-            "base_reserve_x": 1000 * 100000000,  # 1000 BTC (8 decimal places)
-            "base_reserve_y": 100000000 * 1000000  # 100M USDC (6 decimal places)
+            "base_reserve_x": 1000,  # 1000 BTC (raw amount, not atomic units)
+            "base_reserve_y": 100000000  # 100M USDC (raw amount, not atomic units)
         },
         {
             "pool_id": "BTC-USDC-50",
             "active_bin": 500,
             "base_price": 100000.0,  # $100,000 per BTC (realistic 2024 price)
             "bin_step": 0.005,      # 50 bps
-            "base_reserve_x": 500 * 100000000,   # 500 BTC (8 decimal places)
-            "base_reserve_y": 50000000 * 1000000  # 50M USDC (6 decimal places)
+            "base_reserve_x": 500,   # 500 BTC (raw amount, not atomic units)
+            "base_reserve_y": 50000000  # 50M USDC (raw amount, not atomic units)
         },
         {
             "pool_id": "ETH-USDC-25",
             "active_bin": 500,
             "base_price": 4000.0,   # $4,000 per ETH (realistic 2024 price)
             "bin_step": 0.0025,     # 25 bps
-            "base_reserve_x": 10000 * 1000000000000000000, # 10,000 ETH (18 decimal places)
-            "base_reserve_y": 40000000 * 1000000  # 40M USDC (6 decimal places)
+            "base_reserve_x": 10000, # 10,000 ETH (raw amount, not atomic units)
+            "base_reserve_y": 40000000  # 40M USDC (raw amount, not atomic units)
         },
         {
             "pool_id": "SOL-USDC-25",
             "active_bin": 500,
             "base_price": 200.0,    # $200 per SOL (realistic 2024 price)
             "bin_step": 0.0025,     # 25 bps
-            "base_reserve_x": 100000 * 1000000000, # 100,000 SOL (9 decimal places)
-            "base_reserve_y": 20000000 * 1000000  # 20M USDC (6 decimal places)
+            "base_reserve_x": 100000, # 100,000 SOL (raw amount, not atomic units)
+            "base_reserve_y": 20000000  # 20M USDC (raw amount, not atomic units)
         }
     ]
     
@@ -176,7 +192,7 @@ def populate_bin_data(redis_client):
             zset_key = RedisSchema.get_bin_price_zset_key(pool_id)
             redis_client.client.zadd(zset_key, {str(bin_id): price})
         
-        logger.info(f"Added bins for pool: {pool_id} with proper DLMM distribution")
+        logger.info(f"Added bins for pool: {pool_id} with realistic amounts")
 
 
 def populate_token_graph(redis_client):
@@ -211,6 +227,9 @@ def main():
         redis_client.client.flushdb()
         
         # Populate data
+        logger.info("Populating token data...")
+        populate_token_data(redis_client)
+        
         logger.info("Populating pool data...")
         populate_pool_data(redis_client)
         

@@ -83,7 +83,9 @@ async def get_quote(request: QuoteRequest, redis_client: RedisClient = Depends(g
                 execution_path=[],
                 fee="0",
                 price_impact_bps=0,
-                error="No routes found between tokens"
+                error="No routes found between tokens",
+                input_token_decimals=None,
+                output_token_decimals=None
             )
         
         # Step 3: Pre-fetch shared data
@@ -102,7 +104,9 @@ async def get_quote(request: QuoteRequest, redis_client: RedisClient = Depends(g
                 execution_path=[],
                 fee="0",
                 price_impact_bps=0,
-                error=route_result.get('error', 'No viable route found')
+                error=route_result.get('error', 'No viable route found'),
+                input_token_decimals=None,
+                output_token_decimals=None
             )
         
         # Step 5: Convert execution path to Pydantic models
@@ -115,13 +119,19 @@ async def get_quote(request: QuoteRequest, redis_client: RedisClient = Depends(g
         fee = route_result.get('total_fee', '0')
         price_impact_bps = 0  # TODO: Calculate actual price impact
         
+        # Get token decimals from route result
+        input_token_decimals = route_result.get('input_token_decimals')
+        output_token_decimals = route_result.get('output_token_decimals')
+        
         return QuoteResponse(
             success=True,
             amount_out=route_result['amount_out'],
             route_path=route_result['route_path'],
             execution_path=execution_steps,
             fee=fee,
-            price_impact_bps=price_impact_bps
+            price_impact_bps=price_impact_bps,
+            input_token_decimals=input_token_decimals,
+            output_token_decimals=output_token_decimals
         )
         
     except HTTPException:

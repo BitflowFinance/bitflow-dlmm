@@ -166,6 +166,46 @@ class TokenGraphData:
             return False
 
 
+@dataclass
+class TokenData:
+    """Token data structure for Redis storage"""
+    symbol: str
+    name: str
+    decimals: int
+    total_supply: int
+    
+    def to_redis_hash(self) -> Dict[str, str]:
+        """Convert to Redis hash format"""
+        return {
+            "symbol": self.symbol,
+            "name": self.name,
+            "decimals": str(self.decimals),
+            "total_supply": str(self.total_supply)
+        }
+    
+    @classmethod
+    def from_redis_hash(cls, data: Dict[str, str]) -> 'TokenData':
+        """Create TokenData from Redis hash"""
+        return cls(
+            symbol=data["symbol"],
+            name=data["name"],
+            decimals=int(data["decimals"]),
+            total_supply=int(data["total_supply"])
+        )
+    
+    def validate(self) -> bool:
+        """Validate token data"""
+        try:
+            assert self.symbol and len(self.symbol) > 0
+            assert self.name and len(self.name) > 0
+            assert self.decimals >= 0
+            assert self.total_supply > 0
+            return True
+        except Exception as e:
+            logger.error(f"Token data validation failed: {e}")
+            return False
+
+
 class RedisSchema:
     """Redis schema definitions and key patterns - Updated Schema"""
     
@@ -174,6 +214,7 @@ class RedisSchema:
     BIN_KEY_PATTERN = "bin:{pool_id}:{bin_id}"
     BIN_PRICE_ZSET_PATTERN = "pool:{pool_id}:bins"  # New ZSET for bin prices
     TOKEN_GRAPH_KEY_PATTERN = "token_graph:{version}"  # New token graph key
+    TOKEN_KEY_PATTERN = "token:{symbol}"  # New token key pattern
     
     @staticmethod
     def get_pool_key(pool_id: str) -> str:
@@ -193,4 +234,9 @@ class RedisSchema:
     @staticmethod
     def get_token_graph_key(version: str = "1") -> str:
         """Get Redis key for token graph"""
-        return f"token_graph:{version}" 
+        return f"token_graph:{version}"
+    
+    @staticmethod
+    def get_token_key(symbol: str) -> str:
+        """Get Redis key for token data"""
+        return f"token:{symbol}" 

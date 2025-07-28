@@ -46,6 +46,8 @@ class QuoteResponse(BaseModel):
     fee: str = Field(..., description="Total fee as string")
     price_impact_bps: int = Field(..., description="Price impact in basis points")
     error: Optional[str] = Field(None, description="Error message if quote failed")
+    input_token_decimals: Optional[int] = Field(None, description="Number of decimals for input token")
+    output_token_decimals: Optional[int] = Field(None, description="Number of decimals for output token")
 
 
 class HealthResponse(BaseModel):

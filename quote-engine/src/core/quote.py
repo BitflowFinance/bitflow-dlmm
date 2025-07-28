@@ -7,12 +7,34 @@ import logging
 from typing import Dict, List, Any, Optional
 from decimal import Decimal
 from ..redis.client import RedisClient
-from ..redis.schemas import PoolData, BinData
+from ..redis.schemas import PoolData, BinData, RedisSchema
 from ..utils.traits import TraitMappings
 from .data import batch_load_bin_reserves
 import networkx as nx
 
 logger = logging.getLogger(__name__)
+
+
+def get_token_decimals(redis_client: RedisClient, token_symbol: str) -> int:
+    """Get token decimals from Redis"""
+    try:
+        key = RedisSchema.get_token_key(token_symbol)
+        data = redis_client.client.hgetall(key)
+        if data:
+            return int(data.get('decimals', 18))
+        return 18  # Default
+    except:
+        return 18
+
+
+def convert_to_atomic(amount: Decimal, decimals: int) -> Decimal:
+    """Convert raw amount to atomic units"""
+    return amount * (Decimal('10') ** decimals)
+
+
+def convert_from_atomic(amount: Decimal, decimals: int) -> Decimal:
+    """Convert atomic units to raw amount"""
+    return amount / (Decimal('10') ** decimals)
 
 
 def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: Decimal, 
@@ -37,6 +59,13 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
         token0 = pool_data.token0
         token1 = pool_data.token1
         
+        # Get token decimals for the actual input and output tokens
+        input_token_decimals = get_token_decimals(redis_client, input_token)
+        output_token_decimals = get_token_decimals(redis_client, output_token)
+        
+        # Keep everything in raw units for consistency with reserves
+        # amount_in is already in raw units (e.g., 1 BTC, not 100,000,000 satoshis)
+        
         # Determine swap direction
         swap_for_y = input_token == token0
         
@@ -56,7 +85,7 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
                 Decimal(str(pool_data.y_variable_fee))
             ) / Decimal('10000')
         
-        # Apply fees upfront
+        # Apply fees upfront (amount_in is in raw units)
         fee_amount = amount_in * fee_rate
         effective_amount_in = amount_in - fee_amount
         
@@ -107,6 +136,8 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
         amount_out = Decimal('0')
         execution_path = []
         
+        logger.info(f"Starting swap traversal: remaining={remaining}, effective_amount_in={effective_amount_in}")
+        
         for bin_id, price_float in bin_list:
             if remaining <= 0:
                 break
@@ -116,9 +147,11 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
             if reserves:
                 reserve_x = Decimal(str(reserves.reserve_x))
                 reserve_y = Decimal(str(reserves.reserve_y))
+                logger.info(f"Bin {bin_id}: price={price}, reserves={reserve_x}/{reserve_y}")
             else:
                 reserve_x = Decimal('0')
                 reserve_y = Decimal('0')
+                logger.warning(f"Bin {bin_id}: No data found")
             
             if swap_for_y:
                 # X → Y swap
@@ -127,6 +160,7 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
                 out_this = in_effective * price
                 amount_key = 'x_amount'
                 function_name = 'swap-x-for-y'
+                logger.info(f"X→Y: max_in={max_in}, in_effective={in_effective}, out_this={out_this}")
             else:
                 # Y → X swap
                 max_in = reserve_y
@@ -134,6 +168,7 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
                 out_this = in_effective / price
                 amount_key = 'y_amount'
                 function_name = 'swap-y-for-x'
+                logger.info(f"Y→X: max_in={max_in}, in_effective={in_effective}, out_this={out_this}")
             
             if in_effective > 0:
                 # Calculate partial amount (including fee adjustment)
@@ -152,6 +187,11 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
                 
                 amount_out += out_this
                 remaining -= in_effective
+                logger.info(f"Added step: bin={bin_id}, used={in_effective}, remaining={remaining}")
+            else:
+                logger.info(f"Bin {bin_id}: No liquidity available")
+        
+        # amount_out is already in raw units (no conversion needed)
         
         # Rounding adjustment on last partial (if needed)
         if execution_path:
@@ -173,7 +213,9 @@ def compute_quote(pool_id: str, input_token: str, output_token: str, amount_in: 
             'execution_path': execution_path,
             'fee_amount': fee_amount.quantize(Decimal('1')),
             'effective_amount_in': effective_amount_in.quantize(Decimal('1')),
-            'price_impact': Decimal('0')  # TODO: Calculate price impact
+            'price_impact': Decimal('0'),  # TODO: Calculate price impact
+            'input_token_decimals': input_token_decimals,
+            'output_token_decimals': output_token_decimals
         }
         
     except Exception as e:
@@ -243,13 +285,26 @@ def find_best_route(paths: List[List[str]], amount_in: Decimal, redis_client: Re
             for hop in hop_details:
                 flattened.extend(hop['execution_path'])
             
+            # Get decimal information from first and last hops
+            input_token_decimals = hop_details[0].get('input_token_decimals') if hop_details else None
+            
+            # For output decimals, we need to get the final output token's decimals
+            # The last hop's output_token_decimals is for the intermediate token
+            # We need to get the final output token's decimals from Redis
+            final_output_token = path[-1] if path else None
+            output_token_decimals = None
+            if final_output_token:
+                output_token_decimals = get_token_decimals(redis_client, final_output_token)
+            
             best_details = {
                 'success': True,
                 'amount_out': str(best_out),
                 'route_path': path,
                 'execution_path': flattened,
                 'total_fee': str(total_fee),
-                'fee_rate_avg': str(total_fee / amount_in) if amount_in > 0 else '0'
+                'fee_rate_avg': str(total_fee / amount_in) if amount_in > 0 else '0',
+                'input_token_decimals': input_token_decimals,
+                'output_token_decimals': output_token_decimals
             }
     
     if not best_details:
