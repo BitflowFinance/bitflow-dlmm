@@ -155,6 +155,28 @@ def get_available_pools_from_api():
         return []
 
 
+def get_quoted_state_from_api(token_in, token_out, amount_in):
+    """Get quoted state from the new quote-engine API."""
+    try:
+        api_url = f"{QUOTE_ENGINE_BASE_URL}/quote"
+        payload = {
+            "input_token": token_in,
+            "output_token": token_out,
+            "amount_in": str(amount_in)
+        }
+        
+        response = requests.post(api_url, json=payload, timeout=10)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"API Error: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        st.error(f"Failed to get quote from API: {e}")
+        return None
+
+
 def create_tvl_histogram(bins_data, title, token0="BTC", token1="USDC", used_bin_ids=None, bin_step=None):
     """Create TVL histogram visualization with stacked bars for active bin."""
     if not bins_data:
@@ -368,9 +390,11 @@ def main():
         st.write(f"- {pool['pool_id']} ({pool['token0']}/{pool['token1']}) - Active Bin: {pool['active_bin']}")
     
     # Create tabs for each pool
-    pool_tabs = st.tabs([pool['pool_id'] for pool in available_pools])
+    # Sort pools to put BTC-USDC-25 first as default
+    sorted_pools = sorted(available_pools, key=lambda x: x['pool_id'] != 'BTC-USDC-25')
+    pool_tabs = st.tabs([pool['pool_id'] for pool in sorted_pools])
     
-    for i, (pool, tab) in enumerate(zip(available_pools, pool_tabs)):
+    for i, (pool, tab) in enumerate(zip(sorted_pools, pool_tabs)):
         with tab:
             pool_id = pool['pool_id']
             current_bins = get_bin_data_from_redis(pool_id, bin_range=20)
@@ -398,6 +422,157 @@ def main():
                     st.metric("Provider Fee", f"{pool['x_provider_fee']} bps")
             else:
                 st.error(f"❌ No bin data available for {pool_id}")
+    
+    # Quote Testing Section
+    st.markdown("---")
+    st.subheader("🔍 Quote Testing")
+    
+    # Get all available tokens from all pools
+    all_tokens = set()
+    for pool in available_pools:
+        all_tokens.add(pool['token0'])
+        all_tokens.add(pool['token1'])
+    all_tokens = sorted(list(all_tokens))  # Sort for consistent order
+    
+    # Create a clean, card-like quote testing interface
+    with st.container():
+        st.markdown("### 💱 Swap Configuration")
+        
+        # Token selection in a more intuitive layout
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**From:**")
+            token_in = st.selectbox(
+                "Select token to swap from",
+                all_tokens,
+                key="quote_token_in",
+                label_visibility="collapsed"
+            )
+        
+        with col2:
+            st.markdown("**To:**")
+            token_out = st.selectbox(
+                "Select token to swap to",
+                all_tokens,
+                index=1 if token_in == all_tokens[0] else 0,
+                key="quote_token_out",
+                label_visibility="collapsed"
+            )
+        
+        # Amount input with better labeling
+        st.markdown("**Amount:**")
+        
+        # Determine appropriate amount range based on token
+        if token_in == "BTC":
+            amount_in = st.number_input(
+                f"Enter {token_in} amount",
+                min_value=0.0,
+                max_value=None,
+                value=1.0,
+                step=0.1,
+                key="quote_amount_in",
+                label_visibility="collapsed"
+            )
+            amount_in_atomic = int(amount_in * 100000000)  # Convert to satoshis
+        elif token_in == "ETH":
+            amount_in = st.number_input(
+                f"Enter {token_in} amount",
+                min_value=0.0,
+                max_value=None,
+                value=1.0,
+                step=0.1,
+                key="quote_amount_in",
+                label_visibility="collapsed"
+            )
+            amount_in_atomic = int(amount_in * 1000000000000000000)  # Convert to wei
+        elif token_in == "SOL":
+            amount_in = st.number_input(
+                f"Enter {token_in} amount",
+                min_value=0.0,
+                max_value=None,
+                value=10.0,
+                step=1.0,
+                key="quote_amount_in",
+                label_visibility="collapsed"
+            )
+            amount_in_atomic = int(amount_in * 1000000000)  # Convert to lamports
+        else:  # USDC
+            amount_in = st.number_input(
+                f"Enter {token_in} amount",
+                min_value=0.0,
+                max_value=None,
+                value=1000.0,
+                step=100.0,
+                key="quote_amount_in",
+                label_visibility="collapsed"
+            )
+            amount_in_atomic = int(amount_in * 1000000)  # Convert to cents
+        
+        # Quote button with better styling
+        st.markdown("")
+        if st.button("🚀 Get Quote", key="quote_btn", type="primary", use_container_width=True):
+            quote_data = get_quoted_state_from_api(token_in, token_out, amount_in_atomic)
+            
+            if quote_data and quote_data.get('success'):
+                st.success("✅ Quote Generated Successfully!")
+                
+                # Display quote results in a clean, card-like format
+                st.markdown("### 📊 Quote Results")
+                
+                # Create a more visually appealing metrics display
+                with st.container():
+                    # Main quote info in a highlighted box
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric(
+                            "You'll Receive",
+                            format_amount(quote_data['amount_out'], token_out),
+                            help=f"Amount of {token_out} you will receive"
+                        )
+                    
+                    with col2:
+                        st.metric(
+                            "Total Fee",
+                            format_amount(quote_data['fee'], token_out),
+                            help=f"Total fee paid in {token_out}"
+                        )
+                    
+                    # Additional info in a more subtle way
+                    st.markdown(f"**Route:** {' → '.join(quote_data['route_path'])}")
+                    st.markdown(f"**Price Impact:** {quote_data.get('price_impact_bps', 0)} bps")
+                
+                # Show execution path details in a cleaner format
+                st.markdown("### 🔧 Execution Details")
+                execution_path = quote_data.get('execution_path', [])
+                
+                if execution_path:
+                    for i, step in enumerate(execution_path):
+                        with st.expander(f"Step {i+1}: {step.get('function_name', 'Unknown')} on {step.get('pool_trait', 'Unknown')}", expanded=True):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.markdown(f"**Pool:** {step.get('pool_trait', 'Unknown')}")
+                                st.markdown(f"**Bin ID:** {step.get('bin_id', 'Unknown')}")
+                            
+                            with col2:
+                                if step.get('x_amount'):
+                                    st.markdown(f"**Amount:** {format_amount(str(step['x_amount']), token_in)}")
+                                elif step.get('y_amount'):
+                                    st.markdown(f"**Amount:** {format_amount(str(step['y_amount']), token_out)}")
+                                
+                                # Visual indicator
+                                if step.get('function_name') == 'swap-x-for-y':
+                                    st.markdown("**Direction:** 🔄 X → Y")
+                                elif step.get('function_name') == 'swap-y-for-x':
+                                    st.markdown("**Direction:** 🔄 Y → X")
+                else:
+                    st.info("No execution path details available")
+            else:
+                st.error("❌ Failed to generate quote")
+                if quote_data:
+                    st.error(f"Error: {quote_data.get('error', 'Unknown error')}")
 
 
 if __name__ == "__main__":
