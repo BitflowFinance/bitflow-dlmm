@@ -20,27 +20,30 @@
 (define-constant ERR_INVALID_POOL_URI (err u1013))
 (define-constant ERR_INVALID_POOL_SYMBOL (err u1014))
 (define-constant ERR_INVALID_POOL_NAME (err u1015))
-(define-constant ERR_MATCHING_TOKEN_CONTRACTS (err u1016))
-(define-constant ERR_INVALID_X_TOKEN (err u1017))
-(define-constant ERR_INVALID_Y_TOKEN (err u1018))
-(define-constant ERR_MINIMUM_X_AMOUNT (err u1019))
-(define-constant ERR_MINIMUM_Y_AMOUNT (err u1020))
-(define-constant ERR_MINIMUM_LP_AMOUNT (err u1021))
-(define-constant ERR_INVALID_LIQUIDITY_VALUE (err u1022))
-(define-constant ERR_INVALID_FEE (err u1023))
-(define-constant ERR_MINIMUM_BURN_AMOUNT (err u1024))
-(define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1025))
-(define-constant ERR_INVALID_BIN_STEP (err u1026))
-(define-constant ERR_ALREADY_BIN_STEP (err u1027))
-(define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1028))
-(define-constant ERR_NO_BIN_FACTORS (err u1029))
-(define-constant ERR_INVALID_BIN_FACTOR (err u1030))
-(define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1031))
-(define-constant ERR_INVALID_INITIAL_PRICE (err u1032))
-(define-constant ERR_INVALID_BIN_PRICE (err u1033))
-(define-constant ERR_NOT_ACTIVE_BIN (err u1034))
-(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1035))
-(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1036))
+(define-constant ERR_INVALID_TOKEN_DIRECTION (err u1016))
+(define-constant ERR_MATCHING_TOKEN_CONTRACTS (err u1017))
+(define-constant ERR_INVALID_X_TOKEN (err u1018))
+(define-constant ERR_INVALID_Y_TOKEN (err u1019))
+(define-constant ERR_MINIMUM_X_AMOUNT (err u1020))
+(define-constant ERR_MINIMUM_Y_AMOUNT (err u1021))
+(define-constant ERR_MINIMUM_LP_AMOUNT (err u1022))
+(define-constant ERR_MAXIMUM_X_AMOUNT (err u1023))
+(define-constant ERR_MAXIMUM_Y_AMOUNT (err u1024))
+(define-constant ERR_INVALID_LIQUIDITY_VALUE (err u1025))
+(define-constant ERR_INVALID_FEE (err u1026))
+(define-constant ERR_MINIMUM_BURN_AMOUNT (err u1027))
+(define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1028))
+(define-constant ERR_INVALID_BIN_STEP (err u1029))
+(define-constant ERR_ALREADY_BIN_STEP (err u1030))
+(define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1031))
+(define-constant ERR_NO_BIN_FACTORS (err u1032))
+(define-constant ERR_INVALID_BIN_FACTOR (err u1033))
+(define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1034))
+(define-constant ERR_INVALID_INITIAL_PRICE (err u1035))
+(define-constant ERR_INVALID_BIN_PRICE (err u1036))
+(define-constant ERR_NOT_ACTIVE_BIN (err u1037))
+(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1038))
+(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1039))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -53,21 +56,9 @@
 (define-constant MIN_BIN_ID u0)
 (define-constant MAX_BIN_ID u1000)
 
-;; List of all bin IDs
-(define-constant BIN_IDS_LIST (list u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19 u20 u21 u22 u23 u24 u25 u26 u27 u28 u29 u30 u31 u32 u33 u34 u35 u36 u37 u38 u39 u40 u41 u42 u43 u44 u45 u46 u47 u48 u49 u50 u51 u52 u53 u54 u55 u56 u57 u58 u59 u60 u61 u62 u63 u64 u65 u66 u67 u68 u69 u70 u71 u72 u73 u74 u75 u76 u77 u78 u79 u80 u81 u82 u83 u84 u85 u86 u87 u88 u89 u90 u91 u92 u93 u94 u95 u96 u97 u98 u99
-                              u100 u101 u102 u103 u104 u105 u106 u107 u108 u109 u110 u111 u112 u113 u114 u115 u116 u117 u118 u119 u120 u121 u122 u123 u124 u125 u126 u127 u128 u129 u130 u131 u132 u133 u134 u135 u136 u137 u138 u139 u140 u141 u142 u143 u144 u145 u146 u147 u148 u149 u150 u151 u152 u153 u154 u155 u156 u157 u158 u159 u160 u161 u162 u163 u164 u165 u166 u167 u168 u169 u170 u171 u172 u173 u174 u175 u176 u177 u178 u179 u180 u181 u182 u183 u184 u185 u186 u187 u188 u189 u190 u191 u192 u193 u194 u195 u196 u197 u198 u199 u200
-                              u201 u202 u203 u204 u205 u206 u207 u208 u209 u210 u211 u212 u213 u214 u215 u216 u217 u218 u219 u220 u221 u222 u223 u224 u225 u226 u227 u228 u229 u230 u231 u232 u233 u234 u235 u236 u237 u238 u239 u240 u241 u242 u243 u244 u245 u246 u247 u248 u249 u250 u251 u252 u253 u254 u255 u256 u257 u258 u259 u260 u261 u262 u263 u264 u265 u266 u267 u268 u269 u270 u271 u272 u273 u274 u275 u276 u277 u278 u279 u280 u281 u282 u283 u284 u285 u286 u287 u288 u289 u290 u291 u292 u293 u294 u295 u296 u297 u298 u299 u300
-                              u301 u302 u303 u304 u305 u306 u307 u308 u309 u310 u311 u312 u313 u314 u315 u316 u317 u318 u319 u320 u321 u322 u323 u324 u325 u326 u327 u328 u329 u330 u331 u332 u333 u334 u335 u336 u337 u338 u339 u340 u341 u342 u343 u344 u345 u346 u347 u348 u349 u350 u351 u352 u353 u354 u355 u356 u357 u358 u359 u360 u361 u362 u363 u364 u365 u366 u367 u368 u369 u370 u371 u372 u373 u374 u375 u376 u377 u378 u379 u380 u381 u382 u383 u384 u385 u386 u387 u388 u389 u390 u391 u392 u393 u394 u395 u396 u397 u398 u399 u400
-                              u401 u402 u403 u404 u405 u406 u407 u408 u409 u410 u411 u412 u413 u414 u415 u416 u417 u418 u419 u420 u421 u422 u423 u424 u425 u426 u427 u428 u429 u430 u431 u432 u433 u434 u435 u436 u437 u438 u439 u440 u441 u442 u443 u444 u445 u446 u447 u448 u449 u450 u451 u452 u453 u454 u455 u456 u457 u458 u459 u460 u461 u462 u463 u464 u465 u466 u467 u468 u469 u470 u471 u472 u473 u474 u475 u476 u477 u478 u479 u480 u481 u482 u483 u484 u485 u486 u487 u488 u489 u490 u491 u492 u493 u494 u495 u496 u497 u498 u499 u500
-                              u501 u502 u503 u504 u505 u506 u507 u508 u509 u510 u511 u512 u513 u514 u515 u516 u517 u518 u519 u520 u521 u522 u523 u524 u525 u526 u527 u528 u529 u530 u531 u532 u533 u534 u535 u536 u537 u538 u539 u540 u541 u542 u543 u544 u545 u546 u547 u548 u549 u550 u551 u552 u553 u554 u555 u556 u557 u558 u559 u560 u561 u562 u563 u564 u565 u566 u567 u568 u569 u570 u571 u572 u573 u574 u575 u576 u577 u578 u579 u580 u581 u582 u583 u584 u585 u586 u587 u588 u589 u590 u591 u592 u593 u594 u595 u596 u597 u598 u599 u600
-                              u601 u602 u603 u604 u605 u606 u607 u608 u609 u610 u611 u612 u613 u614 u615 u616 u617 u618 u619 u620 u621 u622 u623 u624 u625 u626 u627 u628 u629 u630 u631 u632 u633 u634 u635 u636 u637 u638 u639 u640 u641 u642 u643 u644 u645 u646 u647 u648 u649 u650 u651 u652 u653 u654 u655 u656 u657 u658 u659 u660 u661 u662 u663 u664 u665 u666 u667 u668 u669 u670 u671 u672 u673 u674 u675 u676 u677 u678 u679 u680 u681 u682 u683 u684 u685 u686 u687 u688 u689 u690 u691 u692 u693 u694 u695 u696 u697 u698 u699 u700
-                              u701 u702 u703 u704 u705 u706 u707 u708 u709 u710 u711 u712 u713 u714 u715 u716 u717 u718 u719 u720 u721 u722 u723 u724 u725 u726 u727 u728 u729 u730 u731 u732 u733 u734 u735 u736 u737 u738 u739 u740 u741 u742 u743 u744 u745 u746 u747 u748 u749 u750 u751 u752 u753 u754 u755 u756 u757 u758 u759 u760 u761 u762 u763 u764 u765 u766 u767 u768 u769 u770 u771 u772 u773 u774 u775 u776 u777 u778 u779 u780 u781 u782 u783 u784 u785 u786 u787 u788 u789 u790 u791 u792 u793 u794 u795 u796 u797 u798 u799 u800
-                              u801 u802 u803 u804 u805 u806 u807 u808 u809 u810 u811 u812 u813 u814 u815 u816 u817 u818 u819 u820 u821 u822 u823 u824 u825 u826 u827 u828 u829 u830 u831 u832 u833 u834 u835 u836 u837 u838 u839 u840 u841 u842 u843 u844 u845 u846 u847 u848 u849 u850 u851 u852 u853 u854 u855 u856 u857 u858 u859 u860 u861 u862 u863 u864 u865 u866 u867 u868 u869 u870 u871 u872 u873 u874 u875 u876 u877 u878 u879 u880 u881 u882 u883 u884 u885 u886 u887 u888 u889 u890 u891 u892 u893 u894 u895 u896 u897 u898 u899 u900
-                              u901 u902 u903 u904 u905 u906 u907 u908 u909 u910 u911 u912 u913 u914 u915 u916 u917 u918 u919 u920 u921 u922 u923 u924 u925 u926 u927 u928 u929 u930 u931 u932 u933 u934 u935 u936 u937 u938 u939 u940 u941 u942 u943 u944 u945 u946 u947 u948 u949 u950 u951 u952 u953 u954 u955 u956 u957 u958 u959 u960 u961 u962 u963 u964 u965 u966 u967 u968 u969 u970 u971 u972 u973 u974 u975 u976 u977 u978 u979 u980 u981 u982 u983 u984 u985 u986 u987 u988 u989 u990 u991 u992 u993 u994 u995 u996 u997 u998 u999 u1000))
-
 ;; Maximum BPS
 (define-constant FEE_BPS u10000)
-(define-constant BIN_PRICE_BPS u100000000)
+(define-constant BIN_BPS u100000000)
 
 ;; Admins list and helper var used to remove admins
 (define-data-var admins (list 5 principal) (list tx-sender))
@@ -80,10 +71,10 @@
 (define-data-var bin-steps (list 1000 uint) (list u1 u5 u10 u20 u25))
 (define-map bin-factors uint (list 1001 uint))
 
-;; Minimum shares required to mint per bin when creating a pool
-(define-data-var minimum-total-shares uint u10000)
+;; Minimum shares required to mint into the active bin when creating a pool
+(define-data-var minimum-bin-shares uint u10000)
 
-;; Minimum shares required to burn per bin when creating a pool
+;; Minimum shares required to burn from the active bin when creating a pool
 (define-data-var minimum-burnt-shares uint u1000)
 
 ;; Data var used to enable or disable pool creation by anyone
@@ -97,6 +88,9 @@
   pool-contract: principal,
   status: bool
 })
+
+;; Define allowed-token-direction map
+(define-map allowed-token-direction {x-token: principal, y-token: principal} bool)
 
 ;; Get admins list
 (define-read-only (get-admins)
@@ -118,6 +112,11 @@
   (ok (map-get? pools id))
 )
 
+;; Get allowed-token-direction for pool creation
+(define-read-only (get-allowed-token-direction (x-token principal) (y-token principal))
+  (ok (map-get? allowed-token-direction {x-token: x-token, y-token: y-token}))
+)
+
 ;; Get allowed bin steps
 (define-read-only (get-bin-steps)
   (ok (var-get bin-steps))
@@ -128,12 +127,12 @@
   (ok (map-get? bin-factors step))
 )
 
-;; Get minimum shares required to mint per bin when creating a pool
-(define-read-only (get-minimum-total-shares)
-  (ok (var-get minimum-total-shares))
+;; Get minimum shares required to mint for the active bin when creating a pool
+(define-read-only (get-minimum-bin-shares)
+  (ok (var-get minimum-bin-shares))
 )
 
-;; Get minimum shares required to burn per bin when creating a pool
+;; Get minimum shares required to burn for the active bin when creating a pool
 (define-read-only (get-minimum-burnt-shares)
   (ok (var-get minimum-burnt-shares))
 )
@@ -143,43 +142,13 @@
   (ok (var-get public-pool-creation))
 )
 
-;; @NOTE maybe we handle some reversed logic?; tests are working fine when only using x-to-y-price
-;; Get initial price for the center bin when creating a pool
-(define-read-only (get-initial-price (x-balance uint) (x-decimals uint) (y-balance uint) (y-decimals uint))
-  (let (
-    (x-balance-scaled
-      (if (is-eq x-decimals y-decimals)
-        x-balance
-        (if (> x-decimals y-decimals)
-          x-balance
-          (* x-balance (pow u10 (- y-decimals x-decimals)))
-        )
-      )
-    )
-    (y-balance-scaled
-      (if (is-eq x-decimals y-decimals)
-        y-balance
-        (if (> y-decimals x-decimals)
-          y-balance
-          (* y-balance (pow u10 (- x-decimals y-decimals)))
-        )
-      )
-    )
-  )
-    (ok (/ (* y-balance-scaled (pow u10 y-decimals)) x-balance-scaled))
-  )
-)
-
 ;; Get price a specific bin
-(define-read-only (get-bin-price (initial-price uint) (active-bin-id uint) (bin-step uint) (bin-id uint))
+(define-read-only (get-bin-price (initial-price uint) (bin-step uint) (bin-id uint))
   (let (
-    (bin-factor-index (if (> active-bin-id bin-id)
-                          (- CENTER_BIN_ID (- active-bin-id bin-id))
-                          (+ CENTER_BIN_ID (- bin-id active-bin-id))))
     (bin-factors-list (unwrap! (map-get? bin-factors bin-step) ERR_NO_BIN_FACTORS))
-    (bin-factor (unwrap! (element-at? bin-factors-list bin-factor-index) ERR_INVALID_BIN_FACTOR))
+    (bin-factor (unwrap! (element-at? bin-factors-list bin-id) ERR_INVALID_BIN_FACTOR))
   )
-    (ok (/ (* initial-price bin-factor) BIN_PRICE_BPS))
+    (ok (/ (* initial-price bin-factor) BIN_BPS))
   )
 )
 
@@ -216,21 +185,21 @@
   )
 )
 
-;; Set minimum shares required to mint and burn per bin when creating a pool
-(define-public (set-minimum-shares (min-total uint) (min-burnt uint))
+;; Set minimum shares required to mint and burn for the active bin when creating a pool
+(define-public (set-minimum-shares (min-bin uint) (min-burnt uint))
   (let (
     (caller tx-sender)
   )
     (begin
       ;; Assert caller is an admin and amounts are greater than 0
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
-      (asserts! (and (> min-total u0) (> min-burnt u0)) ERR_INVALID_AMOUNT)
+      (asserts! (and (> min-bin u0) (> min-burnt u0)) ERR_INVALID_AMOUNT)
       
-      ;; Assert that min-total is greater than min-burnt
-      (asserts! (> min-total min-burnt) ERR_INVALID_MIN_BURNT_SHARES)
+      ;; Assert that min-bin is greater than min-burnt
+      (asserts! (> min-bin min-burnt) ERR_INVALID_MIN_BURNT_SHARES)
 
-      ;; Update minimum-total-shares and minimum-burnt-shares
-      (var-set minimum-total-shares min-total)
+      ;; Update minimum-bin-shares and minimum-burnt-shares
+      (var-set minimum-bin-shares min-bin)
       (var-set minimum-burnt-shares min-burnt)
 
       ;; Print function data and return true
@@ -238,7 +207,7 @@
         action: "set-minimum-shares",
         caller: caller,
         data: {
-          min-total: min-total,
+          min-bin: min-bin,
           min-burnt: min-burnt
         }
       })
@@ -447,8 +416,12 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait),
-          x-fee: x-fee,
-          y-fee: y-fee
+          x-protocol-fee: x-protocol-fee,
+          x-provider-fee: x-provider-fee,
+          x-variable-fee: x-fee,
+          y-protocol-fee: y-protocol-fee,
+          y-provider-fee: y-provider-fee,
+          y-variable-fee: y-fee
         }
       })
       (ok true)
@@ -484,8 +457,9 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait),
-          protocol-fee: protocol-fee,
-          provider-fee: provider-fee
+          x-protocol-fee: protocol-fee,
+          x-provider-fee: provider-fee,
+          x-variable-fee: x-variable-fee
         }
       })
       (ok true)
@@ -521,8 +495,9 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait),
-          protocol-fee: protocol-fee,
-          provider-fee: provider-fee
+          y-protocol-fee: protocol-fee,
+          y-provider-fee: provider-fee,
+          y-variable-fee: y-variable-fee
         }
       })
       (ok true)
@@ -562,7 +537,7 @@
   )
 )
 
-;; Set freeze variable fees manager for a pool
+;; Make variable fees manager immutable for a pool
 (define-public (set-freeze-variable-fees-manager (pool-trait <dlmm-pool-trait>))
   (let (
     ;; Gather all pool data
@@ -607,8 +582,7 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
-      (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
+      ;; Assert that pool is created and valid
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
@@ -637,8 +611,7 @@
 (define-public (create-pool 
     (pool-trait <dlmm-pool-trait>)
     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
-    (x-amount-active-bin uint) (y-amount-active-bin uint)
-    (x-amount-per-bin uint) (y-amount-per-bin uint) (burn-amount-per-bin uint)
+    (x-amount-active-bin uint) (y-amount-active-bin uint) (burn-amount-active-bin uint)
     (x-protocol-fee uint) (x-provider-fee uint)
     (y-protocol-fee uint) (y-provider-fee uint)
     (bin-step uint) (variable-fees-cooldown uint) (freeze-variable-fees-manager bool)
@@ -649,24 +622,25 @@
     ;; Gather all pool data and pool contract
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
-    
-    ;; Get pool ID and create pool symbol and name 
+
+    ;; Get pool ID and create pool symbol and name
     (new-pool-id (+ (var-get last-pool-id) u1))
     (symbol (unwrap! (create-symbol x-token-trait y-token-trait) ERR_INVALID_POOL_SYMBOL))
     (name (concat symbol "-LP"))
-    
-    ;; Get token contracts and decimals
+
+    ;; Get token contracts
     (x-token-contract (contract-of x-token-trait))
     (y-token-contract (contract-of y-token-trait))
-    (x-token-decimals (unwrap! (contract-call? x-token-trait get-decimals) ERR_INVALID_X_TOKEN))
-    (y-token-decimals (unwrap! (contract-call? y-token-trait get-decimals) ERR_INVALID_Y_TOKEN))
-    
+
     ;; Get initial price at active bin
-    (initial-price (unwrap! (get-initial-price x-amount-active-bin x-token-decimals y-amount-active-bin y-token-decimals) ERR_INVALID_INITIAL_PRICE))
-    
-    ;; Calculate total x and y amount being added
-    (x-amount-added-total (+ x-amount-active-bin (* x-amount-per-bin (- NUM_OF_BINS u1))))
-    (y-amount-added-total (+ y-amount-active-bin (* y-amount-per-bin (- NUM_OF_BINS u1))))
+    (initial-price (/ (* y-amount-active-bin BIN_BPS) x-amount-active-bin))
+
+    ;; Scale up y-amount-active-bin
+    (y-amount-active-bin-scaled (* y-amount-active-bin BIN_BPS))
+
+    ;; Get liquidity value and calculate dlp
+    (add-liquidity-value (unwrap! (get-liquidity-value x-amount-active-bin y-amount-active-bin-scaled initial-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (dlp (sqrti add-liquidity-value))
     (caller tx-sender)
   )
     (begin
@@ -683,15 +657,21 @@
       (asserts! (is-standard x-token-contract) ERR_INVALID_PRINCIPAL)
       (asserts! (is-standard y-token-contract) ERR_INVALID_PRINCIPAL)
       (asserts! (is-standard fee-address) ERR_INVALID_PRINCIPAL)
-      
+
+      ;; Assert that reverse token direction is not registered
+      (asserts! (is-none (map-get? allowed-token-direction {x-token: y-token-contract, y-token: x-token-contract})) ERR_INVALID_TOKEN_DIRECTION)
+
       ;; Assert that x-amount-active-bin and y-amount-active-bin are greater than 0
       (asserts! (and (> x-amount-active-bin u0) (> y-amount-active-bin u0)) ERR_INVALID_AMOUNT)
 
-      ;; Assert that x-amount-per-bin and y-amount-per-bin are greater than 0
-      (asserts! (and (> x-amount-per-bin u0) (> y-amount-per-bin u0)) ERR_INVALID_AMOUNT)
+      ;; Assert that dlp minted meets minimum total shares required
+      (asserts! (>= dlp (var-get minimum-bin-shares)) ERR_MINIMUM_LP_AMOUNT)
 
-      ;; Assert that burn amount per bin meets minimum shares required to burn
-      (asserts! (>= burn-amount-per-bin (var-get minimum-burnt-shares)) ERR_MINIMUM_BURN_AMOUNT)
+      ;; Assert that burn-amount-active-bin meets minimum shares required to burn
+      (asserts! (>= burn-amount-active-bin (var-get minimum-burnt-shares)) ERR_MINIMUM_BURN_AMOUNT)
+
+      ;; Assert that dlp is greater than or equal to 0 after subtracting burn amount
+      (asserts! (>= (- dlp burn-amount-active-bin) u0) ERR_MINIMUM_LP_AMOUNT)
 
       ;; Assert that length of pool uri, symbol, and name is greater than 0
       (asserts! (> (len uri) u0) ERR_INVALID_POOL_URI)
@@ -705,27 +685,37 @@
       ;; Assert that bin step is valid
       (asserts! (is-some (index-of (var-get bin-steps) bin-step)) ERR_INVALID_BIN_STEP)
 
-      ;; Create pool, set active bin, set fees, and set variable fees cooldown
-      (try! (contract-call? pool-trait create-pool x-token-contract y-token-contract CONTRACT_DEPLOYER fee-address caller bin-step initial-price new-pool-id name symbol uri))
-      (try! (contract-call? pool-trait set-active-bin-id CENTER_BIN_ID))
+      ;; Create pool, set fees, and set variable fees cooldown
+      (try! (contract-call? pool-trait create-pool x-token-contract y-token-contract CONTRACT_DEPLOYER fee-address caller CENTER_BIN_ID bin-step initial-price new-pool-id name symbol uri))
       (try! (contract-call? pool-trait set-x-fees x-protocol-fee x-provider-fee))
       (try! (contract-call? pool-trait set-y-fees y-protocol-fee y-provider-fee))
       (try! (contract-call? pool-trait set-variable-fees-cooldown variable-fees-cooldown))
 
       ;; Freeze variable fees manager if freeze-variable-fees-manager is true
       (if freeze-variable-fees-manager (try! (contract-call? pool-trait set-freeze-variable-fees-manager)) false)
-      
+
       ;; Update ID of last created pool and add pool to pools map
       (var-set last-pool-id new-pool-id)
       (map-set pools new-pool-id {id: new-pool-id, name: name, symbol: symbol, pool-contract: pool-contract, status: status})
-      
-      ;; Transfer x-amount-added-total x tokens and y-amount-added-total y tokens from caller to pool-contract
-      (try! (contract-call? x-token-trait transfer x-amount-added-total caller pool-contract none))
-      (try! (contract-call? y-token-trait transfer y-amount-added-total caller pool-contract none))
 
-      ;; Add initial liquidity to all bins
-      (try! (fold fold-add-initial-liquidity BIN_IDS_LIST (ok {pool-trait: pool-trait, bin-step: bin-step, initial-price: initial-price, x-decimals-scaled: (pow u10 x-token-decimals), x-amount-active-bin: x-amount-active-bin, y-amount-active-bin: y-amount-active-bin, x-amount-per-bin: x-amount-per-bin, y-amount-per-bin: y-amount-per-bin, burn-amount-per-bin: burn-amount-per-bin, caller: caller})))
-      
+      ;; Update allowed-token-direction map if needed
+      (if (is-none (map-get? allowed-token-direction {x-token: x-token-contract, y-token: y-token-contract}))
+          (map-set allowed-token-direction {x-token: x-token-contract, y-token: y-token-contract} true)
+          false)
+
+      ;; Transfer x-amount-active-bin x tokens and y-amount-active-bin y tokens from caller to pool-contract
+      (try! (contract-call? x-token-trait transfer x-amount-active-bin caller pool-contract none))
+      (try! (contract-call? y-token-trait transfer y-amount-active-bin caller pool-contract none))
+
+      ;; Update bin balances
+      (try! (contract-call? pool-trait update-bin-balances CENTER_BIN_ID x-amount-active-bin y-amount-active-bin))
+
+      ;; Mint LP tokens to caller
+      (try! (contract-call? pool-trait pool-mint CENTER_BIN_ID (- dlp burn-amount-active-bin) caller))
+
+      ;; Mint burn amount LP tokens to pool-contract
+      (try! (contract-call? pool-trait pool-mint CENTER_BIN_ID burn-amount-active-bin pool-contract))
+
       ;; Print create pool data and return true
       (print {
         action: "create-pool",
@@ -738,19 +728,20 @@
           y-token: y-token-contract,
           x-protocol-fee: x-protocol-fee,
           x-provider-fee: x-provider-fee,
+          x-variable-fee: u0,
           y-protocol-fee: y-protocol-fee,
           y-provider-fee: y-provider-fee,
+          y-variable-fee: u0,
           x-amount-active-bin: x-amount-active-bin,
           y-amount-active-bin: y-amount-active-bin,
-          x-amount-per-bin: x-amount-per-bin,
-          y-amount-per-bin: y-amount-per-bin,
-          burn-amount-per-bin: burn-amount-per-bin,
-          x-amount-added-total: x-amount-added-total,
-          y-amount-added-total: y-amount-added-total,
+          burn-amount-active-bin: burn-amount-active-bin,
+          dlp: dlp,
+          add-liquidity-value: add-liquidity-value,
           pool-symbol: symbol,
           pool-uri: uri,
           pool-status: status,
           creation-height: burn-block-height,
+          active-bin-id: CENTER_BIN_ID,
           bin-step: bin-step,
           initial-price: initial-price,
           variable-fees-manager: CONTRACT_DEPLOYER,
@@ -785,46 +776,40 @@
     (provider-fee (get x-provider-fee pool-data))
     (variable-fee (get x-variable-fee pool-data))
 
-    ;; Get scaled x token decimals
-    (x-decimals-scaled (pow u10 (unwrap! (contract-call? x-token-trait get-decimals) ERR_INVALID_X_TOKEN)))
-
     ;; Get balances at bin
     (bin-balances (try! (contract-call? pool-trait get-bin-balances bin-id)))
     (x-balance (get x-balance bin-balances))
     (y-balance (get y-balance bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price active-bin-id bin-step bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
-    ;; Calculate maximum x-amount with fees and dx
-    (max-x-amount (/ (* y-balance x-decimals-scaled) bin-price))
+    ;; Calculate maximum x-amount with fees
+    (max-x-amount (/ (* y-balance BIN_BPS) bin-price))
     (max-x-amount-fees-total (/ (* max-x-amount (+ protocol-fee provider-fee variable-fee)) FEE_BPS))
     (updated-max-x-amount (+ max-x-amount max-x-amount-fees-total))
-    (dx (if (>= x-amount updated-max-x-amount) max-x-amount x-amount))
     
-    ;; Calculate fees and final dx amount
-    (dx-fees-protocol (/ (* dx protocol-fee) FEE_BPS))
-    (dx-fees-provider (/ (* dx provider-fee) FEE_BPS))
-    (dx-fees-variable (/ (* dx variable-fee) FEE_BPS))
-    (dx-fees-total (+ dx-fees-protocol dx-fees-provider dx-fees-variable))
-    (updated-dx (if (>= x-amount updated-max-x-amount) max-x-amount (- dx dx-fees-total)))
+    ;; Assert that x-amount is less than or equal to updated-max-x-amount
+    (x-amount-check (asserts! (<= x-amount updated-max-x-amount) ERR_MAXIMUM_X_AMOUNT))
+
+    ;; Calculate fees and dx
+    (x-amount-fees-protocol (/ (* x-amount protocol-fee) FEE_BPS))
+    (x-amount-fees-provider (/ (* x-amount provider-fee) FEE_BPS))
+    (x-amount-fees-variable (/ (* x-amount variable-fee) FEE_BPS))
+    (x-amount-fees-total (+ x-amount-fees-protocol x-amount-fees-provider x-amount-fees-variable))
+    (dx (- x-amount x-amount-fees-total))
 
     ;; Calculate dy
-    (dy (if (>= x-amount updated-max-x-amount)
-            y-balance
-            (/ (* updated-dx bin-price) x-decimals-scaled)))
-    (updated-dy (if (> dy y-balance) y-balance dy))
+    (dy (/ (* dx bin-price) BIN_BPS))
 
     ;; Calculate updated bin balances
-    (updated-x-balance (+ x-balance dx dx-fees-provider dx-fees-variable))
-    (updated-y-balance (- y-balance updated-dy))
+    (updated-x-balance (+ x-balance dx x-amount-fees-provider x-amount-fees-variable))
+    (updated-y-balance (- y-balance dy))
 
     ;; Calculate new active bin id
-    (updated-active-bin-id (if (and (> updated-x-balance u0) (> updated-y-balance u0))
-                           bin-id
-                           (if (> updated-y-balance u0)
-                               (if (< bin-id MAX_BIN_ID) (+ bin-id u1) bin-id)
-                               (if (> bin-id MIN_BIN_ID) (- bin-id u1) bin-id))))
+    (updated-active-bin-id (if (and (is-eq updated-y-balance u0) (> bin-id MIN_BIN_ID))
+                               (- bin-id u1)
+                               bin-id))
 
     (caller tx-sender)
   )
@@ -837,32 +822,27 @@
       ;; Assert that x-amount is greater than 0
       (asserts! (> x-amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that updated-dy is greater than 0
-      (asserts! (> updated-dy u0) ERR_MINIMUM_Y_AMOUNT)
-
       ;; Assert that bin-id is equal to active-bin-id
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
-      ;; Transfer dx + dx-fees-provider + dx-fees-variable x tokens from caller to pool-contract
-      (try! (contract-call? x-token-trait transfer (+ dx dx-fees-provider dx-fees-variable) caller pool-contract none))
+      ;; Transfer dx + x-amount-fees-provider + x-amount-fees-variable x tokens from caller to pool-contract
+      (try! (contract-call? x-token-trait transfer (+ dx x-amount-fees-provider x-amount-fees-variable) caller pool-contract none))
 
-      ;; Transfer updated-dy y tokens from pool-contract to caller
-      (try! (contract-call? pool-trait pool-transfer y-token-trait updated-dy caller))
+      ;; Transfer dy y tokens from pool-contract to caller
+      (try! (contract-call? pool-trait pool-transfer y-token-trait dy caller))
 
-      ;; Transfer dx-fees-protocol x tokens from caller to fee-address
-      (if (> dx-fees-protocol u0)
-        (try! (contract-call? x-token-trait transfer dx-fees-protocol caller fee-address none))
-        false
-      )
+      ;; Transfer x-amount-fees-protocol x tokens from caller to fee-address
+      (if (> x-amount-fees-protocol u0)
+          (try! (contract-call? x-token-trait transfer x-amount-fees-protocol caller fee-address none))
+          false)
 
       ;; Update bin balances
       (try! (contract-call? pool-trait update-bin-balances bin-id updated-x-balance updated-y-balance))
 
       ;; Set active bin id
       (if (not (is-eq updated-active-bin-id active-bin-id))
-        (try! (contract-call? pool-trait set-active-bin-id updated-active-bin-id))
-        false
-      )
+          (try! (contract-call? pool-trait set-active-bin-id updated-active-bin-id))
+          false)
 
       ;; Print swap data and return number of y tokens the caller received
       (print {
@@ -882,16 +862,16 @@
           bin-id: bin-id,
           x-amount: x-amount,
           max-x-amount: updated-max-x-amount,
-          dx: updated-dx,
-          dx-fees-protocol: dx-fees-protocol,
-          dx-fees-provider: dx-fees-provider,
-          dx-fees-variable: dx-fees-variable,
-          dy: updated-dy,
+          x-amount-fees-protocol: x-amount-fees-protocol,
+          x-amount-fees-provider: x-amount-fees-provider,
+          x-amount-fees-variable: x-amount-fees-variable,
+          dx: dx,
+          dy: dy,
           updated-x-balance: updated-x-balance,
           updated-y-balance: updated-y-balance
         }
       })
-      (ok updated-dy)
+      (ok dy)
     )
   )
 )
@@ -913,12 +893,9 @@
     (bin-step (get bin-step pool-data))
     (initial-price (get initial-price pool-data))
     (active-bin-id (get active-bin-id pool-data))
-    (protocol-fee (get x-protocol-fee pool-data))
-    (provider-fee (get x-provider-fee pool-data))
-    (variable-fee (get x-variable-fee pool-data))
-
-    ;; Get scaled x token decimals
-    (x-decimals-scaled (pow u10 (unwrap! (contract-call? x-token-trait get-decimals) ERR_INVALID_X_TOKEN)))
+    (protocol-fee (get y-protocol-fee pool-data))
+    (provider-fee (get y-provider-fee pool-data))
+    (variable-fee (get y-variable-fee pool-data))
 
     ;; Get balances at bin
     (bin-balances (try! (contract-call? pool-trait get-bin-balances bin-id)))
@@ -926,37 +903,34 @@
     (y-balance (get y-balance bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price active-bin-id bin-step bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
-    ;; Calculate maximum y-amount with fees and dy
-    (max-y-amount (/ (* x-balance bin-price) x-decimals-scaled))
+    ;; Calculate maximum y-amount with fees
+    (max-y-amount (/ (* x-balance bin-price) BIN_BPS))
     (max-y-amount-fees-total (/ (* max-y-amount (+ protocol-fee provider-fee variable-fee)) FEE_BPS))
     (updated-max-y-amount (+ max-y-amount max-y-amount-fees-total))
-    (dy (if (>= y-amount updated-max-y-amount) max-y-amount y-amount))
-    
-    ;; Calculate fees and final dy amount
-    (dy-fees-protocol (/ (* dy protocol-fee) FEE_BPS))
-    (dy-fees-provider (/ (* dy provider-fee) FEE_BPS))
-    (dy-fees-variable (/ (* dy variable-fee) FEE_BPS))
-    (dy-fees-total (+ dy-fees-protocol dy-fees-provider dy-fees-variable))
-    (updated-dy (if (>= y-amount updated-max-y-amount) max-y-amount (- dy dy-fees-total)))
+
+    ;; Assert that y-amount is less than or equal to updated-max-y-amount
+    (y-amount-check (asserts! (<= y-amount updated-max-y-amount) ERR_MAXIMUM_Y_AMOUNT))
+
+    ;; Calculate fees and dy
+    (y-amount-fees-protocol (/ (* y-amount protocol-fee) FEE_BPS))
+    (y-amount-fees-provider (/ (* y-amount provider-fee) FEE_BPS))
+    (y-amount-fees-variable (/ (* y-amount variable-fee) FEE_BPS))
+    (y-amount-fees-total (+ y-amount-fees-protocol y-amount-fees-provider y-amount-fees-variable))
+    (dy (- y-amount y-amount-fees-total))
 
     ;; Calculate dx
-    (dx (if (>= y-amount updated-max-y-amount)
-            x-balance
-            (/ (* updated-dy x-decimals-scaled) bin-price)))
-    (updated-dx (if (> dx x-balance) x-balance dx))
+    (dx (/ (* dy BIN_BPS) bin-price))
 
     ;; Calculate updated bin balances
-    (updated-x-balance (- x-balance updated-dx))
-    (updated-y-balance (+ y-balance dy dy-fees-provider dy-fees-variable))
+    (updated-x-balance (- x-balance dx))
+    (updated-y-balance (+ y-balance dy y-amount-fees-provider y-amount-fees-variable))
 
     ;; Calculate new active bin id
-    (updated-active-bin-id (if (and (> updated-x-balance u0) (> updated-y-balance u0))
-                           bin-id
-                           (if (> updated-y-balance u0)
-                               (if (< bin-id MAX_BIN_ID) (+ bin-id u1) bin-id)
-                               (if (> bin-id MIN_BIN_ID) (- bin-id u1) bin-id))))
+    (updated-active-bin-id (if (and (is-eq updated-x-balance u0) (< bin-id MAX_BIN_ID))
+                               (+ bin-id u1)
+                               bin-id))
 
     (caller tx-sender)
   )
@@ -969,32 +943,27 @@
       ;; Assert that y-amount is greater than 0
       (asserts! (> y-amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that updated-dx is greater than 0
-      (asserts! (> updated-dx u0) ERR_MINIMUM_X_AMOUNT)
-
       ;; Assert that bin-id is equal to active-bin-id
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
-      ;; Transfer dy + dy-fees-provider + dy-fees-variable y tokens from caller to pool-contract
-      (try! (contract-call? y-token-trait transfer (+ dy dy-fees-provider dy-fees-variable) caller pool-contract none))
+      ;; Transfer dy + y-amount-fees-provider + y-amount-fees-variable y tokens from caller to pool-contract
+      (try! (contract-call? y-token-trait transfer (+ dy y-amount-fees-provider y-amount-fees-variable) caller pool-contract none))
 
-      ;; Transfer updated-dx x tokens from pool-contract to caller
-      (try! (contract-call? pool-trait pool-transfer x-token-trait updated-dx caller))
+      ;; Transfer dx x tokens from pool-contract to caller
+      (try! (contract-call? pool-trait pool-transfer x-token-trait dx caller))
 
-      ;; Transfer dy-fees-protocol y tokens from caller to fee-address
-      (if (> dy-fees-protocol u0)
-        (try! (contract-call? y-token-trait transfer dy-fees-protocol caller fee-address none))
-        false
-      )
+      ;; Transfer y-amount-fees-protocol y tokens from caller to fee-address
+      (if (> y-amount-fees-protocol u0)
+          (try! (contract-call? y-token-trait transfer y-amount-fees-protocol caller fee-address none))
+          false)
 
       ;; Update bin balances
       (try! (contract-call? pool-trait update-bin-balances bin-id updated-x-balance updated-y-balance))
 
       ;; Set active bin id
       (if (not (is-eq updated-active-bin-id active-bin-id))
-        (try! (contract-call? pool-trait set-active-bin-id updated-active-bin-id))
-        false
-      )
+          (try! (contract-call? pool-trait set-active-bin-id updated-active-bin-id))
+          false)
 
       ;; Print swap data and return number of x tokens the caller received
       (print {
@@ -1014,16 +983,16 @@
           bin-id: bin-id,
           y-amount: y-amount,
           max-y-amount: updated-max-y-amount,
-          dy: updated-dy,
-          dy-fees-protocol: dy-fees-protocol,
-          dy-fees-provider: dy-fees-provider,
-          dy-fees-variable: dy-fees-variable,
-          dx: updated-dx,
+          y-amount-fees-protocol: y-amount-fees-protocol,
+          y-amount-fees-provider: y-amount-fees-provider,
+          y-amount-fees-variable: y-amount-fees-variable,
+          dy: dy,
+          dx: dx,
           updated-x-balance: updated-x-balance,
           updated-y-balance: updated-y-balance
         }
       })
-      (ok updated-dx)
+      (ok dx)
     )
   )
 )
@@ -1045,28 +1014,74 @@
     (initial-price (get initial-price pool-data))
     (active-bin-id (get active-bin-id pool-data))
 
-    ;; Get scaled x token decimals
-    (x-decimals-scaled (pow u10 (unwrap! (contract-call? x-token-trait get-decimals) ERR_INVALID_X_TOKEN)))
-
     ;; Get balances at bin
     (bin-balances (try! (contract-call? pool-trait get-bin-balances bin-id)))
     (x-balance (get x-balance bin-balances))
     (y-balance (get y-balance bin-balances))
-    (total-shares (get total-shares bin-balances))
+    (bin-shares (get bin-shares bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price active-bin-id bin-step bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Scale up y-amount and y-balance
-    (y-amount-scaled (* y-amount x-decimals-scaled))
-    (y-balance-scaled (* y-balance x-decimals-scaled))
+    (y-amount-scaled (* y-amount BIN_BPS))
+    (y-balance-scaled (* y-balance BIN_BPS))
 
-    ;; Get liquidity values and calculate dlp
+    ;; Get initial liquidity values and calculate dlp without fees
     (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
     (bin-liquidity-value (unwrap! (get-liquidity-value x-balance y-balance-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (dlp (/ (* add-liquidity-value total-shares) bin-liquidity-value))
+    (initial-dlp (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
+                     (sqrti add-liquidity-value)
+                     (/ (* add-liquidity-value bin-shares) bin-liquidity-value)))
 
-    ;; Calculate updated bin balances and total shares
+    ;; Calculate liquidity fees if adding liquidity to active bin
+    (x-amount-fees-liquidity (if (is-eq bin-id active-bin-id)
+      (let (
+        (x-liquidity-fee (+ (get x-protocol-fee pool-data) (get x-provider-fee pool-data) (get x-variable-fee pool-data)))
+        
+        ;; Calculate withdrawable x amount without fees
+        (x-amount-withdrawable (/ (* initial-dlp (+ x-balance x-amount)) (+ bin-shares initial-dlp)))
+        
+        ;; Calculate ideal liquidity fee for x amount
+        (ideal-x-amount-fees-liquidity (if (> x-amount-withdrawable x-amount)
+                                           (/ (* (- x-amount-withdrawable x-amount) x-liquidity-fee) FEE_BPS)
+                                           u0))
+      )
+        ;; Calculate final liquidity fee for x amount
+        (if (> x-amount ideal-x-amount-fees-liquidity) ideal-x-amount-fees-liquidity x-amount)
+      )
+      u0
+    ))
+    (y-amount-fees-liquidity (if (is-eq bin-id active-bin-id)
+      (let (
+        (y-liquidity-fee (+ (get y-protocol-fee pool-data) (get y-provider-fee pool-data) (get y-variable-fee pool-data)))
+        
+        ;; Calculate withdrawable y amount without fees
+        (y-amount-withdrawable (/ (* initial-dlp (+ y-balance y-amount)) (+ bin-shares initial-dlp)))
+        
+        ;; Calculate ideal liquidity fee for y amount
+        (ideal-y-amount-fees-liquidity (if (> y-amount-withdrawable y-amount)
+                                           (/ (* (- y-amount-withdrawable y-amount) y-liquidity-fee) FEE_BPS)
+                                           u0))
+      )
+        ;; Calculate final liquidity fee for y amount
+        (if (> y-amount ideal-y-amount-fees-liquidity) ideal-y-amount-fees-liquidity y-amount)
+      )
+      u0
+    ))
+
+    ;; Calculate final x and y amounts post fees
+    (x-amount-post-fees (- x-amount x-amount-fees-liquidity))
+    (y-amount-post-fees (- y-amount y-amount-fees-liquidity))
+    (y-amount-post-fees-scaled (* y-amount-post-fees BIN_BPS))
+
+    ;; Get final liquidity value and calculate dlp
+    (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (dlp (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
+             (sqrti add-liquidity-value-post-fees)
+             (/ (* add-liquidity-value-post-fees bin-shares) bin-liquidity-value)))
+
+    ;; Calculate updated bin balances
     (updated-x-balance (+ x-balance x-amount))
     (updated-y-balance (+ y-balance y-amount))
     (caller tx-sender)
@@ -1090,15 +1105,13 @@
 
       ;; Transfer x-amount x tokens from caller to pool-contract
       (if (> x-amount u0)
-        (try! (contract-call? x-token-trait transfer x-amount caller pool-contract none))
-        false
-      )
+          (try! (contract-call? x-token-trait transfer x-amount caller pool-contract none))
+          false)
 
       ;; Transfer y-amount y tokens from caller to pool-contract
       (if (> y-amount u0)
-        (try! (contract-call? y-token-trait transfer y-amount caller pool-contract none))
-        false
-      )
+          (try! (contract-call? y-token-trait transfer y-amount caller pool-contract none))
+          false)
 
       ;; Update bin balances
       (try! (contract-call? pool-trait update-bin-balances bin-id updated-x-balance updated-y-balance))
@@ -1121,15 +1134,17 @@
           bin-price: bin-price,
           active-bin-id: active-bin-id,
           bin-id: bin-id,
-          x-amount: x-amount,
-          y-amount: y-amount,
+          x-amount: x-amount-post-fees,
+          y-amount: y-amount-post-fees,
+          x-amount-fees-liquidity: x-amount-fees-liquidity,
+          y-amount-fees-liquidity: y-amount-fees-liquidity,
           dlp: dlp,
           min-dlp: min-dlp,
-          add-liquidity-value: add-liquidity-value,
+          add-liquidity-value: add-liquidity-value-post-fees,
           bin-liquidity-value: bin-liquidity-value,
           updated-x-balance: updated-x-balance,
           updated-y-balance: updated-y-balance,
-          updated-total-shares: (+ total-shares dlp)
+          updated-bin-shares: (+ bin-shares dlp)
         }
       })
       (ok dlp)
@@ -1155,11 +1170,11 @@
     (bin-balances (try! (contract-call? pool-trait get-bin-balances bin-id)))
     (x-balance (get x-balance bin-balances))
     (y-balance (get y-balance bin-balances))
-    (total-shares (get total-shares bin-balances))
+    (bin-shares (get bin-shares bin-balances))
 
     ;; Calculate x-amount and y-amount to transfer
-    (x-amount (/ (* amount x-balance) total-shares))
-    (y-amount (/ (* amount y-balance) total-shares))
+    (x-amount (/ (* amount x-balance) bin-shares))
+    (y-amount (/ (* amount y-balance) bin-shares))
 
     ;; Calculate updated bin balances and total shares
     (updated-x-balance (- x-balance x-amount))
@@ -1188,15 +1203,13 @@
 
       ;; Transfer x-amount x tokens from pool-contract to caller
       (if (> x-amount u0)
-        (try! (contract-call? pool-trait pool-transfer x-token-trait x-amount caller))
-        false
-      )
+          (try! (contract-call? pool-trait pool-transfer x-token-trait x-amount caller))
+          false)
 
       ;; Transfer y-amount y tokens from pool-contract to caller
       (if (> y-amount u0)
-        (try! (contract-call? pool-trait pool-transfer y-token-trait y-amount caller))
-        false
-      )
+          (try! (contract-call? pool-trait pool-transfer y-token-trait y-amount caller))
+          false)
 
       ;; Update bin balances
       (try! (contract-call? pool-trait update-bin-balances bin-id updated-x-balance updated-y-balance))
@@ -1222,7 +1235,7 @@
           min-y-amount: min-y-amount,
           updated-x-balance: updated-x-balance,
           updated-y-balance: updated-y-balance,
-          updated-total-shares: (- total-shares amount)
+          updated-bin-shares: (- bin-shares amount)
         }
       })
       (ok {x-amount: x-amount, y-amount: y-amount})
@@ -1365,15 +1378,11 @@
     (x-truncated 
       (if (> (len x-symbol) u14)
         (unwrap-panic (slice? x-symbol u0 u14))
-        x-symbol
-      )
-    )
+        x-symbol))
     (y-truncated
       (if (> (len y-symbol) u14)
         (unwrap-panic (slice? y-symbol u0 u14))
-        y-symbol
-      )
-    )
+        y-symbol))
   )
     ;; Return pool symbol with max length of 29
     (as-max-len? (concat x-truncated (concat "-" y-truncated)) u29)
@@ -1395,92 +1404,6 @@
     (pool-data (unwrap! (map-get? pools id) false))
   )
     (is-eq (get status pool-data) true)
-  )
-)
-
-;; Add initial liquidity to all bins during pool creation
-(define-private (fold-add-initial-liquidity
-    (bin-id uint)
-    (static-data (response {
-      pool-trait: <dlmm-pool-trait>, bin-step: uint,
-      initial-price: uint, x-decimals-scaled: uint,
-      x-amount-active-bin: uint, y-amount-active-bin: uint,
-      x-amount-per-bin: uint, y-amount-per-bin: uint,
-      burn-amount-per-bin: uint, caller: principal
-    } uint))
-  )
-  (match static-data
-    ok-value 
-      (let (
-        ;; Gather all static data
-        (pool-trait (get pool-trait ok-value))
-        (pool-contract (contract-of pool-trait))
-        (bin-step (get bin-step ok-value))
-        (initial-price (get initial-price ok-value))
-        (x-decimals-scaled (get x-decimals-scaled ok-value))
-        (x-amount-active-bin (get x-amount-active-bin ok-value))
-        (y-amount-active-bin (get y-amount-active-bin ok-value))
-        (x-amount-per-bin (get x-amount-per-bin ok-value))
-        (y-amount-per-bin (get y-amount-per-bin ok-value))
-        (burn-amount-per-bin (get burn-amount-per-bin ok-value))
-        (caller (get caller ok-value))
-
-        ;; Get price at bin
-        (bin-price (unwrap! (get-bin-price initial-price CENTER_BIN_ID bin-step bin-id) ERR_INVALID_BIN_PRICE))
-
-        ;; Calculate amounts to add based on bin-id
-        (x-amount-to-add (if (>= bin-id CENTER_BIN_ID)
-            (if (is-eq bin-id CENTER_BIN_ID) x-amount-active-bin x-amount-per-bin)
-            u0))
-        (y-amount-to-add (if (<= bin-id CENTER_BIN_ID)
-            (if (is-eq bin-id CENTER_BIN_ID) y-amount-active-bin y-amount-per-bin)
-            u0))
-
-        ;; Scale up y amount to add
-        (y-amount-to-add-scaled (* y-amount-to-add x-decimals-scaled))
-
-        ;; Get liquidity value and calculate dlp
-        (add-liquidity-value (unwrap! (get-liquidity-value x-amount-to-add y-amount-to-add-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-        (dlp (sqrti add-liquidity-value))
-      )
-        ;; Assert that dlp minted meets minimum total shares required
-        (asserts! (>= dlp (var-get minimum-total-shares)) ERR_MINIMUM_LP_AMOUNT)
-
-        ;; Assert that dlp is greater than or equal to 0 after subtracting burn amount
-        (asserts! (>= (- dlp burn-amount-per-bin) u0) ERR_MINIMUM_LP_AMOUNT)
-
-        ;; Assert that correct token amounts are being added based on bin-id and CENTER_BIN_ID
-        (asserts! (or (>= bin-id CENTER_BIN_ID) (is-eq x-amount-to-add u0)) ERR_INVALID_AMOUNT)
-        (asserts! (or (<= bin-id CENTER_BIN_ID) (is-eq y-amount-to-add u0)) ERR_INVALID_AMOUNT)
-        
-        ;; Update bin balances
-        (try! (contract-call? pool-trait update-bin-balances bin-id x-amount-to-add y-amount-to-add))
-
-        ;; Mint LP tokens to caller
-        (try! (contract-call? pool-trait pool-mint bin-id (- dlp burn-amount-per-bin) caller))
-
-        ;; Mint burn amount LP tokens to pool-contract
-        (try! (contract-call? pool-trait pool-mint bin-id burn-amount-per-bin pool-contract))
-        
-        ;; Print add initial liquidity data and return static-data
-        (print {
-          action: "fold-add-initial-liquidity",
-          caller: caller,
-          data: {
-            pool-contract: pool-contract,
-            initial-price: initial-price,
-            bin-price: bin-price,
-            bin-id: bin-id,
-            x-amount-to-add: x-amount-to-add,
-            y-amount-to-add: y-amount-to-add,
-            dlp: dlp,
-            add-liquidity-value: add-liquidity-value
-          }
-        })
-        static-data
-      )
-    err-value
-      (err err-value)
   )
 )
 
