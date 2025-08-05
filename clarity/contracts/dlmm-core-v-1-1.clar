@@ -57,8 +57,8 @@
 (define-constant MAX_BIN_ID u1000)
 
 ;; Maximum BPS
-(define-constant FEE_BPS u10000)
-(define-constant BIN_BPS u100000000)
+(define-constant FEE_SCALE_BPS u10000)
+(define-constant PRICE_SCALE_BPS u100000000)
 
 ;; Admins list and helper var used to remove admins
 (define-data-var admins (list 5 principal) (list tx-sender))
@@ -148,7 +148,7 @@
     (bin-factors-list (unwrap! (map-get? bin-factors bin-step) ERR_NO_BIN_FACTORS))
     (bin-factor (unwrap! (element-at? bin-factors-list bin-id) ERR_INVALID_BIN_FACTOR))
   )
-    (ok (/ (* initial-price bin-factor) BIN_BPS))
+    (ok (/ (* initial-price bin-factor) PRICE_SCALE_BPS))
   )
 )
 
@@ -399,11 +399,11 @@
       ;; Assert that caller is variable fees manager if variable fees manager is frozen
       (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert x-fee + x-protocol-fee + x-provider-fee is less than maximum FEE_BPS
-      (asserts! (< (+ x-fee x-protocol-fee x-provider-fee) FEE_BPS) ERR_INVALID_FEE)
+      ;; Assert x-fee + x-protocol-fee + x-provider-fee is less than maximum FEE_SCALE_BPS
+      (asserts! (< (+ x-fee x-protocol-fee x-provider-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
-      ;; Assert y-fee + y-protocol-fee + y-provider-fee is less than maximum FEE_BPS
-      (asserts! (< (+ y-fee y-protocol-fee y-provider-fee) FEE_BPS) ERR_INVALID_FEE)
+      ;; Assert y-fee + y-protocol-fee + y-provider-fee is less than maximum FEE_SCALE_BPS
+      (asserts! (< (+ y-fee y-protocol-fee y-provider-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
       ;; Set variable fees for pool
       (try! (contract-call? pool-trait set-variable-fees x-fee y-fee))
@@ -443,8 +443,8 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
       
-      ;; Assert protocol-fee + provider-fee + x-variable-fee is less than maximum FEE_BPS
-      (asserts! (< (+ protocol-fee provider-fee x-variable-fee) FEE_BPS) ERR_INVALID_FEE)
+      ;; Assert protocol-fee + provider-fee + x-variable-fee is less than maximum FEE_SCALE_BPS
+      (asserts! (< (+ protocol-fee provider-fee x-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
       
       ;; Set x fees for pool
       (try! (contract-call? pool-trait set-x-fees protocol-fee provider-fee))
@@ -481,8 +481,8 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
       
-      ;; Assert protocol-fee + provider-fee + y-variable-fee is less than maximum FEE_BPS
-      (asserts! (< (+ protocol-fee provider-fee y-variable-fee) FEE_BPS) ERR_INVALID_FEE)
+      ;; Assert protocol-fee + provider-fee + y-variable-fee is less than maximum FEE_SCALE_BPS
+      (asserts! (< (+ protocol-fee provider-fee y-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
       
       ;; Set y fees for pool
       (try! (contract-call? pool-trait set-y-fees protocol-fee provider-fee))
@@ -633,10 +633,10 @@
     (y-token-contract (contract-of y-token-trait))
 
     ;; Get initial price at active bin
-    (initial-price (/ (* y-amount-active-bin BIN_BPS) x-amount-active-bin))
+    (initial-price (/ (* y-amount-active-bin PRICE_SCALE_BPS) x-amount-active-bin))
 
     ;; Scale up y-amount-active-bin
-    (y-amount-active-bin-scaled (* y-amount-active-bin BIN_BPS))
+    (y-amount-active-bin-scaled (* y-amount-active-bin PRICE_SCALE_BPS))
 
     ;; Get liquidity value and calculate dlp
     (add-liquidity-value (unwrap! (get-liquidity-value x-amount-active-bin y-amount-active-bin-scaled initial-price) ERR_INVALID_LIQUIDITY_VALUE))
@@ -679,8 +679,8 @@
       (asserts! (> (len name) u0) ERR_INVALID_POOL_NAME)
 
       ;; Assert that fees are less than maximum BPS
-      (asserts! (< (+ x-protocol-fee x-provider-fee) FEE_BPS) ERR_INVALID_FEE)
-      (asserts! (< (+ y-protocol-fee y-provider-fee) FEE_BPS) ERR_INVALID_FEE)
+      (asserts! (< (+ x-protocol-fee x-provider-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
+      (asserts! (< (+ y-protocol-fee y-provider-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
       ;; Assert that bin step is valid
       (asserts! (is-some (index-of (var-get bin-steps) bin-step)) ERR_INVALID_BIN_STEP)
@@ -785,28 +785,28 @@
     (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum x-amount with fees
-    (max-x-amount (/ (* y-balance BIN_BPS) bin-price))
-    (max-x-amount-fees-total (/ (* max-x-amount (+ protocol-fee provider-fee variable-fee)) FEE_BPS))
+    (max-x-amount (/ (* y-balance PRICE_SCALE_BPS) bin-price))
+    (max-x-amount-fees-total (/ (* max-x-amount (+ protocol-fee provider-fee variable-fee)) FEE_SCALE_BPS))
     (updated-max-x-amount (+ max-x-amount max-x-amount-fees-total))
     
     ;; Assert that x-amount is less than or equal to updated-max-x-amount
     (x-amount-check (asserts! (<= x-amount updated-max-x-amount) ERR_MAXIMUM_X_AMOUNT))
 
     ;; Calculate fees and dx
-    (x-amount-fees-protocol (/ (* x-amount protocol-fee) FEE_BPS))
-    (x-amount-fees-provider (/ (* x-amount provider-fee) FEE_BPS))
-    (x-amount-fees-variable (/ (* x-amount variable-fee) FEE_BPS))
+    (x-amount-fees-protocol (/ (* x-amount protocol-fee) FEE_SCALE_BPS))
+    (x-amount-fees-provider (/ (* x-amount provider-fee) FEE_SCALE_BPS))
+    (x-amount-fees-variable (/ (* x-amount variable-fee) FEE_SCALE_BPS))
     (x-amount-fees-total (+ x-amount-fees-protocol x-amount-fees-provider x-amount-fees-variable))
     (dx (- x-amount x-amount-fees-total))
 
     ;; Calculate dy
-    (dy (/ (* dx bin-price) BIN_BPS))
+    (dy (/ (* dx bin-price) PRICE_SCALE_BPS))
 
     ;; Calculate updated bin balances
     (updated-x-balance (+ x-balance dx x-amount-fees-provider x-amount-fees-variable))
     (updated-y-balance (- y-balance dy))
 
-    ;; Calculate new active bin id
+    ;; Calculate new active bin id (default to bin-id if at the edge of the bin range)
     (updated-active-bin-id (if (and (is-eq updated-y-balance u0) (> bin-id MIN_BIN_ID))
                                (- bin-id u1)
                                bin-id))
@@ -906,28 +906,28 @@
     (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum y-amount with fees
-    (max-y-amount (/ (* x-balance bin-price) BIN_BPS))
-    (max-y-amount-fees-total (/ (* max-y-amount (+ protocol-fee provider-fee variable-fee)) FEE_BPS))
+    (max-y-amount (/ (* x-balance bin-price) PRICE_SCALE_BPS))
+    (max-y-amount-fees-total (/ (* max-y-amount (+ protocol-fee provider-fee variable-fee)) FEE_SCALE_BPS))
     (updated-max-y-amount (+ max-y-amount max-y-amount-fees-total))
 
     ;; Assert that y-amount is less than or equal to updated-max-y-amount
     (y-amount-check (asserts! (<= y-amount updated-max-y-amount) ERR_MAXIMUM_Y_AMOUNT))
 
     ;; Calculate fees and dy
-    (y-amount-fees-protocol (/ (* y-amount protocol-fee) FEE_BPS))
-    (y-amount-fees-provider (/ (* y-amount provider-fee) FEE_BPS))
-    (y-amount-fees-variable (/ (* y-amount variable-fee) FEE_BPS))
+    (y-amount-fees-protocol (/ (* y-amount protocol-fee) FEE_SCALE_BPS))
+    (y-amount-fees-provider (/ (* y-amount provider-fee) FEE_SCALE_BPS))
+    (y-amount-fees-variable (/ (* y-amount variable-fee) FEE_SCALE_BPS))
     (y-amount-fees-total (+ y-amount-fees-protocol y-amount-fees-provider y-amount-fees-variable))
     (dy (- y-amount y-amount-fees-total))
 
     ;; Calculate dx
-    (dx (/ (* dy BIN_BPS) bin-price))
+    (dx (/ (* dy PRICE_SCALE_BPS) bin-price))
 
     ;; Calculate updated bin balances
     (updated-x-balance (- x-balance dx))
     (updated-y-balance (+ y-balance dy y-amount-fees-provider y-amount-fees-variable))
 
-    ;; Calculate new active bin id
+    ;; Calculate new active bin id (default to bin-id if at the edge of the bin range)
     (updated-active-bin-id (if (and (is-eq updated-x-balance u0) (< bin-id MAX_BIN_ID))
                                (+ bin-id u1)
                                bin-id))
@@ -1024,31 +1024,31 @@
     (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Scale up y-amount and y-balance
-    (y-amount-scaled (* y-amount BIN_BPS))
-    (y-balance-scaled (* y-balance BIN_BPS))
+    (y-amount-scaled (* y-amount PRICE_SCALE_BPS))
+    (y-balance-scaled (* y-balance PRICE_SCALE_BPS))
 
-    ;; Get initial liquidity values and calculate dlp without fees
+    ;; Get current liquidity values and calculate dlp without fees
     (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
     (bin-liquidity-value (unwrap! (get-liquidity-value x-balance y-balance-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (initial-dlp (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
-                     (sqrti add-liquidity-value)
-                     (/ (* add-liquidity-value bin-shares) bin-liquidity-value)))
+    (dlp (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
+             (sqrti add-liquidity-value)
+             (/ (* add-liquidity-value bin-shares) bin-liquidity-value)))
 
-    ;; Calculate liquidity fees if adding liquidity to active bin
+    ;; Calculate liquidity fees if adding liquidity to active bin based on ratio of bin balances
     (x-amount-fees-liquidity (if (is-eq bin-id active-bin-id)
       (let (
         (x-liquidity-fee (+ (get x-protocol-fee pool-data) (get x-provider-fee pool-data) (get x-variable-fee pool-data)))
         
         ;; Calculate withdrawable x amount without fees
-        (x-amount-withdrawable (/ (* initial-dlp (+ x-balance x-amount)) (+ bin-shares initial-dlp)))
+        (x-amount-withdrawable (/ (* dlp (+ x-balance x-amount)) (+ bin-shares dlp)))
         
-        ;; Calculate ideal liquidity fee for x amount
-        (ideal-x-amount-fees-liquidity (if (> x-amount-withdrawable x-amount)
-                                           (/ (* (- x-amount-withdrawable x-amount) x-liquidity-fee) FEE_BPS)
+        ;; Calculate max liquidity fee for x amount
+        (max-x-amount-fees-liquidity (if (> x-amount-withdrawable x-amount)
+                                           (/ (* (- x-amount-withdrawable x-amount) x-liquidity-fee) FEE_SCALE_BPS)
                                            u0))
       )
         ;; Calculate final liquidity fee for x amount
-        (if (> x-amount ideal-x-amount-fees-liquidity) ideal-x-amount-fees-liquidity x-amount)
+        (if (> x-amount max-x-amount-fees-liquidity) max-x-amount-fees-liquidity x-amount)
       )
       u0
     ))
@@ -1057,15 +1057,15 @@
         (y-liquidity-fee (+ (get y-protocol-fee pool-data) (get y-provider-fee pool-data) (get y-variable-fee pool-data)))
         
         ;; Calculate withdrawable y amount without fees
-        (y-amount-withdrawable (/ (* initial-dlp (+ y-balance y-amount)) (+ bin-shares initial-dlp)))
+        (y-amount-withdrawable (/ (* dlp (+ y-balance y-amount)) (+ bin-shares dlp)))
         
-        ;; Calculate ideal liquidity fee for y amount
-        (ideal-y-amount-fees-liquidity (if (> y-amount-withdrawable y-amount)
-                                           (/ (* (- y-amount-withdrawable y-amount) y-liquidity-fee) FEE_BPS)
+        ;; Calculate max liquidity fee for y amount
+        (max-y-amount-fees-liquidity (if (> y-amount-withdrawable y-amount)
+                                           (/ (* (- y-amount-withdrawable y-amount) y-liquidity-fee) FEE_SCALE_BPS)
                                            u0))
       )
         ;; Calculate final liquidity fee for y amount
-        (if (> y-amount ideal-y-amount-fees-liquidity) ideal-y-amount-fees-liquidity y-amount)
+        (if (> y-amount max-y-amount-fees-liquidity) max-y-amount-fees-liquidity y-amount)
       )
       u0
     ))
@@ -1073,13 +1073,13 @@
     ;; Calculate final x and y amounts post fees
     (x-amount-post-fees (- x-amount x-amount-fees-liquidity))
     (y-amount-post-fees (- y-amount y-amount-fees-liquidity))
-    (y-amount-post-fees-scaled (* y-amount-post-fees BIN_BPS))
+    (y-amount-post-fees-scaled (* y-amount-post-fees PRICE_SCALE_BPS))
 
-    ;; Get final liquidity value and calculate dlp
+    ;; Get final liquidity value and calculate dlp post fees
     (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (dlp (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
-             (sqrti add-liquidity-value-post-fees)
-             (/ (* add-liquidity-value-post-fees bin-shares) bin-liquidity-value)))
+    (dlp-post-fees (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
+                       (sqrti add-liquidity-value-post-fees)
+                       (/ (* add-liquidity-value-post-fees bin-shares) bin-liquidity-value)))
 
     ;; Calculate updated bin balances
     (updated-x-balance (+ x-balance x-amount))
@@ -1101,7 +1101,7 @@
 
       ;; Assert that min-dlp is greater than 0 and dlp is greater than or equal to min-dlp
       (asserts! (> min-dlp u0) ERR_INVALID_AMOUNT)
-      (asserts! (>= dlp min-dlp) ERR_MINIMUM_LP_AMOUNT)
+      (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
       ;; Transfer x-amount x tokens from caller to pool-contract
       (if (> x-amount u0)
@@ -1117,7 +1117,7 @@
       (try! (contract-call? pool-trait update-bin-balances bin-id updated-x-balance updated-y-balance))
 
       ;; Mint LP tokens to caller
-      (try! (contract-call? pool-trait pool-mint bin-id dlp caller))
+      (try! (contract-call? pool-trait pool-mint bin-id dlp-post-fees caller))
 
       ;; Print add liquidity data and return number of LP tokens the caller received
       (print {
@@ -1138,7 +1138,7 @@
           y-amount: y-amount-post-fees,
           x-amount-fees-liquidity: x-amount-fees-liquidity,
           y-amount-fees-liquidity: y-amount-fees-liquidity,
-          dlp: dlp,
+          dlp: dlp-post-fees,
           min-dlp: min-dlp,
           add-liquidity-value: add-liquidity-value-post-fees,
           bin-liquidity-value: bin-liquidity-value,
@@ -1147,7 +1147,7 @@
           updated-bin-shares: (+ bin-shares dlp)
         }
       })
-      (ok dlp)
+      (ok dlp-post-fees)
     )
   )
 )
@@ -1158,7 +1158,7 @@
     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
     (bin-id uint) (amount uint) (min-x-amount uint) (min-y-amount uint)
   )
-    (let (
+  (let (
     ;; Gather all pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
@@ -1180,7 +1180,7 @@
     (updated-x-balance (- x-balance x-amount))
     (updated-y-balance (- y-balance y-amount))
     (caller tx-sender)
-    )
+  )
     (begin
       ;; Assert that correct token traits are used
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
@@ -1377,12 +1377,12 @@
     ;; Truncate symbols if length exceeds 14
     (x-truncated 
       (if (> (len x-symbol) u14)
-        (unwrap-panic (slice? x-symbol u0 u14))
-        x-symbol))
+          (unwrap-panic (slice? x-symbol u0 u14))
+          x-symbol))
     (y-truncated
       (if (> (len y-symbol) u14)
-        (unwrap-panic (slice? y-symbol u0 u14))
-        y-symbol))
+          (unwrap-panic (slice? y-symbol u0 u14))
+          y-symbol))
   )
     ;; Return pool symbol with max length of 29
     (as-max-len? (concat x-truncated (concat "-" y-truncated)) u29)
