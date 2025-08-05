@@ -152,7 +152,7 @@
   )
 )
 
-;; Get liquidity value when adding liquidity to a bin
+;; Get liquidity value when adding liquidity to a bin by rebasing x-amount to y-units
 (define-read-only (get-liquidity-value (x-amount uint) (y-amount uint) (bin-price uint))
   (ok (+ (* bin-price x-amount) y-amount))
 )
@@ -1039,15 +1039,15 @@
       (let (
         (x-liquidity-fee (+ (get x-protocol-fee pool-data) (get x-provider-fee pool-data) (get x-variable-fee pool-data)))
         
-        ;; Calculate withdrawable x amount without fees
+        ;; Calculate withdrawable x-amount without fees
         (x-amount-withdrawable (/ (* dlp (+ x-balance x-amount)) (+ bin-shares dlp)))
         
-        ;; Calculate max liquidity fee for x amount
+        ;; Calculate max liquidity fee for x-amount
         (max-x-amount-fees-liquidity (if (> x-amount-withdrawable x-amount)
                                            (/ (* (- x-amount-withdrawable x-amount) x-liquidity-fee) FEE_SCALE_BPS)
                                            u0))
       )
-        ;; Calculate final liquidity fee for x amount
+        ;; Calculate final liquidity fee for x-amount
         (if (> x-amount max-x-amount-fees-liquidity) max-x-amount-fees-liquidity x-amount)
       )
       u0
@@ -1056,15 +1056,15 @@
       (let (
         (y-liquidity-fee (+ (get y-protocol-fee pool-data) (get y-provider-fee pool-data) (get y-variable-fee pool-data)))
         
-        ;; Calculate withdrawable y amount without fees
+        ;; Calculate withdrawable y-amount without fees
         (y-amount-withdrawable (/ (* dlp (+ y-balance y-amount)) (+ bin-shares dlp)))
         
-        ;; Calculate max liquidity fee for y amount
+        ;; Calculate max liquidity fee for y-amount
         (max-y-amount-fees-liquidity (if (> y-amount-withdrawable y-amount)
                                            (/ (* (- y-amount-withdrawable y-amount) y-liquidity-fee) FEE_SCALE_BPS)
                                            u0))
       )
-        ;; Calculate final liquidity fee for y amount
+        ;; Calculate final liquidity fee for y-amount
         (if (> y-amount max-y-amount-fees-liquidity) max-y-amount-fees-liquidity y-amount)
       )
       u0
@@ -1099,7 +1099,7 @@
       (asserts! (or (>= bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_AMOUNT)
       (asserts! (or (<= bin-id active-bin-id) (is-eq y-amount u0)) ERR_INVALID_AMOUNT)
 
-      ;; Assert that min-dlp is greater than 0 and dlp is greater than or equal to min-dlp
+      ;; Assert that min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
       (asserts! (> min-dlp u0) ERR_INVALID_AMOUNT)
       (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
