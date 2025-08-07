@@ -752,7 +752,7 @@
           pool-uri: uri,
           pool-status: status,
           creation-height: burn-block-height,
-          active-bin-id: CENTER_BIN_ID,
+          active-bin-id: 0,
           bin-step: bin-step,
           initial-price: initial-price,
           variable-fees-manager: CONTRACT_DEPLOYER,
