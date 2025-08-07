@@ -153,10 +153,11 @@
 )
 
 ;; Get price for a specific bin
-(define-read-only (get-bin-price (initial-price uint) (bin-step uint) (bin-id uint))
+(define-read-only (get-bin-price (initial-price uint) (bin-step uint) (bin-id int))
   (let (
+    (unsigned-bin-id (to-uint (+ bin-id (to-int CENTER_BIN_ID))))
     (bin-factors-list (unwrap! (map-get? bin-factors bin-step) ERR_NO_BIN_FACTORS))
-    (bin-factor (unwrap! (element-at? bin-factors-list bin-id) ERR_INVALID_BIN_FACTOR))
+    (bin-factor (unwrap! (element-at? bin-factors-list unsigned-bin-id) ERR_INVALID_BIN_FACTOR))
   )
     (ok (/ (* initial-price bin-factor) PRICE_SCALE_BPS))
   )
@@ -795,7 +796,7 @@
     (y-balance (get y-balance bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price bin-step unsigned-bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum x-amount with fees
     (max-x-amount (/ (* y-balance PRICE_SCALE_BPS) bin-price))
@@ -920,7 +921,7 @@
     (y-balance (get y-balance bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price bin-step unsigned-bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum y-amount with fees
     (max-y-amount (/ (* x-balance bin-price) PRICE_SCALE_BPS))
@@ -1042,7 +1043,7 @@
     (bin-shares (get bin-shares bin-balances))
 
     ;; Get price at bin
-    (bin-price (unwrap! (get-bin-price initial-price bin-step unsigned-bin-id) ERR_INVALID_BIN_PRICE))
+    (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Scale up y-amount and y-balance
     (y-amount-scaled (* y-amount PRICE_SCALE_BPS))
