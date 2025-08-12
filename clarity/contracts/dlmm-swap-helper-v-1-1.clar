@@ -6,8 +6,8 @@
 
 ;; Error constants
 (define-constant ERR_NO_RESULT_DATA (err u2001))
-(define-constant ERR_MINIMUM_RECEIVED (err u2002))
-(define-constant ERR_BIN_SLIPPAGE (err u2003))
+(define-constant ERR_BIN_SLIPPAGE (err u2002))
+(define-constant ERR_MINIMUM_RECEIVED (err u2003))
 (define-constant ERR_NO_ACTIVE_BIN_DATA (err u2004))
 
 ;; Swap through multiple bins in multiple pools
