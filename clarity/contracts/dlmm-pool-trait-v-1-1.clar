@@ -39,7 +39,8 @@
       bin-change-count: uint,
       last-variable-fees-update: uint,
       variable-fees-cooldown: uint,
-      freeze-variable-fees-manager: bool
+      freeze-variable-fees-manager: bool,
+      dynamic-config: (buff 4096)
     } uint))
     (get-active-bin-id () (response int uint))
     (get-bin-balances (uint) (response {x-balance: uint, y-balance: uint, bin-shares: uint} uint))
@@ -53,6 +54,7 @@
     (set-variable-fees (uint uint) (response bool uint))
     (set-variable-fees-cooldown (uint) (response bool uint))
     (set-freeze-variable-fees-manager () (response bool uint))
+    (set-dynamic-config ((buff 4096)) (response bool uint))
     (update-bin-balances (uint uint uint) (response bool uint))
     (transfer (uint uint principal principal) (response bool uint))
     (transfer-memo (uint uint principal principal (buff 34)) (response bool uint))

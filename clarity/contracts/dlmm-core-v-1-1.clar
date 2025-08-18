@@ -44,8 +44,10 @@
 (define-constant ERR_NOT_ACTIVE_BIN (err u1037))
 (define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1038))
 (define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1039))
-(define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1040))
-(define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1041))
+(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1040))
+(define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1041))
+(define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1042))
+(define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1043))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -266,6 +268,9 @@
     ;; Assert caller is an admin and new code hash is not already in list
     (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
     (asserts! (is-none (index-of verified-pool-code-hashes-list hash)) ERR_ALREADY_VERIFIED_POOL_CODE_HASH)
+
+    ;; Assert that hash is greater than zero
+    (asserts! (> (len hash) u0) ERR_INVALID_VERIFIED_POOL_CODE_HASH)
 
     ;; Add code hash to verified pool code hashes list with max length of 10000
     (var-set verified-pool-code-hashes (unwrap! (as-max-len? (append verified-pool-code-hashes-list hash) u10000) ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED))
@@ -606,6 +611,46 @@
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
           pool-contract: (contract-of pool-trait)
+        }
+      })
+      (ok true)
+    )
+  )
+)
+
+;; Set dynamic config for a pool
+(define-public (set-dynamic-config (pool-trait <dlmm-pool-trait>) (config (buff 4096)))
+  (let (
+    ;; Gather all pool data
+    (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
+    (variable-fees-manager (get variable-fees-manager pool-data))
+    (freeze-variable-fees-manager (get freeze-variable-fees-manager pool-data))
+    (caller tx-sender)
+  )
+    (begin
+      ;; Assert caller is an admin or variable fees manager and pool is created and valid
+      (asserts! (or (is-some (index-of (var-get admins) caller)) (is-eq variable-fees-manager caller)) ERR_NOT_AUTHORIZED)
+      (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
+      (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+
+      ;; Assert that caller is variable fees manager if variable fees manager is frozen
+      (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
+
+      ;; Assert that config is greater than zero
+      (asserts! (> (len config) u0) ERR_INVALID_DYNAMIC_CONFIG)
+
+      ;; Set dynamic config for pool
+      (try! (contract-call? pool-trait set-dynamic-config config))
+
+      ;; Print function data and return true
+      (print {
+        action: "set-dynamic-config",
+        caller: caller,
+        data: {
+          pool-id: (get pool-id pool-data),
+          pool-name: (get pool-name pool-data),
+          pool-contract: (contract-of pool-trait),
+          config: config
         }
       })
       (ok true)
@@ -1421,6 +1466,14 @@
 ;; Reset variable fees for multiple pools
 (define-public (reset-variable-fees-multi (pool-traits (list 120 <dlmm-pool-trait>)))
   (ok (map reset-variable-fees pool-traits))
+)
+
+;; Set dynamic config for multiple pools
+(define-public (set-dynamic-config-multi
+    (pool-traits (list 120 <dlmm-pool-trait>))
+    (configs (list 120 (buff 4096)))
+  )
+  (ok (map set-dynamic-config pool-traits configs))
 )
 
 ;; Helper function for removing an admin

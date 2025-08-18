@@ -61,6 +61,8 @@
 
 (define-data-var freeze-variable-fees-manager bool false)
 
+(define-data-var dynamic-config (buff 4096) 0x)
+
 (define-map balances-at-bin uint {x-balance: uint, y-balance: uint, bin-shares: uint})
 
 (define-map user-balance-at-bin {id: uint, user: principal} uint)
@@ -134,7 +136,8 @@
     bin-change-count: (var-get bin-change-count),
     last-variable-fees-update: (var-get last-variable-fees-update),
     variable-fees-cooldown: (var-get variable-fees-cooldown),
-    freeze-variable-fees-manager: (var-get freeze-variable-fees-manager)
+    freeze-variable-fees-manager: (var-get freeze-variable-fees-manager),
+    dynamic-config: (var-get dynamic-config)
   })
 )
 
@@ -280,6 +283,20 @@
       ;; Assert that caller is core address before setting var
       (asserts! (is-eq caller CORE_ADDRESS) ERR_NOT_AUTHORIZED)
       (var-set freeze-variable-fees-manager true)
+      (ok true)
+    )
+  )
+)
+
+;; Set dynamic config via DLMM Core
+(define-public (set-dynamic-config (config (buff 4096)))
+  (let (
+    (caller contract-caller)
+  )
+    (begin
+      ;; Assert that caller is core address before setting var
+      (asserts! (is-eq caller CORE_ADDRESS) ERR_NOT_AUTHORIZED)
+      (var-set dynamic-config config)
       (ok true)
     )
   )
