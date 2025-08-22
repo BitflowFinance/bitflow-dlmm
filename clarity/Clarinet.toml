@@ -25,6 +25,11 @@ path = "contracts/dlmm-pool-trait-v-1-1.clar"
 clarity_version = 3
 epoch = "3"
 
+[contracts.dlmm-staking-trait-v-1-1]
+path = "contracts/dlmm-staking-trait-v-1-1.clar"
+clarity_version = 3
+epoch = "3"
+
 [contracts.dlmm-core-v-1-1]
 path = "contracts/dlmm-core-v-1-1.clar"
 clarity_version = 3
@@ -32,6 +37,21 @@ epoch = "3"
 
 [contracts.dlmm-pool-sbtc-usdc-v-1-1]
 path = "contracts/dlmm-pool-sbtc-usdc-v-1-1.clar"
+clarity_version = 3
+epoch = "3"
+
+[contracts.dlmm-staking-sbtc-usdc-v-1-1]
+path = "contracts/dlmm-staking-sbtc-usdc-v-1-1.clar"
+clarity_version = 3
+epoch = "3"
+
+[contracts.dlmm-swap-helper-v-1-1]
+path = "contracts/dlmm-swap-helper-v-1-1.clar"
+clarity_version = 3
+epoch = "3"
+
+[contracts.dlmm-liquidity-helper-v-1-1]
+path = "contracts/dlmm-liquidity-helper-v-1-1.clar"
 clarity_version = 3
 epoch = "3"
 
@@ -49,17 +69,6 @@ epoch = "3"
 path = "contracts/mocks/mock-pool.clar"
 clarity_version = 3
 epoch = "3"
-
-
-# [contracts.dlmm-swap-helper-v-1-1]
-# path = "contracts/dlmm-swap-helper-v-1-1.clar"
-# clarity_version = 3
-# epoch = "3"
-
-# [contracts.dlmm-liquidity-helper-v-1-1]
-# path = "contracts/dlmm-liquidity-helper-v-1-1.clar"
-# clarity_version = 3
-# epoch = "3"
 
 [repl.analysis]
 passes = ["check_checker"]
