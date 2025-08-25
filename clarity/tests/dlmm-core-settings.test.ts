@@ -5,6 +5,10 @@ import {
   dlmmCore,
   errors,
   generateBinFactors,
+  sbtcUsdcPool,
+  mockSbtcToken,
+  mockUsdcToken,
+  mockRandomToken,
 } from "./helpers";
 
 import { describe, it, expect } from 'vitest';
@@ -264,6 +268,56 @@ describe('DLMM Core Contract', () => {
     it('should prevent non-admin from changing settings', async () => {
       const response = txErr(dlmmCore.setPublicPoolCreation(true), alice);
       expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_NOT_AUTHORIZED);
+    });
+
+    it('should succeed when creating pool with random X token (pool creation does not validate token whitelisting)', async () => {
+      // Mint tokens for pool creation
+      txOk(mockRandomToken.mint(10000000n, deployer), deployer);
+      txOk(mockUsdcToken.mint(5000000000n, deployer), deployer);
+
+      const response = txOk(dlmmCore.createPool(
+        sbtcUsdcPool.identifier,           
+        mockRandomToken.identifier, // Using random token
+        mockUsdcToken.identifier,          
+        10000000n,    // 0.1 BTC in active bin
+        5000000000n,  // 5000 USDC in active bin  
+        1000n,        // burn amount
+        1000n, 3000n, // x fees (0.1% protocol, 0.3% provider)
+        1000n, 3000n, // y fees (0.1% protocol, 0.3% provider)
+        25n,          // bin step (25 basis points)
+        900n,         // variable fees cooldown
+        false,        // freeze variable fees manager
+        deployer,     // fee address
+        "https://bitflow.finance/dlmm", // uri
+        true          // status
+      ), deployer);
+      
+      expect(response).toBeDefined();
+    });
+
+    it('should succeed when creating pool with random Y token (pool creation does not validate token whitelisting)', async () => {
+      // Mint tokens for pool creation
+      txOk(mockSbtcToken.mint(10000000n, deployer), deployer);
+      txOk(mockRandomToken.mint(5000000000n, deployer), deployer);
+
+      const response = txOk(dlmmCore.createPool(
+        sbtcUsdcPool.identifier,           
+        mockSbtcToken.identifier,
+        mockRandomToken.identifier, // Using random token        
+        10000000n,    // 0.1 BTC in active bin
+        5000000000n,  // 5000 USDC in active bin  
+        1000n,        // burn amount
+        1000n, 3000n, // x fees (0.1% protocol, 0.3% provider)
+        1000n, 3000n, // y fees (0.1% protocol, 0.3% provider)
+        25n,          // bin step (25 basis points)
+        900n,         // variable fees cooldown
+        false,        // freeze variable fees manager
+        deployer,     // fee address
+        "https://bitflow.finance/dlmm", // uri
+        true          // status
+      ), deployer);
+      
+      expect(response).toBeDefined();
     });
   });
 });

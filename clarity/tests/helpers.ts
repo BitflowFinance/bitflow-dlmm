@@ -15,17 +15,20 @@ export const charlie = accounts.wallet_3.address;
 
 export const dlmmCore = contracts.dlmmCoreV11;
 export const dlmmSwapHelper = contracts.dlmmSwapHelperV11;
+export const dlmmLiquidityHelper = contracts.dlmmLiquidityHelperV11;
 export const sbtcUsdcPool = contracts.dlmmPoolSbtcUsdcV11;
 export const mockSbtcToken = contracts.mockSbtcToken;
 export const mockUsdcToken = contracts.mockUsdcToken;
 export const mockPool = contracts.mockPool;
+export const mockRandomToken = contracts.mockRandomToken;
 
 const _errors = projectErrors(project);
 
 export const errors = {
   dlmmCore: _errors.dlmmCoreV11,
   sbtcUsdcPool: _errors.dlmmPoolSbtcUsdcV11,
-  dlmmSwapHelper: _errors.dlmmSwapHelperV11
+  dlmmSwapHelper: _errors.dlmmSwapHelperV11,
+  dlmmLiquidityHelper: _errors.dlmmLiquidityHelperV11
 };
 
 // Common pool setup functionality
@@ -163,7 +166,6 @@ export function bulkAddLiquidityToBins(
   );
 }
 
-
 export function generateBinFactors(numEntries: number = Number(dlmmCore.constants.NUM_OF_BINS), startValue: bigint = 1000000n): bigint[] {
   return Array.from({ length: numEntries }, (_, i) => startValue + BigInt(i));
 }
@@ -198,4 +200,9 @@ export function setupTestEnvironment() {
     mockUsdcToken.identifier,
     deployer
   );
+}
+
+export function getSbtcUsdcPoolLpBalance(binId: bigint, address: string): bigint {
+  const unsignedBin = rovOk(dlmmCore.getUnsignedBinId(binId));
+  return rovOk(sbtcUsdcPool.getBalance(unsignedBin, address));
 }

@@ -7,6 +7,7 @@ import {
   mockSbtcToken,
   mockUsdcToken,
   mockPool,
+  mockRandomToken,
   setupTestEnvironment
 } from "./helpers";
 
@@ -22,30 +23,22 @@ describe('DLMM Core Swap Functions', () => {
   
   beforeEach(async () => {
     addBulkLiquidityOutput = setupTestEnvironment();
-  });
-
-  describe('Pool Setup Verification', () => {
-    it('should have created pool successfully', async () => {
-      const poolData = rovOk(sbtcUsdcPool.getPool());
-      expect(poolData.poolCreated).toBe(true);
-      expect(poolData.binStep).toBe(25n);
-      expect(poolData.activeBinId).toBe(0n);
-    });
-
-    it('should have liquidity in bins', async () => {
-      // Check active bin (500 = 0 + CENTER_BIN_ID)
-      const activeBinBalances = rovOk(sbtcUsdcPool.getBinBalances(500n));
-      expect(activeBinBalances.xBalance).toBeGreaterThan(0n);
-      expect(activeBinBalances.yBalance).toBeGreaterThan(0n);
-      
-      // Check negative bin (has only Y tokens)
-      const negativeBinBalances = rovOk(sbtcUsdcPool.getBinBalances(495n)); // -5 + 500
-      expect(negativeBinBalances.yBalance).toBeGreaterThan(0n);
-      
-      // Check positive bin (has only X tokens)
-      const positiveBinBalances = rovOk(sbtcUsdcPool.getBinBalances(505n)); // 5 + 500
-      expect(positiveBinBalances.xBalance).toBeGreaterThan(0n);
-    });
+    const poolData = rovOk(sbtcUsdcPool.getPool());
+    expect(poolData.poolCreated).toBe(true);
+    expect(poolData.binStep).toBe(25n);
+    expect(poolData.activeBinId).toBe(0n);
+    // Check active bin (500 = 0 + CENTER_BIN_ID)
+    const activeBinBalances = rovOk(sbtcUsdcPool.getBinBalances(500n));
+    expect(activeBinBalances.xBalance).toBeGreaterThan(0n);
+    expect(activeBinBalances.yBalance).toBeGreaterThan(0n);
+    
+    // Check negative bin (has only Y tokens)
+    const negativeBinBalances = rovOk(sbtcUsdcPool.getBinBalances(495n)); // -5 + 500
+    expect(negativeBinBalances.yBalance).toBeGreaterThan(0n);
+    
+    // Check positive bin (has only X tokens)
+    const positiveBinBalances = rovOk(sbtcUsdcPool.getBinBalances(505n)); // 5 + 500
+    expect(positiveBinBalances.xBalance).toBeGreaterThan(0n);
   });
 
   describe('swap-x-for-y Function', () => {
@@ -262,6 +255,78 @@ describe('DLMM Core Swap Functions', () => {
       ), alice);
       
       expect(response).toBeDefined();
+    });
+
+    it('should fail when swapping random X token for Y', async () => {
+      const binId = 0n;
+      const xAmount = 1000000n; // 0.01 BTC
+      
+      // Mint random tokens for testing
+      txOk(mockRandomToken.mint(xAmount, alice), deployer);
+      
+      const response = txErr(dlmmCore.swapXForY(
+        sbtcUsdcPool.identifier,
+        mockRandomToken.identifier,
+        mockUsdcToken.identifier,
+        binId,
+        xAmount
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_X_TOKEN);
+    });
+
+    it('should fail when swapping X token for random Y', async () => {
+      const binId = 0n;
+      const xAmount = 1000000n; // 0.01 BTC
+      
+      // Mint random tokens for testing
+      txOk(mockRandomToken.mint(xAmount, alice), deployer);
+      
+      const response = txErr(dlmmCore.swapXForY(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockRandomToken.identifier,
+        binId,
+        xAmount
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_Y_TOKEN);
+    });
+
+    it('should fail when swapping random Y token for X', async () => {
+      const binId = 0n;
+      const yAmount = 500000000n; // 500 USDC
+      
+      // Mint random tokens for testing
+      txOk(mockRandomToken.mint(yAmount, alice), deployer);
+      
+      const response = txErr(dlmmCore.swapYForX(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockRandomToken.identifier,
+        binId,
+        yAmount
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_Y_TOKEN);
+    });
+
+    it('should fail when swapping Y token for random X', async () => {
+      const binId = 0n;
+      const yAmount = 500000000n; // 500 USDC
+      
+      // Mint random tokens for testing
+      txOk(mockRandomToken.mint(yAmount, alice), deployer);
+      
+      const response = txErr(dlmmCore.swapYForX(
+        sbtcUsdcPool.identifier,
+        mockRandomToken.identifier,
+        mockUsdcToken.identifier,
+        binId,
+        yAmount
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_X_TOKEN);
     });
   });
 });

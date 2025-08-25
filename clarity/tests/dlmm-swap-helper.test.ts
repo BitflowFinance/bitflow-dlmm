@@ -7,6 +7,7 @@ import {
   mockSbtcToken,
   mockUsdcToken,
   mockPool,
+  mockRandomToken,
   setupTestEnvironment
 } from "./helpers";
 
@@ -255,19 +256,20 @@ describe('DLMM Swap Helper Functions', () => {
       expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_BIN_SLIPPAGE);
     });
 
-    it('should handle empty swap list', async () => {
+    it('should revert on empty swap list', async () => {
+      // test will fail
       const swaps: any[] = [];
       const minReceived = 0n;
       const maxUnfavorableBins = 5n;
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapHelper.swapHelper(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
-      
-      const received = cvToValue(response.result);
-      expect(received).toBe(0n);
+
+      // will be changed with specific error code once set
+      expect(cvToValue(response.result)).toBeGreaterThan(0n);
     });
 
     it('should handle swaps with zero amounts', async () => {
@@ -423,34 +425,6 @@ describe('DLMM Swap Helper Functions', () => {
       expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_BIN_SLIPPAGE);
     });
 
-    it('should document attempt to trigger ERR_NO_RESULT_DATA through multiple complex swaps', async () => {
-      // ERR_NO_RESULT_DATA occurs when the result parameter in fold-swap-helper is an error
-      // This is challenging to trigger directly as it's an internal fold state
-      // This test documents the theoretical scenario
-      const swaps = [
-        {
-          poolTrait: sbtcUsdcPool.identifier,
-          xTokenTrait: mockSbtcToken.identifier,
-          yTokenTrait: mockUsdcToken.identifier,
-          binId: 0,
-          amount: 1000000n,
-          xForY: true
-        }
-      ];
-      const minReceived = 1n;
-      const maxUnfavorableBins = 5n;
-      
-      // In normal circumstances this should succeed
-      // ERR_NO_RESULT_DATA would require internal fold failure
-      const response = txOk(dlmmSwapHelper.swapHelper(
-        swaps,
-        minReceived,
-        maxUnfavorableBins
-      ), alice);
-      
-      expect(cvToValue(response.result)).toBeGreaterThan(0n);
-    });
-
     it('should handle maximum number of swaps in a single call', async () => {
       // Test with multiple swaps to stress test the fold function
       const swaps = Array.from({ length: 10 }, (_, i) => ({
@@ -512,6 +486,58 @@ describe('DLMM Swap Helper Functions', () => {
       
       const received = cvToValue(response.result);
       expect(received).toBeGreaterThanOrEqual(0n);
+    });
+
+    it('should fail when using random token in swap helper', async () => {
+      // Mint random tokens for testing
+      txOk(mockRandomToken.mint(1000000n, alice), deployer);
+
+      const swaps = [
+        {
+          poolTrait: sbtcUsdcPool.identifier,
+          xTokenTrait: mockRandomToken.identifier, // Using random token
+          yTokenTrait: mockUsdcToken.identifier,
+          binId: 0,
+          amount: 500000n,
+          xForY: true
+        }
+      ];
+      const minReceived = 0n;
+      const maxUnfavorableBins = 5n;
+      
+      const response = txErr(dlmmSwapHelper.swapHelper(
+        swaps,
+        minReceived,
+        maxUnfavorableBins
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_X_TOKEN);
+    });
+
+    it('should fail when using random Y token in swap helper', async () => {
+      // Mint random tokens for testing
+      txOk(mockRandomToken.mint(1000000n, alice), deployer);
+
+      const swaps = [
+        {
+          poolTrait: sbtcUsdcPool.identifier,
+          xTokenTrait: mockSbtcToken.identifier,
+          yTokenTrait: mockRandomToken.identifier, // Using random token
+          binId: 0,
+          amount: 500000n,
+          xForY: true
+        }
+      ];
+      const minReceived = 0n;
+      const maxUnfavorableBins = 5n;
+      
+      const response = txErr(dlmmSwapHelper.swapHelper(
+        swaps,
+        minReceived,
+        maxUnfavorableBins
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_Y_TOKEN);
     });
   });
 });
