@@ -8,6 +8,7 @@
 (define-constant ERR_MINIMUM_X_AMOUNT (err u2002))
 (define-constant ERR_MINIMUM_Y_AMOUNT (err u2003))
 (define-constant ERR_MINIMUM_LP_AMOUNT (err u2004))
+(define-constant ERR_EMPTY_POSITIONS_LIST (err u2005))
 
 ;; Add liquidity to multiple bins in multiple pools
 (define-public (add-liquidity-multi
@@ -17,6 +18,7 @@
   (let (
     (add-liquidity-result (try! (fold fold-add-liquidity-multi positions (ok u0))))
   )
+    (asserts! (> (len positions) u0) ERR_EMPTY_POSITIONS_LIST)
     (asserts! (>= add-liquidity-result min-dlp) ERR_MINIMUM_LP_AMOUNT)
     (ok add-liquidity-result)
   )
@@ -30,6 +32,7 @@
   (let (
     (withdraw-liquidity-result (try! (fold fold-withdraw-liquidity-multi positions (ok {x-amount: u0, y-amount: u0}))))
   )
+    (asserts! (> (len positions) u0) ERR_EMPTY_POSITIONS_LIST)
     (asserts! (>= (get x-amount withdraw-liquidity-result) min-x-amount) ERR_MINIMUM_X_AMOUNT)
     (asserts! (>= (get y-amount withdraw-liquidity-result) min-y-amount) ERR_MINIMUM_Y_AMOUNT)
     (ok withdraw-liquidity-result)
