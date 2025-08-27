@@ -9,6 +9,7 @@
 (define-constant ERR_BIN_SLIPPAGE (err u2002))
 (define-constant ERR_MINIMUM_RECEIVED (err u2003))
 (define-constant ERR_NO_ACTIVE_BIN_DATA (err u2004))
+(define-constant ERR_EMPTY_SWAPS_LIST (err u2005))
 
 ;; Swap through multiple bins in multiple pools
 (define-public (swap-multi
@@ -19,6 +20,7 @@
     (swap-result (try! (fold fold-swap-multi swaps (ok {received: u0, unfavorable: u0}))))
     (received (get received swap-result))
   )
+    (asserts! (> (len swaps) u0) ERR_EMPTY_SWAPS_LIST)
     (asserts! (<= (get unfavorable swap-result) max-unfavorable-bins) ERR_BIN_SLIPPAGE)
     (asserts! (>= received min-received) ERR_MINIMUM_RECEIVED)
     (ok received)
