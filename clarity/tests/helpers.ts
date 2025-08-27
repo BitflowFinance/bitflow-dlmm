@@ -3,8 +3,9 @@ import {
   cvToValue,
   projectErrors,
   projectFactory,
+  CoreNodeEventType
 } from '@clarigen/core';
-import { rovOk, txOk } from '@clarigen/test';
+import { rovOk, txOk, filterEvents } from '@clarigen/test';
 
 export const contracts = projectFactory(project, "simnet");
 
@@ -14,8 +15,8 @@ export const bob = accounts.wallet_2.address;
 export const charlie = accounts.wallet_3.address;
 
 export const dlmmCore = contracts.dlmmCoreV11;
-export const dlmmSwapHelper = contracts.dlmmSwapHelperV11;
-export const dlmmLiquidityHelper = contracts.dlmmLiquidityHelperV11;
+export const dlmmSwapRouter = contracts.dlmmSwapRouterV11;
+export const dlmmLiquidityRouter = contracts.dlmmLiquidityRouterV11;
 export const sbtcUsdcPool = contracts.dlmmPoolSbtcUsdcV11;
 export const mockSbtcToken = contracts.mockSbtcToken;
 export const mockUsdcToken = contracts.mockUsdcToken;
@@ -27,9 +28,39 @@ const _errors = projectErrors(project);
 export const errors = {
   dlmmCore: _errors.dlmmCoreV11,
   sbtcUsdcPool: _errors.dlmmPoolSbtcUsdcV11,
-  dlmmSwapHelper: _errors.dlmmSwapHelperV11,
-  dlmmLiquidityHelper: _errors.dlmmLiquidityHelperV11
+  dlmmSwapRouter: _errors.dlmmSwapRouterV11,
+  dlmmLiquidityRouter: _errors.dlmmLiquidityRouterV11
 };
+
+export function getPrintEvents(response: any) {
+  return filterEvents(
+    response.events,
+    CoreNodeEventType.ContractEvent
+  );
+}
+
+export function getEventsDataByAction(action: string, response: any) {
+  return getPrintEvents(response)
+    .map(printEvent => cvToValue(printEvent.data.value))
+    .filter(parsedEvent => parsedEvent.action === action);
+}
+
+export function getSwapXForYEventData(response: any) {
+  return getEventsDataByAction("swap-x-for-y", response);
+}
+
+export function getSwapYForXEventData(response: any) {
+  return getEventsDataByAction("swap-y-for-x", response);
+}
+
+export function getAddLiquidityEventData(response: any) {
+  return getEventsDataByAction("add-liquidity", response);
+}
+
+export function getWithdrawLiquidityEventData(response: any) {
+  return getEventsDataByAction("withdraw-liquidity", response);
+}
+
 
 // Common pool setup functionality
 export function setupTokens() {

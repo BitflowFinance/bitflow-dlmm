@@ -1,7 +1,7 @@
 import {
   alice,
   deployer,
-  dlmmSwapHelper,
+  dlmmSwapRouter,
   errors,
   sbtcUsdcPool,
   mockSbtcToken,
@@ -41,7 +41,7 @@ describe('DLMM Swap Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -81,7 +81,7 @@ describe('DLMM Swap Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -129,7 +129,7 @@ describe('DLMM Swap Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -169,7 +169,7 @@ describe('DLMM Swap Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -199,7 +199,7 @@ describe('DLMM Swap Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -226,13 +226,13 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 999999999999n; // Unreasonably high minimum
       const maxUnfavorableBins = 5n;
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_MINIMUM_RECEIVED);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_MINIMUM_RECEIVED);
     });
 
     it('should fail when unfavorable bins exceed maximum', async () => {
@@ -247,13 +247,13 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 1n;
       const maxUnfavorableBins = 5n; // Lower than the unfavorable bin count
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_BIN_SLIPPAGE);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_BIN_SLIPPAGE);
     });
 
     it('should revert on empty swap list', async () => {
@@ -262,7 +262,7 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 0n;
       const maxUnfavorableBins = 5n;
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -285,7 +285,7 @@ describe('DLMM Swap Helper Functions', () => {
       const maxUnfavorableBins = 5n;
       
       // This should fail at the core swap level with invalid amount
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -309,13 +309,13 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 1n;
       const maxUnfavorableBins = 2n; // Should fail as unfavorable count is 3
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_BIN_SLIPPAGE);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_BIN_SLIPPAGE);
     });
 
     it('should calculate unfavorable bins correctly for Y for X swaps', async () => {
@@ -332,13 +332,13 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 1n;
       const maxUnfavorableBins = 2n; // Should fail as unfavorable count is 3
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_BIN_SLIPPAGE);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_BIN_SLIPPAGE);
     });
 
     it('should handle mixed favorable and unfavorable swaps', async () => {
@@ -363,7 +363,7 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 1n;
       const maxUnfavorableBins = 3n; // Should pass as total unfavorable is 2
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -395,13 +395,13 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 1n;
       const maxUnfavorableBins = 5n;
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
 
-      expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_NO_ACTIVE_BIN_DATA);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_NO_ACTIVE_BIN_DATA);
     });
 
     it('should handle edge case with extremely large unfavorable bin count', async () => {
@@ -416,13 +416,13 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 1n;
       const maxUnfavorableBins = 1n; // Very low threshold
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmSwapHelper.ERR_BIN_SLIPPAGE);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_BIN_SLIPPAGE);
     });
 
     it('should handle maximum number of swaps in a single call', async () => {
@@ -441,7 +441,7 @@ describe('DLMM Swap Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -478,7 +478,7 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 0n; // Allow any amount since we're doing opposite swaps
       const maxUnfavorableBins = 5n;
       
-      const response = txOk(dlmmSwapHelper.swapHelper(
+      const response = txOk(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -505,7 +505,7 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 0n;
       const maxUnfavorableBins = 5n;
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins
@@ -531,7 +531,7 @@ describe('DLMM Swap Helper Functions', () => {
       const minReceived = 0n;
       const maxUnfavorableBins = 5n;
       
-      const response = txErr(dlmmSwapHelper.swapHelper(
+      const response = txErr(dlmmSwapRouter.swapMulti(
         swaps,
         minReceived,
         maxUnfavorableBins

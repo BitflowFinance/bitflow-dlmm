@@ -537,7 +537,7 @@ describe('DLMM Core Liquidity Functions', () => {
         minYAmount
       ), alice);
       // expect to revert and will set error code once it's set
-      expect(cvToValue(response.result)).toBeGreaterThan(0n);
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_NO_BIN_SHARES);
     });
 
     it('should handle withdrawals from different users independently', async () => {

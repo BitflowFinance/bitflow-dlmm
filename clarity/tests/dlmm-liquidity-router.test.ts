@@ -2,7 +2,7 @@ import {
   alice,
   deployer,
   dlmmCore,
-  dlmmLiquidityHelper,
+  dlmmLiquidityRouter,
   errors,
   sbtcUsdcPool,
   mockSbtcToken,
@@ -21,13 +21,13 @@ import { txErr, txOk, rovOk } from '@clarigen/test';
 
 let addBulkLiquidityOutput: { bin: bigint; xAmount: bigint; yAmount: bigint; liquidity: bigint;}[];
 
-describe('DLMM Liquidity Helper Functions', () => {
+describe('DLMM Liquidity Router Functions', () => {
   
   beforeEach(async () => {
     addBulkLiquidityOutput = setupTestEnvironment();
   });
 
-  describe('add-liquidity-helper Function', () => {
+  describe('add-liquidity-multi Function', () => {
     it('should successfully add liquidity to single bin with valid parameters', async () => {
       const positions = [{
         poolTrait: sbtcUsdcPool.identifier,
@@ -42,7 +42,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -81,7 +81,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -127,7 +127,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -165,7 +165,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -191,19 +191,19 @@ describe('DLMM Liquidity Helper Functions', () => {
       }];
       const minDlp = 999999999999n; // Unreasonably high minimum
       
-      const response = txErr(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityHelper.ERR_MINIMUM_LP_AMOUNT);
+      expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityRouter.ERR_MINIMUM_LP_AMOUNT);
     });
 
     it('should revert on empty positions list when adding liquidity', async () => {
       const positions: any[] = [];
       const minDlp = 0n;
       
-      const response = txErr(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -224,7 +224,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const minDlp = 0n;
       
       // This should fail at the core add-liquidity level with invalid amount
-      const response = txErr(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -253,7 +253,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -268,7 +268,7 @@ describe('DLMM Liquidity Helper Functions', () => {
     });
 
     it('should document ERR_NO_RESULT_DATA error condition for add-liquidity', async () => {
-      // ERR_NO_RESULT_DATA occurs when the result parameter in fold-add-liquidity-helper is an error
+      // ERR_NO_RESULT_DATA occurs when the result parameter in fold-add-liquidity-multi is an error
       // This is difficult to trigger directly as it's an internal fold state
       // This test documents the theoretical scenario
       const positions = [{
@@ -283,7 +283,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       
       // In normal circumstances this should succeed
       // ERR_NO_RESULT_DATA would require internal fold failure
-      const response = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         positions,
         minDlp
       ), alice);
@@ -292,7 +292,7 @@ describe('DLMM Liquidity Helper Functions', () => {
     });
   });
 
-  describe('withdraw-liquidity-helper Function', () => {
+  describe('withdraw-liquidity-multi Function', () => {
     beforeEach(async () => {
       // Add some liquidity first to have something to withdraw
       const positions = [
@@ -321,7 +321,7 @@ describe('DLMM Liquidity Helper Functions', () => {
           yAmount: 0n, // No Y tokens for bins above active
         }
       ];
-      txOk(dlmmLiquidityHelper.addLiquidityHelper(positions, 1n), alice);
+      txOk(dlmmLiquidityRouter.addLiquidityMulti(positions, 1n), alice);
     });
 
     it('should successfully withdraw liquidity from single bin', async () => {
@@ -338,7 +338,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -377,7 +377,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -423,7 +423,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -462,7 +462,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -489,13 +489,13 @@ describe('DLMM Liquidity Helper Functions', () => {
       const minXAmount = 999999999999n; // Unreasonably high minimum
       const minYAmount = 1n;
       
-      const response = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityHelper.ERR_MINIMUM_X_AMOUNT);
+      expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityRouter.ERR_MINIMUM_X_AMOUNT);
     });
 
     it('should fail when minimum Y amount not met', async () => {
@@ -509,13 +509,13 @@ describe('DLMM Liquidity Helper Functions', () => {
       const minXAmount = 1n;
       const minYAmount = 999999999999n; // Unreasonably high minimum
       
-      const response = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
       ), alice);
       
-      expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityHelper.ERR_MINIMUM_Y_AMOUNT);
+      expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityRouter.ERR_MINIMUM_Y_AMOUNT);
     });
 
     it('should not allow empty positions list when withdrawing liquidity', async () => {
@@ -524,7 +524,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const minXAmount = 0n;
       const minYAmount = 0n;
       
-      const response = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -532,7 +532,7 @@ describe('DLMM Liquidity Helper Functions', () => {
 
       // will add specific error code when it's set
       expect(cvToValue(response.result)).toBeGreaterThan(0n);
-      // expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityHelper.ERR_MINIMUM_Y_AMOUNT);
+      // expect(cvToValue(response.result)).toBe(errors.dlmmLiquidityRouter.ERR_MINIMUM_Y_AMOUNT);
     });
 
     it('should handle positions with zero amounts', async () => {
@@ -547,7 +547,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const minYAmount = 0n;
       
       // This should fail at the core withdraw-liquidity level with invalid amount
-      const response = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -589,7 +589,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const response = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -628,7 +628,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const minXAmount = 1n;
       const minYAmount = 1n;
       
-      const response = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         positions,
         minXAmount,
         minYAmount
@@ -654,7 +654,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         }
       ];
       
-      const addResponse = txOk(dlmmLiquidityHelper.addLiquidityHelper(
+      const addResponse = txOk(dlmmLiquidityRouter.addLiquidityMulti(
         addPositions,
         1n
       ), alice);
@@ -676,7 +676,7 @@ describe('DLMM Liquidity Helper Functions', () => {
       const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
       const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
       
-      const withdrawResponse = txOk(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const withdrawResponse = txOk(dlmmLiquidityRouter.withdrawLiquidityMulti(
         withdrawPositions,
         1n, // Expect X tokens since bin 5 is above active
         0n  // Don't expect Y tokens since bin 5 is above active
@@ -706,7 +706,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         yAmount: 2500000000n,
       }];
       
-      const addResponse = txErr(dlmmLiquidityHelper.addLiquidityHelper(
+      const addResponse = txErr(dlmmLiquidityRouter.addLiquidityMulti(
         addPositions,
         1n
       ), alice);
@@ -724,7 +724,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         amount: 1000000n,
       }];
       
-      const withdrawResponse = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const withdrawResponse = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         withdrawPositions,
         1n,
         1n
@@ -750,7 +750,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         yAmount: 2500000000n, // 2500 USDC
       }];
       
-      const response = txErr(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.addLiquidityMulti(
         addPositions,
         1n
       ), alice);
@@ -773,7 +773,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         yAmount: 2500000000n, // 2500 USDC
       }];
       
-      const response = txErr(dlmmLiquidityHelper.addLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.addLiquidityMulti(
         addPositions,
         1n
       ), alice);
@@ -803,7 +803,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         amount: 1000000n,
       }];
       
-      const response = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         withdrawPositions,
         1n,
         1n
@@ -833,7 +833,7 @@ describe('DLMM Liquidity Helper Functions', () => {
         amount: 1000000n,
       }];
       
-      const response = txErr(dlmmLiquidityHelper.withdrawLiquidityHelper(
+      const response = txErr(dlmmLiquidityRouter.withdrawLiquidityMulti(
         withdrawPositions,
         1n,
         1n

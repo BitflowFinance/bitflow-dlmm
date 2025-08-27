@@ -11,6 +11,7 @@ dlmm-core-v-1-1
 - [`set-minimum-shares`](#set-minimum-shares)
 - [`set-public-pool-creation`](#set-public-pool-creation)
 - [`add-verified-pool-code-hash`](#add-verified-pool-code-hash)
+- [`claim-protocol-fees`](#claim-protocol-fees)
 - [`set-pool-uri`](#set-pool-uri)
 - [`set-pool-status`](#set-pool-status)
 - [`set-variable-fees-manager`](#set-variable-fees-manager)
@@ -29,6 +30,7 @@ dlmm-core-v-1-1
 - [`withdraw-liquidity`](#withdraw-liquidity)
 - [`add-admin`](#add-admin)
 - [`remove-admin`](#remove-admin)
+- [`claim-protocol-fees-multi`](#claim-protocol-fees-multi)
 - [`set-pool-uri-multi`](#set-pool-uri-multi)
 - [`set-pool-status-multi`](#set-pool-status-multi)
 - [`set-variable-fees-manager-multi`](#set-variable-fees-manager-multi)
@@ -48,6 +50,7 @@ dlmm-core-v-1-1
 - [`get-last-pool-id`](#get-last-pool-id)
 - [`get-pool-by-id`](#get-pool-by-id)
 - [`get-allowed-token-direction`](#get-allowed-token-direction)
+- [`get-unclaimed-protocol-fees-by-id`](#get-unclaimed-protocol-fees-by-id)
 - [`get-bin-steps`](#get-bin-steps)
 - [`get-bin-factors-by-step`](#get-bin-factors-by-step)
 - [`get-minimum-bin-shares`](#get-minimum-bin-shares)
@@ -71,6 +74,7 @@ dlmm-core-v-1-1
 - [`bin-factors`](#bin-factors)
 - [`pools`](#pools)
 - [`allowed-token-direction`](#allowed-token-direction)
+- [`unclaimed-protocol-fees`](#unclaimed-protocol-fees)
 
 **Variables**
 
@@ -128,6 +132,11 @@ dlmm-core-v-1-1
 - [`ERR_INVALID_VERIFIED_POOL_CODE_HASH`](#err_invalid_verified_pool_code_hash)
 - [`ERR_ALREADY_VERIFIED_POOL_CODE_HASH`](#err_already_verified_pool_code_hash)
 - [`ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED`](#err_verified_pool_code_hash_limit_reached)
+- [`ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA`](#err_no_unclaimed_protocol_fees_data)
+- [`ERR_INVALID_X_AMOUNT`](#err_invalid_x_amount)
+- [`ERR_INVALID_Y_AMOUNT`](#err_invalid_y_amount)
+- [`ERR_INVALID_MIN_DLP_AMOUNT`](#err_invalid_min_dlp_amount)
+- [`ERR_NO_BIN_SHARES`](#err_no_bin_shares)
 - [`CONTRACT_DEPLOYER`](#contract_deployer)
 - [`NUM_OF_BINS`](#num_of_bins)
 - [`CENTER_BIN_ID`](#center_bin_id)
@@ -141,7 +150,7 @@ dlmm-core-v-1-1
 
 ### get-admins
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L104)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L112)
 
 `(define-read-only (get-admins () (response (list 5 principal) none))`
 
@@ -162,7 +171,7 @@ Get admins list
 
 ### get-admin-helper
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L109)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L117)
 
 `(define-read-only (get-admin-helper () (response principal none))`
 
@@ -183,7 +192,7 @@ Get admin helper var
 
 ### get-last-pool-id
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L114)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L122)
 
 `(define-read-only (get-last-pool-id () (response uint none))`
 
@@ -204,7 +213,7 @@ Get ID of last created pool
 
 ### get-pool-by-id
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L119)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L127)
 
 `(define-read-only (get-pool-by-id ((id uint)) (response (optional (tuple (id uint) (name (string-ascii 32)) (pool-contract principal) (status bool) (symbol (string-ascii 32)) (verified bool))) none))`
 
@@ -229,7 +238,7 @@ Get a pool by pool ID
 
 ### get-allowed-token-direction
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L124)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L132)
 
 `(define-read-only (get-allowed-token-direction ((x-token principal) (y-token principal)) (response (optional bool) none))`
 
@@ -253,9 +262,34 @@ Get allowed-token-direction for pool creation
 | x-token | principal |
 | y-token | principal |
 
+### get-unclaimed-protocol-fees-by-id
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L137)
+
+`(define-read-only (get-unclaimed-protocol-fees-by-id ((id uint)) (response (optional (tuple (x-fee uint) (y-fee uint))) none))`
+
+Get allowed-token-direction for pool creation
+
+<details>
+  <summary>Source code:</summary>
+
+```clarity
+(define-read-only (get-unclaimed-protocol-fees-by-id (id uint))
+  (ok (map-get? unclaimed-protocol-fees id))
+)
+```
+</details>
+
+
+**Parameters:**
+
+| Name | Type | 
+| --- | --- | 
+| id | uint |
+
 ### get-bin-steps
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L129)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L142)
 
 `(define-read-only (get-bin-steps () (response (list 1000 uint) none))`
 
@@ -276,7 +310,7 @@ Get allowed bin steps
 
 ### get-bin-factors-by-step
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L134)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L147)
 
 `(define-read-only (get-bin-factors-by-step ((step uint)) (response (optional (list 1001 uint)) none))`
 
@@ -301,7 +335,7 @@ Get bin factors by bin step
 
 ### get-minimum-bin-shares
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L139)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L152)
 
 `(define-read-only (get-minimum-bin-shares () (response uint none))`
 
@@ -322,7 +356,7 @@ Get minimum shares required to mint for the active bin when creating a pool
 
 ### get-minimum-burnt-shares
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L144)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L157)
 
 `(define-read-only (get-minimum-burnt-shares () (response uint none))`
 
@@ -343,7 +377,7 @@ Get minimum shares required to burn for the active bin when creating a pool
 
 ### get-public-pool-creation
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L149)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L162)
 
 `(define-read-only (get-public-pool-creation () (response bool none))`
 
@@ -364,7 +398,7 @@ Get public pool creation status
 
 ### get-verified-pool-code-hashes
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L154)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L167)
 
 `(define-read-only (get-verified-pool-code-hashes () (response (list 10000 (buff 32)) none))`
 
@@ -385,7 +419,7 @@ Get verified pool code hashes list
 
 ### get-unsigned-bin-id
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L159)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L172)
 
 `(define-read-only (get-unsigned-bin-id ((bin-id int)) (response uint none))`
 
@@ -410,7 +444,7 @@ Get bin ID as unsigned int
 
 ### get-signed-bin-id
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L164)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L177)
 
 `(define-read-only (get-signed-bin-id ((bin-id uint)) (response int none))`
 
@@ -435,7 +469,7 @@ Get bin ID as signed int
 
 ### get-bin-price
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L169)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L182)
 
 `(define-read-only (get-bin-price ((initial-price uint) (bin-step uint) (bin-id int)) (response uint uint))`
 
@@ -468,7 +502,7 @@ Get price for a specific bin
 
 ### get-liquidity-value
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L180)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L193)
 
 `(define-read-only (get-liquidity-value ((x-amount uint) (y-amount uint) (bin-price uint)) (response uint none))`
 
@@ -495,7 +529,7 @@ Get liquidity value when adding liquidity to a bin by rebasing x-amount to y-uni
 
 ### add-bin-step
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L185)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L198)
 
 `(define-public (add-bin-step ((step uint) (factors (list 1001 uint))) (response bool uint))`
 
@@ -544,7 +578,7 @@ Add a new bin step and its factors
 
 ### set-minimum-shares
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L213)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L226)
 
 `(define-public (set-minimum-shares ((min-bin uint) (min-burnt uint)) (response bool uint))`
 
@@ -596,7 +630,7 @@ Set minimum shares required to mint and burn for the active bin when creating a 
 
 ### set-public-pool-creation
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L244)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L257)
 
 `(define-public (set-public-pool-creation ((status bool)) (response bool uint))`
 
@@ -635,7 +669,7 @@ Enable or disable public pool creation
 
 ### add-verified-pool-code-hash
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L263)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L276)
 
 `(define-public (add-verified-pool-code-hash ((hash (buff 32))) (response bool uint))`
 
@@ -675,9 +709,86 @@ Add a new verified pool code hash
 | --- | --- | 
 | hash | (buff 32) |
 
+### claim-protocol-fees
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L298)
+
+`(define-public (claim-protocol-fees ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference)) (response bool uint))`
+
+Claim protocol fees for a pool
+
+<details>
+  <summary>Source code:</summary>
+
+```clarity
+(define-public (claim-protocol-fees
+    (pool-trait <dlmm-pool-trait>)
+    (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
+  )
+  (let (
+    ;; Gather all pool data
+    (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap true) ERR_NO_POOL_DATA))
+    (pool-id (get pool-id pool-data))
+    (pool-contract (contract-of pool-trait))
+    (pool-validity-check (asserts! (is-valid-pool pool-id pool-contract) ERR_INVALID_POOL))
+    (fee-address (get fee-address pool-data))
+    (x-token (get x-token pool-data))
+    (y-token (get y-token pool-data))
+    
+    ;; Get current unclaimed protocol fees for pool
+    (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
+    (unclaimed-x-fees (get x-fee current-unclaimed-protocol-fees))
+    (unclaimed-y-fees (get y-fee current-unclaimed-protocol-fees))
+    (caller tx-sender)
+  )
+    (begin
+      ;; Assert that correct token traits are used
+      (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
+      (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+
+      ;; Transfer unclaimed-x-fees x tokens from pool-contract to fee-address
+      (if (> unclaimed-x-fees u0)
+        (try! (contract-call? pool-trait pool-transfer x-token-trait unclaimed-x-fees fee-address))
+        false)
+
+      ;; Transfer unclaimed-y-fees y tokens from pool-contract to fee-address
+      (if (> unclaimed-y-fees u0)
+        (try! (contract-call? pool-trait pool-transfer y-token-trait unclaimed-y-fees fee-address))
+        false)
+
+      ;; Print function data and return true
+      (print {
+        action: "claim-protocol-fees",
+        caller: caller,
+        data: {
+          pool-id: pool-id,
+          pool-name: (get pool-name pool-data),
+          pool-contract: pool-contract,
+          x-token: x-token,
+          y-token: y-token,
+          unclaimed-x-fees: unclaimed-x-fees,
+          unclaimed-y-fees: unclaimed-y-fees
+        }
+      })
+      (ok true)
+    )
+  )
+)
+```
+</details>
+
+
+**Parameters:**
+
+| Name | Type | 
+| --- | --- | 
+| pool-trait | trait_reference |
+| x-token-trait | trait_reference |
+| y-token-trait | trait_reference |
+
 ### set-pool-uri
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L285)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L353)
 
 `(define-public (set-pool-uri ((pool-trait trait_reference) (uri (string-ascii 256))) (response bool uint))`
 
@@ -733,7 +844,7 @@ Set pool uri for a pool
 
 ### set-pool-status
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L320)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L388)
 
 `(define-public (set-pool-status ((pool-trait trait_reference) (status bool)) (response bool uint))`
 
@@ -787,7 +898,7 @@ Set pool status for a pool
 
 ### set-variable-fees-manager
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L353)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L421)
 
 `(define-public (set-variable-fees-manager ((pool-trait trait_reference) (manager principal)) (response bool uint))`
 
@@ -847,7 +958,7 @@ Set variable fees manager for a pool
 
 ### set-fee-address
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L392)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L460)
 
 `(define-public (set-fee-address ((pool-trait trait_reference) (address principal)) (response bool uint))`
 
@@ -903,7 +1014,7 @@ Set fee address for a pool
 
 ### set-variable-fees
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L427)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L495)
 
 `(define-public (set-variable-fees ((pool-trait trait_reference) (x-fee uint) (y-fee uint)) (response bool uint))`
 
@@ -977,7 +1088,7 @@ Set variable fees for a pool
 
 ### set-x-fees
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L479)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L547)
 
 `(define-public (set-x-fees ((pool-trait trait_reference) (protocol-fee uint) (provider-fee uint)) (response bool uint))`
 
@@ -1037,7 +1148,7 @@ Set x fees for a pool
 
 ### set-y-fees
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L517)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L585)
 
 `(define-public (set-y-fees ((pool-trait trait_reference) (protocol-fee uint) (provider-fee uint)) (response bool uint))`
 
@@ -1097,7 +1208,7 @@ Set y fees for a pool
 
 ### set-variable-fees-cooldown
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L555)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L623)
 
 `(define-public (set-variable-fees-cooldown ((pool-trait trait_reference) (cooldown uint)) (response bool uint))`
 
@@ -1150,7 +1261,7 @@ Set variable fees cooldown for a pool
 
 ### set-freeze-variable-fees-manager
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L587)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L655)
 
 `(define-public (set-freeze-variable-fees-manager ((pool-trait trait_reference)) (response bool uint))`
 
@@ -1205,7 +1316,7 @@ Make variable fees manager immutable for a pool
 
 ### set-dynamic-config
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L622)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L690)
 
 `(define-public (set-dynamic-config ((pool-trait trait_reference) (config (buff 4096))) (response bool uint))`
 
@@ -1266,7 +1377,7 @@ Set dynamic config for a pool
 
 ### reset-variable-fees
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L662)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L730)
 
 `(define-public (reset-variable-fees ((pool-trait trait_reference)) (response bool uint))`
 
@@ -1321,7 +1432,7 @@ Reset variable fees for a pool
 
 ### create-pool
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L697)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L765)
 
 `(define-public (create-pool ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (x-amount-active-bin uint) (y-amount-active-bin uint) (burn-amount-active-bin uint) (x-protocol-fee uint) (x-provider-fee uint) (y-protocol-fee uint) (y-provider-fee uint) (bin-step uint) (variable-fees-cooldown uint) (freeze-variable-fees-manager bool) (fee-address principal) (uri (string-ascii 256)) (status bool)) (response bool uint))`
 
@@ -1420,9 +1531,10 @@ Create a new pool
       ;; Freeze variable fees manager if freeze-variable-fees-manager is true
       (if freeze-variable-fees-manager (try! (contract-call? pool-trait set-freeze-variable-fees-manager)) false)
 
-      ;; Update ID of last created pool and add pool to pools map
+      ;; Update ID of last created pool, add pool to pools map, and add pool to unclaimed-protocol-fees map
       (var-set last-pool-id new-pool-id)
       (map-set pools new-pool-id {id: new-pool-id, name: name, symbol: symbol, pool-contract: pool-contract, verified: pool-verified-check, status: status})
+      (map-set unclaimed-protocol-fees new-pool-id {x-fee: u0, y-fee: u0})
 
       ;; Update allowed-token-direction map if needed
       (if (is-none (map-get? allowed-token-direction {x-token: x-token-contract, y-token: y-token-contract}))
@@ -1508,7 +1620,7 @@ Create a new pool
 
 ### swap-x-for-y
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L849)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L918)
 
 `(define-public (swap-x-for-y ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (x-amount uint)) (response uint uint))`
 
@@ -1526,8 +1638,9 @@ Swap x token for y token via a bin in a pool
   (let (
     ;; Gather all pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap true) ERR_NO_POOL_DATA))
+    (pool-id (get pool-id pool-data))
     (pool-contract (contract-of pool-trait))
-    (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
+    (pool-validity-check (asserts! (is-valid-pool pool-id pool-contract) ERR_INVALID_POOL))
     (fee-address (get fee-address pool-data))
     (x-token (get x-token pool-data))
     (y-token (get y-token pool-data))
@@ -1576,11 +1689,13 @@ Swap x token for y token via a bin in a pool
                                (- bin-id 1)
                                bin-id))
 
+    ;; Get current unclaimed protocol fees for pool
+    (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
     (caller tx-sender)
   )
     (begin
       ;; Assert that pool-status is true and correct token traits are used
-      (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
+      (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
@@ -1590,15 +1705,17 @@ Swap x token for y token via a bin in a pool
       ;; Assert that bin-id is equal to active-bin-id
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
-      ;; Transfer dx + x-amount-fees-provider + x-amount-fees-variable x tokens from caller to pool-contract
-      (try! (contract-call? x-token-trait transfer (+ dx x-amount-fees-provider x-amount-fees-variable) caller pool-contract none))
+      ;; Transfer dx + x-amount-fees-total x tokens from caller to pool-contract
+      (try! (contract-call? x-token-trait transfer (+ dx x-amount-fees-total) caller pool-contract none))
 
       ;; Transfer dy y tokens from pool-contract to caller
       (try! (contract-call? pool-trait pool-transfer y-token-trait dy caller))
 
-      ;; Transfer x-amount-fees-protocol x tokens from caller to fee-address
+      ;; Update unclaimed-protocol-fees for pool
       (if (> x-amount-fees-protocol u0)
-          (try! (contract-call? x-token-trait transfer x-amount-fees-protocol caller fee-address none))
+          (map-set unclaimed-protocol-fees pool-id (merge current-unclaimed-protocol-fees {
+            x-fee: (+ (get x-fee current-unclaimed-protocol-fees) x-amount-fees-protocol)
+          }))
           false)
 
       ;; Update bin balances
@@ -1614,7 +1731,7 @@ Swap x token for y token via a bin in a pool
         action: "swap-x-for-y",
         caller: caller,
         data: {
-          pool-id: (get pool-id pool-data),
+          pool-id: pool-id,
           pool-name: (get pool-name pool-data),
           pool-contract: pool-contract,
           x-token: x-token,
@@ -1657,7 +1774,7 @@ Swap x token for y token via a bin in a pool
 
 ### swap-y-for-x
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L974)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1048)
 
 `(define-public (swap-y-for-x ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (y-amount uint)) (response uint uint))`
 
@@ -1675,8 +1792,9 @@ Swap y token for x token via a bin in a pool
   (let (
     ;; Gather all pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap false) ERR_NO_POOL_DATA))
+    (pool-id (get pool-id pool-data))
     (pool-contract (contract-of pool-trait))
-    (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
+    (pool-validity-check (asserts! (is-valid-pool pool-id pool-contract) ERR_INVALID_POOL))
     (fee-address (get fee-address pool-data))
     (x-token (get x-token pool-data))
     (y-token (get y-token pool-data))
@@ -1725,11 +1843,13 @@ Swap y token for x token via a bin in a pool
                                (+ bin-id 1)
                                bin-id))
 
+    ;; Get current unclaimed protocol fees for pool
+    (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
     (caller tx-sender)
   )
     (begin
       ;; Assert that pool-status is true and correct token traits are used
-      (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
+      (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
@@ -1739,15 +1859,17 @@ Swap y token for x token via a bin in a pool
       ;; Assert that bin-id is equal to active-bin-id
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
-      ;; Transfer dy + y-amount-fees-provider + y-amount-fees-variable y tokens from caller to pool-contract
-      (try! (contract-call? y-token-trait transfer (+ dy y-amount-fees-provider y-amount-fees-variable) caller pool-contract none))
+      ;; Transfer dy + y-amount-fees-total y tokens from caller to pool-contract
+      (try! (contract-call? y-token-trait transfer (+ dy y-amount-fees-total) caller pool-contract none))
 
       ;; Transfer dx x tokens from pool-contract to caller
       (try! (contract-call? pool-trait pool-transfer x-token-trait dx caller))
 
-      ;; Transfer y-amount-fees-protocol y tokens from caller to fee-address
+      ;; Update unclaimed-protocol-fees for pool
       (if (> y-amount-fees-protocol u0)
-          (try! (contract-call? y-token-trait transfer y-amount-fees-protocol caller fee-address none))
+          (map-set unclaimed-protocol-fees pool-id (merge current-unclaimed-protocol-fees {
+            y-fee: (+ (get y-fee current-unclaimed-protocol-fees) y-amount-fees-protocol)
+          }))
           false)
 
       ;; Update bin balances
@@ -1763,7 +1885,7 @@ Swap y token for x token via a bin in a pool
         action: "swap-y-for-x",
         caller: caller,
         data: {
-          pool-id: (get pool-id pool-data),
+          pool-id: pool-id,
           pool-name: (get pool-name pool-data),
           pool-contract: pool-contract,
           x-token: x-token,
@@ -1806,7 +1928,7 @@ Swap y token for x token via a bin in a pool
 
 ### add-liquidity
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1099)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1178)
 
 `(define-public (add-liquidity ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (x-amount uint) (y-amount uint) (min-dlp uint)) (response uint uint))`
 
@@ -1823,7 +1945,7 @@ Add liquidity to a bin in a pool
   )
   (let (
     ;; Gather all pool data and check if pool is valid
-    (pool-data (unwrap! (contract-call? pool-trait get-pool-for-liquidity) ERR_NO_POOL_DATA))
+    (pool-data (unwrap! (contract-call? pool-trait get-pool-for-add) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
     (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
     (x-token (get x-token pool-data))
@@ -1917,11 +2039,11 @@ Add liquidity to a bin in a pool
       (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
 
       ;; Assert that correct token amounts are being added based on bin-id and active-bin-id
-      (asserts! (or (>= bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_AMOUNT)
-      (asserts! (or (<= bin-id active-bin-id) (is-eq y-amount u0)) ERR_INVALID_AMOUNT)
+      (asserts! (or (>= bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_X_AMOUNT)
+      (asserts! (or (<= bin-id active-bin-id) (is-eq y-amount u0)) ERR_INVALID_Y_AMOUNT)
 
       ;; Assert that min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
-      (asserts! (> min-dlp u0) ERR_INVALID_AMOUNT)
+      (asserts! (> min-dlp u0) ERR_INVALID_MIN_DLP_AMOUNT)
       (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
       ;; Transfer x-amount x tokens from caller to pool-contract (includes x-amount-fees-liquidity)
@@ -1991,7 +2113,7 @@ Add liquidity to a bin in a pool
 
 ### withdraw-liquidity
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1258)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1337)
 
 `(define-public (withdraw-liquidity ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (amount uint) (min-x-amount uint) (min-y-amount uint)) (response (tuple (x-amount uint) (y-amount uint)) uint))`
 
@@ -2008,7 +2130,7 @@ Withdraw liquidity from a bin in a pool
   )
   (let (
     ;; Gather all pool data and check if pool is valid
-    (pool-data (unwrap! (contract-call? pool-trait get-pool-for-liquidity) ERR_NO_POOL_DATA))
+    (pool-data (unwrap! (contract-call? pool-trait get-pool-for-withdraw) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
     (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
     (x-token (get x-token pool-data))
@@ -2023,6 +2145,9 @@ Withdraw liquidity from a bin in a pool
     (y-balance (get y-balance bin-balances))
     (bin-shares (get bin-shares bin-balances))
 
+    ;; Assert that bin shares is greater than 0
+    (bin-shares-check (asserts! (> bin-shares u0) ERR_NO_BIN_SHARES))
+
     ;; Calculate x-amount and y-amount to transfer
     (x-amount (/ (* amount x-balance) bin-shares))
     (y-amount (/ (* amount y-balance) bin-shares))
@@ -2030,6 +2155,7 @@ Withdraw liquidity from a bin in a pool
     ;; Calculate updated bin balances and total shares
     (updated-x-balance (- x-balance x-amount))
     (updated-y-balance (- y-balance y-amount))
+    (updated-bin-shares (- bin-shares amount))
     (caller tx-sender)
   )
     (begin
@@ -2063,7 +2189,7 @@ Withdraw liquidity from a bin in a pool
           false)
 
       ;; Update bin balances
-      (try! (contract-call? pool-trait update-bin-balances unsigned-bin-id updated-x-balance updated-y-balance))
+      (try! (contract-call? pool-trait update-bin-balances-on-withdraw unsigned-bin-id updated-x-balance updated-y-balance updated-bin-shares))
 
       ;; Burn LP tokens from caller
       (try! (contract-call? pool-trait pool-burn unsigned-bin-id amount caller))
@@ -2087,7 +2213,7 @@ Withdraw liquidity from a bin in a pool
           min-y-amount: min-y-amount,
           updated-x-balance: updated-x-balance,
           updated-y-balance: updated-y-balance,
-          updated-bin-shares: (- bin-shares amount)
+          updated-bin-shares: updated-bin-shares
         }
       })
       (ok {x-amount: x-amount, y-amount: y-amount})
@@ -2112,7 +2238,7 @@ Withdraw liquidity from a bin in a pool
 
 ### add-admin
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1353)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1436)
 
 `(define-public (add-admin ((admin principal)) (response bool uint))`
 
@@ -2151,7 +2277,7 @@ Add an admin to the admins list
 
 ### remove-admin
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1372)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1455)
 
 `(define-public (remove-admin ((admin principal)) (response bool uint))`
 
@@ -2192,9 +2318,40 @@ Remove an admin from the admins list
 | --- | --- | 
 | admin | principal |
 
+### claim-protocol-fees-multi
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1478)
+
+`(define-public (claim-protocol-fees-multi ((pool-traits (list 120 trait_reference)) (x-token-traits (list 120 trait_reference)) (y-token-traits (list 120 trait_reference))) (response (list 120 (response bool uint)) none))`
+
+Claim protocol fees for multiple pools
+
+<details>
+  <summary>Source code:</summary>
+
+```clarity
+(define-public (claim-protocol-fees-multi
+    (pool-traits (list 120 <dlmm-pool-trait>))
+    (x-token-traits (list 120 <sip-010-trait>))
+    (y-token-traits (list 120 <sip-010-trait>))
+  )
+  (ok (map claim-protocol-fees pool-traits x-token-traits y-token-traits))
+)
+```
+</details>
+
+
+**Parameters:**
+
+| Name | Type | 
+| --- | --- | 
+| pool-traits | (list 120 trait_reference) |
+| x-token-traits | (list 120 trait_reference) |
+| y-token-traits | (list 120 trait_reference) |
+
 ### set-pool-uri-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1395)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1487)
 
 `(define-public (set-pool-uri-multi ((pool-traits (list 120 trait_reference)) (uris (list 120 (string-ascii 256)))) (response (list 120 (response bool uint)) none))`
 
@@ -2223,7 +2380,7 @@ Set pool uri for multiple pools
 
 ### set-pool-status-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1403)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1495)
 
 `(define-public (set-pool-status-multi ((pool-traits (list 120 trait_reference)) (statuses (list 120 bool))) (response (list 120 (response bool uint)) none))`
 
@@ -2252,7 +2409,7 @@ Set pool status for multiple pools
 
 ### set-variable-fees-manager-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1411)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1503)
 
 `(define-public (set-variable-fees-manager-multi ((pool-traits (list 120 trait_reference)) (managers (list 120 principal))) (response (list 120 (response bool uint)) none))`
 
@@ -2281,7 +2438,7 @@ Set variable fees manager for multiple pools
 
 ### set-fee-address-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1419)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1511)
 
 `(define-public (set-fee-address-multi ((pool-traits (list 120 trait_reference)) (addresses (list 120 principal))) (response (list 120 (response bool uint)) none))`
 
@@ -2310,7 +2467,7 @@ Set fee address for multiple pools
 
 ### set-variable-fees-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1427)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1519)
 
 `(define-public (set-variable-fees-multi ((pool-traits (list 120 trait_reference)) (x-fees (list 120 uint)) (y-fees (list 120 uint))) (response (list 120 (response bool uint)) none))`
 
@@ -2341,7 +2498,7 @@ Set variable fees for multiple pools
 
 ### set-x-fees-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1436)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1528)
 
 `(define-public (set-x-fees-multi ((pool-traits (list 120 trait_reference)) (protocol-fees (list 120 uint)) (provider-fees (list 120 uint))) (response (list 120 (response bool uint)) none))`
 
@@ -2372,7 +2529,7 @@ Set x fees for multiple pools
 
 ### set-y-fees-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1445)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1537)
 
 `(define-public (set-y-fees-multi ((pool-traits (list 120 trait_reference)) (protocol-fees (list 120 uint)) (provider-fees (list 120 uint))) (response (list 120 (response bool uint)) none))`
 
@@ -2403,7 +2560,7 @@ Set y fees for multiple pools
 
 ### set-variable-fees-cooldown-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1454)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1546)
 
 `(define-public (set-variable-fees-cooldown-multi ((pool-traits (list 120 trait_reference)) (cooldowns (list 120 uint))) (response (list 120 (response bool uint)) none))`
 
@@ -2432,7 +2589,7 @@ Set variable fees cooldown for multiple pools
 
 ### set-freeze-variable-fees-manager-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1462)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1554)
 
 `(define-public (set-freeze-variable-fees-manager-multi ((pool-traits (list 120 trait_reference))) (response (list 120 (response bool uint)) none))`
 
@@ -2457,7 +2614,7 @@ Set freeze variable fees manager for multiple pools
 
 ### reset-variable-fees-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1467)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1559)
 
 `(define-public (reset-variable-fees-multi ((pool-traits (list 120 trait_reference))) (response (list 120 (response bool uint)) none))`
 
@@ -2482,7 +2639,7 @@ Reset variable fees for multiple pools
 
 ### set-dynamic-config-multi
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1472)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1564)
 
 `(define-public (set-dynamic-config-multi ((pool-traits (list 120 trait_reference)) (configs (list 120 (buff 4096)))) (response (list 120 (response bool uint)) none))`
 
@@ -2511,7 +2668,7 @@ Set dynamic config for multiple pools
 
 ### admin-not-removable
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1480)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1572)
 
 `(define-private (admin-not-removable ((admin principal)) bool)`
 
@@ -2536,7 +2693,7 @@ Helper function for removing an admin
 
 ### create-symbol
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1485)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1577)
 
 `(define-private (create-symbol ((x-token-trait trait_reference) (y-token-trait trait_reference)) (optional (string-ascii 29)))`
 
@@ -2579,7 +2736,7 @@ Create pool symbol using x token and y token symbols
 
 ### is-valid-pool
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1507)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1599)
 
 `(define-private (is-valid-pool ((id uint) (contract principal)) bool)`
 
@@ -2609,7 +2766,7 @@ Check if a pool is valid
 
 ### is-enabled-pool
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L1516)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L1608)
 
 `(define-private (is-enabled-pool ((id uint)) bool)`
 
@@ -2646,7 +2803,7 @@ Check if a pool is enabled
 (define-map bin-factors uint (list 1001 uint))
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L76)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L81)
 
 ### pools
 
@@ -2663,7 +2820,7 @@ Define pools map
 })
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L91)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L96)
 
 ### allowed-token-direction
 
@@ -2673,7 +2830,17 @@ Define allowed-token-direction map
 (define-map allowed-token-direction {x-token: principal, y-token: principal} bool)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L101)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L106)
+
+### unclaimed-protocol-fees
+
+Define unclaimed-protocol-fees map
+
+```clarity
+(define-map unclaimed-protocol-fees uint {x-fee: uint, y-fee: uint})
+```
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L109)
 
 ## Variables
 
@@ -2687,7 +2854,7 @@ Admins list and helper var used to remove admins
 (define-data-var admins (list 5 principal) (list tx-sender))
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L68)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L73)
 
 ### admin-helper
 
@@ -2699,7 +2866,7 @@ principal
 (define-data-var admin-helper principal tx-sender)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L69)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L74)
 
 ### last-pool-id
 
@@ -2711,7 +2878,7 @@ ID of last created pool
 (define-data-var last-pool-id uint u0)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L72)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L77)
 
 ### bin-steps
 
@@ -2723,7 +2890,7 @@ Allowed bin steps and factors
 (define-data-var bin-steps (list 1000 uint) (list u1 u5 u10 u20 u25))
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L75)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L80)
 
 ### minimum-bin-shares
 
@@ -2735,7 +2902,7 @@ Minimum shares required to mint into the active bin when creating a pool
 (define-data-var minimum-bin-shares uint u10000)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L79)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L84)
 
 ### minimum-burnt-shares
 
@@ -2747,7 +2914,7 @@ Minimum shares required to burn from the active bin when creating a pool
 (define-data-var minimum-burnt-shares uint u1000)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L82)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L87)
 
 ### public-pool-creation
 
@@ -2759,7 +2926,7 @@ Data var used to enable or disable pool creation by anyone
 (define-data-var public-pool-creation bool false)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L85)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L90)
 
 ### verified-pool-code-hashes
 
@@ -2771,7 +2938,7 @@ List of verified pool code hashes
 (define-data-var verified-pool-code-hashes (list 10000 (buff 32)) (list 0x))
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L88)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L93)
 
 ## Constants
 
@@ -3291,6 +3458,66 @@ Error constants
 
 [View in file](..\contracts\dlmm-core-v-1-1.clar#L50)
 
+### ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA
+
+
+
+
+
+```clarity
+(define-constant ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA (err u1044))
+```
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L51)
+
+### ERR_INVALID_X_AMOUNT
+
+
+
+
+
+```clarity
+(define-constant ERR_INVALID_X_AMOUNT (err u1045))
+```
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L52)
+
+### ERR_INVALID_Y_AMOUNT
+
+
+
+
+
+```clarity
+(define-constant ERR_INVALID_Y_AMOUNT (err u1046))
+```
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L53)
+
+### ERR_INVALID_MIN_DLP_AMOUNT
+
+
+
+
+
+```clarity
+(define-constant ERR_INVALID_MIN_DLP_AMOUNT (err u1047))
+```
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L54)
+
+### ERR_NO_BIN_SHARES
+
+
+
+
+
+```clarity
+(define-constant ERR_NO_BIN_SHARES (err u1048))
+```
+
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L55)
+
 ### CONTRACT_DEPLOYER
 
 
@@ -3301,7 +3528,7 @@ Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L53)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L58)
 
 ### NUM_OF_BINS
 
@@ -3313,7 +3540,7 @@ Number of bins per pool and center bin ID as unsigned ints
 (define-constant NUM_OF_BINS u1001)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L56)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L61)
 
 ### CENTER_BIN_ID
 
@@ -3325,7 +3552,7 @@ Number of bins per pool and center bin ID as unsigned ints
 (define-constant CENTER_BIN_ID (/ NUM_OF_BINS u2))
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L57)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L62)
 
 ### MIN_BIN_ID
 
@@ -3337,7 +3564,7 @@ Minimum and maximum bin IDs as signed ints
 (define-constant MIN_BIN_ID -500)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L60)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L65)
 
 ### MAX_BIN_ID
 
@@ -3349,7 +3576,7 @@ Minimum and maximum bin IDs as signed ints
 (define-constant MAX_BIN_ID 500)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L61)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L66)
 
 ### FEE_SCALE_BPS
 
@@ -3361,7 +3588,7 @@ Maximum BPS
 (define-constant FEE_SCALE_BPS u10000)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L64)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L69)
 
 ### PRICE_SCALE_BPS
 
@@ -3373,5 +3600,5 @@ Maximum BPS
 (define-constant PRICE_SCALE_BPS u100000000)
 ```
 
-[View in file](..\contracts\dlmm-core-v-1-1.clar#L65)
+[View in file](..\contracts\dlmm-core-v-1-1.clar#L70)
   

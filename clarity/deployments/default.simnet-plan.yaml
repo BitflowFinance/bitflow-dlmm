@@ -75,9 +75,9 @@ plan:
             path: contracts/dlmm-core-v-1-1.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: dlmm-liquidity-helper-v-1-1
+            contract-name: dlmm-liquidity-router-v-1-1
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/dlmm-liquidity-helper-v-1-1.clar
+            path: contracts/dlmm-liquidity-router-v-1-1.clar
             clarity-version: 3
         - emulated-contract-publish:
             contract-name: sip-013-trait-sft-standard-v-1-1
@@ -95,9 +95,9 @@ plan:
             path: contracts/dlmm-pool-sbtc-usdc-v-1-1.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: dlmm-swap-helper-v-1-1
+            contract-name: dlmm-swap-router-v-1-1
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/dlmm-swap-helper-v-1-1.clar
+            path: contracts/dlmm-swap-router-v-1-1.clar
             clarity-version: 3
         - emulated-contract-publish:
             contract-name: mock-pool
