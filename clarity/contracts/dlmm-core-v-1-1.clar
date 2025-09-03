@@ -45,7 +45,7 @@
 (define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1038))
 (define-constant ERR_INVALID_INITIAL_PRICE (err u1039))
 (define-constant ERR_INVALID_BIN_PRICE (err u1040))
-(define-constant ERR_INVALID_BIN_ID (err u1041))
+(define-constant ERR_MATCHING_BIN_ID (err u1041))
 (define-constant ERR_NOT_ACTIVE_BIN (err u1042))
 (define-constant ERR_NO_BIN_SHARES (err u1043))
 (define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1044))
@@ -1560,7 +1560,7 @@
       (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
 
       ;; Assert that from-bin-id is not equal to to-bin-id
-      (asserts! (not (is-eq from-bin-id to-bin-id)) ERR_INVALID_BIN_ID)
+      (asserts! (not (is-eq from-bin-id to-bin-id)) ERR_MATCHING_BIN_ID)
 
       ;; Assert that correct token amounts are being added based on to-bin-id and active-bin-id
       (asserts! (or (>= to-bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_X_AMOUNT)
