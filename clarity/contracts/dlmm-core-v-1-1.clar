@@ -24,35 +24,36 @@
 (define-constant ERR_MATCHING_TOKEN_CONTRACTS (err u1017))
 (define-constant ERR_INVALID_X_TOKEN (err u1018))
 (define-constant ERR_INVALID_Y_TOKEN (err u1019))
-(define-constant ERR_MINIMUM_X_AMOUNT (err u1020))
-(define-constant ERR_MINIMUM_Y_AMOUNT (err u1021))
-(define-constant ERR_MINIMUM_LP_AMOUNT (err u1022))
-(define-constant ERR_MAXIMUM_X_AMOUNT (err u1023))
-(define-constant ERR_MAXIMUM_Y_AMOUNT (err u1024))
-(define-constant ERR_INVALID_LIQUIDITY_VALUE (err u1025))
-(define-constant ERR_INVALID_FEE (err u1026))
-(define-constant ERR_MINIMUM_BURN_AMOUNT (err u1027))
-(define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1028))
-(define-constant ERR_INVALID_BIN_STEP (err u1029))
-(define-constant ERR_ALREADY_BIN_STEP (err u1030))
-(define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1031))
-(define-constant ERR_NO_BIN_FACTORS (err u1032))
-(define-constant ERR_INVALID_BIN_FACTOR (err u1033))
-(define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1034))
-(define-constant ERR_INVALID_INITIAL_PRICE (err u1035))
-(define-constant ERR_INVALID_BIN_PRICE (err u1036))
-(define-constant ERR_NOT_ACTIVE_BIN (err u1037))
-(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1038))
-(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1039))
-(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1040))
-(define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1041))
-(define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1042))
-(define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1043))
-(define-constant ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA (err u1044))
-(define-constant ERR_INVALID_X_AMOUNT (err u1045))
-(define-constant ERR_INVALID_Y_AMOUNT (err u1046))
-(define-constant ERR_INVALID_MIN_DLP_AMOUNT (err u1047))
-(define-constant ERR_NO_BIN_SHARES (err u1048))
+(define-constant ERR_INVALID_X_AMOUNT (err u1020))
+(define-constant ERR_INVALID_Y_AMOUNT (err u1021))
+(define-constant ERR_MINIMUM_X_AMOUNT (err u1022))
+(define-constant ERR_MINIMUM_Y_AMOUNT (err u1023))
+(define-constant ERR_MINIMUM_LP_AMOUNT (err u1024))
+(define-constant ERR_MAXIMUM_X_AMOUNT (err u1025))
+(define-constant ERR_MAXIMUM_Y_AMOUNT (err u1026))
+(define-constant ERR_INVALID_MIN_DLP_AMOUNT (err u1027))
+(define-constant ERR_INVALID_LIQUIDITY_VALUE (err u1028))
+(define-constant ERR_INVALID_FEE (err u1029))
+(define-constant ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA (err u1030))
+(define-constant ERR_MINIMUM_BURN_AMOUNT (err u1031))
+(define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1032))
+(define-constant ERR_INVALID_BIN_STEP (err u1033))
+(define-constant ERR_ALREADY_BIN_STEP (err u1034))
+(define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1035))
+(define-constant ERR_NO_BIN_FACTORS (err u1036))
+(define-constant ERR_INVALID_BIN_FACTOR (err u1037))
+(define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1038))
+(define-constant ERR_INVALID_INITIAL_PRICE (err u1039))
+(define-constant ERR_INVALID_BIN_PRICE (err u1040))
+(define-constant ERR_INVALID_BIN_ID (err u1041))
+(define-constant ERR_NOT_ACTIVE_BIN (err u1042))
+(define-constant ERR_NO_BIN_SHARES (err u1043))
+(define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1044))
+(define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1045))
+(define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1046))
+(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1047))
+(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1048))
+(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1049))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -133,7 +134,7 @@
   (ok (map-get? allowed-token-direction {x-token: x-token, y-token: y-token}))
 )
 
-;; Get allowed-token-direction for pool creation
+;; Get unclaimed protocol fees for a pool
 (define-read-only (get-unclaimed-protocol-fees-by-id (id uint))
   (ok (map-get? unclaimed-protocol-fees id))
 )
@@ -1328,7 +1329,7 @@
           bin-liquidity-value: bin-liquidity-value,
           updated-x-balance: updated-x-balance,
           updated-y-balance: updated-y-balance,
-          updated-bin-shares: (+ bin-shares dlp)
+          updated-bin-shares: (+ bin-shares dlp-post-fees)
         }
       })
       (ok dlp-post-fees)
@@ -1431,6 +1432,192 @@
         }
       })
       (ok {x-amount: x-amount, y-amount: y-amount})
+    )
+  )
+)
+
+;; Move liquidity from one bin to another in a pool
+(define-public (move-liquidity
+    (pool-trait <dlmm-pool-trait>)
+    (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
+    (from-bin-id int) (to-bin-id int) (amount uint) (min-dlp uint)
+  )
+  (let (
+    ;; Gather all pool data and check if pool is valid
+    (pool-data (unwrap! (contract-call? pool-trait get-pool-for-add) ERR_NO_POOL_DATA))
+    (pool-contract (contract-of pool-trait))
+    (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
+    (x-token (get x-token pool-data))
+    (y-token (get y-token pool-data))
+    (bin-step (get bin-step pool-data))
+    (initial-price (get initial-price pool-data))
+    (active-bin-id (get active-bin-id pool-data))
+
+    ;; Convert bin IDs to unsigned bin IDs
+    (unsigned-from-bin-id (to-uint (+ from-bin-id (to-int CENTER_BIN_ID))))
+    (unsigned-to-bin-id (to-uint (+ to-bin-id (to-int CENTER_BIN_ID))))
+
+    ;; Get balances at from-bin-id
+    (bin-balances-a (try! (contract-call? pool-trait get-bin-balances unsigned-from-bin-id)))
+    (x-balance-a (get x-balance bin-balances-a))
+    (y-balance-a (get y-balance bin-balances-a))
+    (bin-shares-a (get bin-shares bin-balances-a))
+
+    ;; Assert that bin shares for from-bin-id is greater than 0
+    (bin-shares-check (asserts! (> bin-shares-a u0) ERR_NO_BIN_SHARES))
+
+    ;; Calculate x-amount and y-amount to withdraw from from-bin-id
+    (x-amount (/ (* amount x-balance-a) bin-shares-a))
+    (y-amount (/ (* amount y-balance-a) bin-shares-a))
+
+    ;; Calculate updated bin balances and total shares for from-bin-id
+    (updated-x-balance-a (- x-balance-a x-amount))
+    (updated-y-balance-a (- y-balance-a y-amount))
+    (updated-bin-shares-a (- bin-shares-a amount))
+
+    ;; Get balances at to-bin-id
+    (bin-balances-b (try! (contract-call? pool-trait get-bin-balances unsigned-to-bin-id)))
+    (x-balance-b (get x-balance bin-balances-b))
+    (y-balance-b (get y-balance bin-balances-b))
+    (bin-shares-b (get bin-shares bin-balances-b))
+
+    ;; Get price at to-bin-id
+    (bin-price (unwrap! (get-bin-price initial-price bin-step to-bin-id) ERR_INVALID_BIN_PRICE))
+
+    ;; Scale up y-amount and y-balance-b
+    (y-amount-scaled (* y-amount PRICE_SCALE_BPS))
+    (y-balance-b-scaled (* y-balance-b PRICE_SCALE_BPS))
+
+    ;; Get current liquidity values for to-bin-id and calculate dlp without fees
+    (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (bin-liquidity-value (unwrap! (get-liquidity-value x-balance-b y-balance-b-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (dlp (if (or (is-eq bin-shares-b u0) (is-eq bin-liquidity-value u0))
+             (sqrti add-liquidity-value)
+             (/ (* add-liquidity-value bin-shares-b) bin-liquidity-value)))
+
+    ;; Calculate liquidity fees if adding liquidity to active bin based on ratio of bin balances
+    (x-amount-fees-liquidity (if (is-eq to-bin-id active-bin-id)
+      (let (
+        (x-liquidity-fee (+ (get x-protocol-fee pool-data) (get x-provider-fee pool-data) (get x-variable-fee pool-data)))
+
+        ;; Calculate withdrawable x-amount without fees
+        (x-amount-withdrawable (/ (* dlp (+ x-balance-b x-amount)) (+ bin-shares-b dlp)))
+
+        ;; Calculate max liquidity fee for x-amount
+        (max-x-amount-fees-liquidity (if (> x-amount-withdrawable x-amount)
+                                           (/ (* (- x-amount-withdrawable x-amount) x-liquidity-fee) FEE_SCALE_BPS)
+                                           u0))
+      )
+        ;; Calculate final liquidity fee for x-amount
+        (if (> x-amount max-x-amount-fees-liquidity) max-x-amount-fees-liquidity x-amount)
+      )
+      u0
+    ))
+    (y-amount-fees-liquidity (if (is-eq to-bin-id active-bin-id)
+      (let (
+        (y-liquidity-fee (+ (get y-protocol-fee pool-data) (get y-provider-fee pool-data) (get y-variable-fee pool-data)))
+
+        ;; Calculate withdrawable y-amount without fees
+        (y-amount-withdrawable (/ (* dlp (+ y-balance-b y-amount)) (+ bin-shares-b dlp)))
+
+        ;; Calculate max liquidity fee for y-amount
+        (max-y-amount-fees-liquidity (if (> y-amount-withdrawable y-amount)
+                                           (/ (* (- y-amount-withdrawable y-amount) y-liquidity-fee) FEE_SCALE_BPS)
+                                           u0))
+      )
+        ;; Calculate final liquidity fee for y-amount
+        (if (> y-amount max-y-amount-fees-liquidity) max-y-amount-fees-liquidity y-amount)
+      )
+      u0
+    ))
+
+    ;; Calculate final x and y amounts post fees for to-bin-id
+    (x-amount-post-fees (- x-amount x-amount-fees-liquidity))
+    (y-amount-post-fees (- y-amount y-amount-fees-liquidity))
+    (y-amount-post-fees-scaled (* y-amount-post-fees PRICE_SCALE_BPS))
+
+    ;; Get final liquidity value for to-bin-id and calculate dlp post fees
+    (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (dlp-post-fees (if (or (is-eq bin-shares-b u0) (is-eq bin-liquidity-value u0))
+                       (sqrti add-liquidity-value-post-fees)
+                       (/ (* add-liquidity-value-post-fees bin-shares-b) bin-liquidity-value)))
+
+    ;; Calculate updated bin balances for to-bin-id
+    (updated-x-balance-b (+ x-balance-b x-amount))
+    (updated-y-balance-b (+ y-balance-b y-amount))
+    (caller tx-sender)
+  )
+    (begin
+      ;; Assert that pool-status is true and correct token traits are used
+      (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
+      (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
+      (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+
+      ;; Assert that amount is greater than 0
+      (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+
+      ;; Assert that x-amount + y-amount is greater than 0
+      (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
+
+      ;; Assert that from-bin-id is not equal to to-bin-id
+      (asserts! (not (is-eq from-bin-id to-bin-id)) ERR_INVALID_BIN_ID)
+
+      ;; Assert that correct token amounts are being added based on to-bin-id and active-bin-id
+      (asserts! (or (>= to-bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_X_AMOUNT)
+      (asserts! (or (<= to-bin-id active-bin-id) (is-eq y-amount u0)) ERR_INVALID_Y_AMOUNT)
+
+      ;; Assert that min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
+      (asserts! (> min-dlp u0) ERR_INVALID_MIN_DLP_AMOUNT)
+      (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
+
+      ;; Update bin balances for from-bin-id
+      (try! (contract-call? pool-trait update-bin-balances-on-withdraw unsigned-from-bin-id updated-x-balance-a updated-y-balance-a updated-bin-shares-a))
+
+      ;; Burn LP tokens from caller for from-bin-id
+      (try! (contract-call? pool-trait pool-burn unsigned-from-bin-id amount caller))
+
+      ;; Update bin balances for to-bin-id
+      (try! (contract-call? pool-trait update-bin-balances unsigned-to-bin-id updated-x-balance-b updated-y-balance-b))
+
+      ;; Mint LP tokens to caller for to-bin-id
+      (try! (contract-call? pool-trait pool-mint unsigned-to-bin-id dlp-post-fees caller))
+
+      ;; Print move liquidity data and return number of LP tokens the caller received
+      (print {
+        action: "move-liquidity",
+        caller: caller,
+        data: {
+          pool-id: (get pool-id pool-data),
+          pool-name: (get pool-name pool-data),
+          pool-contract: pool-contract,
+          x-token: x-token,
+          y-token: y-token,
+          bin-step: bin-step,
+          initial-price: initial-price,
+          bin-price: bin-price,
+          active-bin-id: active-bin-id,
+          from-bin-id: from-bin-id,
+          to-bin-id: to-bin-id,
+          unsigned-from-bin-id: unsigned-from-bin-id,
+          unsigned-to-bin-id: unsigned-to-bin-id,
+          amount: amount,
+          x-amount: x-amount-post-fees,
+          y-amount: y-amount-post-fees,
+          x-amount-fees-liquidity: x-amount-fees-liquidity,
+          y-amount-fees-liquidity: y-amount-fees-liquidity,
+          dlp: dlp-post-fees,
+          min-dlp: min-dlp,
+          add-liquidity-value: add-liquidity-value-post-fees,
+          bin-liquidity-value: bin-liquidity-value,
+          updated-x-balance-a: updated-x-balance-a,
+          updated-y-balance-a: updated-y-balance-a,
+          updated-bin-shares-a: (- bin-shares-a amount),
+          updated-x-balance-b: updated-x-balance-b,
+          updated-y-balance-b: updated-y-balance-b,
+          updated-bin-shares-b: (+ bin-shares-b dlp-post-fees)
+        }
+      })
+      (ok dlp-post-fees)
     )
   )
 )
