@@ -23,10 +23,9 @@
 (define-constant ERR_NO_BIN_DATA (err u4017))
 (define-constant ERR_NO_USER_DATA (err u4018))
 (define-constant ERR_NO_USER_DATA_AT_BIN (err u4019))
-(define-constant ERR_NO_ACTIVE_BIN_DATA (err u4020))
-(define-constant ERR_NO_LP_TO_UNSTAKE (err u4021))
-(define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4022))
-(define-constant ERR_INVALID_FEE (err u4023))
+(define-constant ERR_NO_LP_TO_UNSTAKE (err u4020))
+(define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4021))
+(define-constant ERR_INVALID_FEE (err u4022))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
