@@ -15,7 +15,7 @@
 - `sip-010-trait-ft-standard-v-1-1`
 - `sip-013-trait-sft-standard-v-1-1`
 - `sip-013-transfer-many-trait-v-1-1`
-- `token-stx-v-1-2`
+- `token-stx-v-1-1`
 
 ## 2. dlmm-core-v-1-1
 
@@ -494,7 +494,7 @@ Add or withdraw liquidity using a single or multiple bins in a single or multipl
 - `CENTER_BIN_ID` (`(/ NUM_OF_BINS u2)`)
 - `MIN_REWARD_BUFFER_BLOCKS` (`u10000`)
 - `FEE_SCALE_BPS` (`u10000`)
-- `REWARD_SCALE_BPS` (`u100000000`)
+- `REWARD_SCALE_BPS` (`u1000000`)
 
 ### Data Variables
 
@@ -515,7 +515,7 @@ Updated as a side-effect of other functions
 - `total-rewards-per-block` (`uint`): Total amount of rewards per block
 - `total-rewards-claimed` (`uint`): Total amount of rewards claimed
 - `total-rewards-accrued` (`uint`): Total amount of rewards accrued
-- `last-total-rewards-accrued-update` (`uint`): Blocks since `total-rewards-accrued` was last updated
+- `last-total-rewards-accrued-update` (`uint`): Block height when `total-rewards-accrued` was last updated
 
 ### Mappings
 - `bin-data` (`uint {lp-staked: uint, reward-per-block: uint, reward-index: uint, last-reward-index-update: uint}`)
