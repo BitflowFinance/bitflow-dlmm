@@ -51,9 +51,10 @@
 (define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1044))
 (define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1045))
 (define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1046))
-(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1047))
-(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1048))
-(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1049))
+(define-constant ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST (err u1047))
+(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1048))
+(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1049))
+(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1050))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -90,8 +91,9 @@
 ;; Data var used to enable or disable pool creation by anyone
 (define-data-var public-pool-creation bool false)
 
-;; List of verified pool code hashes
+;; List of verified pool code hashes and helper var used to remove hashes
 (define-data-var verified-pool-code-hashes (list 10000 (buff 32)) (list 0x))
+(define-data-var verified-pool-code-hashes-helper (buff 32) 0x)
 
 ;; Define pools map
 (define-map pools uint {
@@ -174,6 +176,11 @@
 ;; Get verified pool code hashes list
 (define-read-only (get-verified-pool-code-hashes)
   (ok (var-get verified-pool-code-hashes))
+)
+
+;; Get verified pool code hashes helper var
+(define-read-only (get-verified-pool-code-hashes-helper)
+  (ok (var-get verified-pool-code-hashes-helper))
 )
 
 ;; Get bin ID as unsigned int
@@ -291,7 +298,7 @@
     (verified-pool-code-hashes-list (var-get verified-pool-code-hashes))
     (caller tx-sender)
   )
-    ;; Assert caller is an admin and new code hash is not already in list
+    ;; Assert caller is an admin and new code hash is not already in the list
     (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
     (asserts! (is-none (index-of verified-pool-code-hashes-list hash)) ERR_ALREADY_VERIFIED_POOL_CODE_HASH)
 
@@ -303,6 +310,26 @@
 
     ;; Print function data and return true
     (print {action: "add-verified-pool-code-hash", caller: caller, data: {hash: hash}})
+    (ok true)
+  )
+)
+
+;; Remove a verified pool code hash
+(define-public (remove-verified-pool-code-hash (hash (buff 32)))
+  (let (
+    (verified-pool-code-hashes-list (var-get verified-pool-code-hashes))
+    (caller tx-sender)
+  )
+    ;; Assert caller is an admin and code hash to remove is in the list
+    (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
+    (asserts! (is-some (index-of verified-pool-code-hashes-list hash)) ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST)
+
+    ;; Set verified-pool-code-hashes-helper to hash to remove and filter verified-pool-code-hashes to remove hash
+    (var-set verified-pool-code-hashes-helper hash)
+    (var-set verified-pool-code-hashes (filter verified-pool-code-hashes-not-removable verified-pool-code-hashes-list))
+
+    ;; Print function data and return true
+    (print {action: "remove-verified-pool-code-hash", caller: caller, data: {hash: hash}})
     (ok true)
   )
 )
@@ -1838,6 +1865,11 @@
 ;; Helper function for removing an admin
 (define-private (admin-not-removable (admin principal))
   (not (is-eq admin (var-get admin-helper)))
+)
+
+;; Helper function for removing a verified pool code hash
+(define-private (verified-pool-code-hashes-not-removable (hash (buff 32)))
+  (not (is-eq hash (var-get verified-pool-code-hashes-helper)))
 )
 
 ;; Create pool symbol using x token and y token symbols
