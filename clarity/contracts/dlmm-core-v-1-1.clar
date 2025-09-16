@@ -821,7 +821,7 @@
     (x-protocol-fee uint) (x-provider-fee uint)
     (y-protocol-fee uint) (y-provider-fee uint)
     (bin-step uint) (variable-fees-cooldown uint) (freeze-variable-fees-manager bool)
-    (fee-address principal)
+    (dynamic-config (optional (buff 4096))) (fee-address principal)
     (uri (string-ascii 256)) (status bool)
   )
   (let (
@@ -842,6 +842,9 @@
     ;; Get token contracts
     (x-token-contract (contract-of x-token-trait))
     (y-token-contract (contract-of y-token-trait))
+
+    ;; Get dynamic config if provided
+    (unwrapped-dynamic-config (if (is-some dynamic-config) (unwrap-panic dynamic-config) 0x))
 
     ;; Get initial price at active bin
     (initial-price (/ (* y-amount-active-bin PRICE_SCALE_BPS) x-amount-active-bin))
@@ -908,6 +911,9 @@
       ;; Freeze variable fees manager if freeze-variable-fees-manager is true
       (if freeze-variable-fees-manager (try! (contract-call? pool-trait set-freeze-variable-fees-manager)) false)
 
+      ;; Set dynamic config if unwrapped-dynamic-config is greater than zero
+      (if (> (len unwrapped-dynamic-config) u0) (try! (contract-call? pool-trait set-dynamic-config unwrapped-dynamic-config)) false)
+
       ;; Update ID of last created pool, add pool to pools map, and add pool to unclaimed-protocol-fees map
       (var-set last-pool-id new-pool-id)
       (map-set pools new-pool-id {id: new-pool-id, name: name, symbol: symbol, pool-contract: pool-contract, verified: pool-verified-check, status: status})
@@ -963,7 +969,8 @@
           variable-fees-manager: CONTRACT_DEPLOYER,
           fee-address: fee-address,
           variable-fees-cooldown: variable-fees-cooldown,
-          freeze-variable-fees-manager: freeze-variable-fees-manager
+          freeze-variable-fees-manager: freeze-variable-fees-manager,
+          dynamic-config: dynamic-config
         }
       })
       (ok true)
