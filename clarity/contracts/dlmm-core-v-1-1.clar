@@ -1008,9 +1008,9 @@
     (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum x-amount with fees
+    (swap-fee-total (+ protocol-fee provider-fee variable-fee))
     (max-x-amount (/ (* y-balance PRICE_SCALE_BPS) bin-price))
-    (max-x-amount-fees-total (/ (* max-x-amount (+ protocol-fee provider-fee variable-fee)) FEE_SCALE_BPS))
-    (updated-max-x-amount (+ max-x-amount max-x-amount-fees-total))
+    (updated-max-x-amount (if (> swap-fee-total u0) (/ (* max-x-amount FEE_SCALE_BPS) swap-fee-total) max-x-amount))
 
     ;; Assert that x-amount is less than or equal to updated-max-x-amount
     (x-amount-check (asserts! (<= x-amount updated-max-x-amount) ERR_MAXIMUM_X_AMOUNT))
@@ -1141,9 +1141,9 @@
     (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
     ;; Calculate maximum y-amount with fees
+    (swap-fee-total (+ protocol-fee provider-fee variable-fee))
     (max-y-amount (/ (* x-balance bin-price) PRICE_SCALE_BPS))
-    (max-y-amount-fees-total (/ (* max-y-amount (+ protocol-fee provider-fee variable-fee)) FEE_SCALE_BPS))
-    (updated-max-y-amount (+ max-y-amount max-y-amount-fees-total))
+    (updated-max-y-amount (if (> swap-fee-total u0) (/ (* max-y-amount FEE_SCALE_BPS) swap-fee-total) max-y-amount))
 
     ;; Assert that y-amount is less than or equal to updated-max-y-amount
     (y-amount-check (asserts! (<= y-amount updated-max-y-amount) ERR_MAXIMUM_Y_AMOUNT))
