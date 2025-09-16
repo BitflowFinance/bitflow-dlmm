@@ -99,7 +99,6 @@
   name: (string-ascii 32),
   symbol: (string-ascii 32),
   pool-contract: principal,
-  verified: bool,
   status: bool
 })
 
@@ -201,6 +200,11 @@
 ;; Get liquidity value when adding liquidity to a bin by rebasing x-amount to y-units
 (define-read-only (get-liquidity-value (x-amount uint) (y-amount uint) (bin-price uint))
   (ok (+ (* bin-price x-amount) y-amount))
+)
+
+;; Get pool verification status @NOTE use contract-hash?
+(define-read-only (get-is-pool-verified (pool-trait <dlmm-pool-trait>))
+  (ok (is-some (index-of (var-get verified-pool-code-hashes) 0x)))
 )
 
 ;; Add a new bin step and its factors
@@ -916,7 +920,7 @@
 
       ;; Update ID of last created pool, add pool to pools map, and add pool to unclaimed-protocol-fees map
       (var-set last-pool-id new-pool-id)
-      (map-set pools new-pool-id {id: new-pool-id, name: name, symbol: symbol, pool-contract: pool-contract, verified: pool-verified-check, status: status})
+      (map-set pools new-pool-id {id: new-pool-id, name: name, symbol: symbol, pool-contract: pool-contract, status: status})
       (map-set unclaimed-protocol-fees new-pool-id {x-fee: u0, y-fee: u0})
 
       ;; Update allowed-token-direction map if needed
