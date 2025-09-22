@@ -1053,15 +1053,15 @@
     (max-x-amount (/ (* y-balance PRICE_SCALE_BPS) bin-price))
     (updated-max-x-amount (if (> swap-fee-total u0) (/ (* max-x-amount FEE_SCALE_BPS) (- FEE_SCALE_BPS swap-fee-total)) max-x-amount))
 
-    ;; Assert that x-amount is less than or equal to updated-max-x-amount
-    (x-amount-check (asserts! (<= x-amount updated-max-x-amount) ERR_MAXIMUM_X_AMOUNT))
+    ;; Calculate x-amount to use for the swap
+    (updated-x-amount (if (>= x-amount updated-max-x-amount) updated-max-x-amount x-amount))
 
     ;; Calculate fees and dx
-    (x-amount-fees-protocol (/ (* x-amount protocol-fee) FEE_SCALE_BPS))
-    (x-amount-fees-provider (/ (* x-amount provider-fee) FEE_SCALE_BPS))
-    (x-amount-fees-variable (/ (* x-amount variable-fee) FEE_SCALE_BPS))
+    (x-amount-fees-protocol (/ (* updated-x-amount protocol-fee) FEE_SCALE_BPS))
+    (x-amount-fees-provider (/ (* updated-x-amount provider-fee) FEE_SCALE_BPS))
+    (x-amount-fees-variable (/ (* updated-x-amount variable-fee) FEE_SCALE_BPS))
     (x-amount-fees-total (+ x-amount-fees-protocol x-amount-fees-provider x-amount-fees-variable))
-    (dx (- x-amount x-amount-fees-total))
+    (dx (- updated-x-amount x-amount-fees-total))
 
     ;; Calculate dy
     (dy (/ (* dx bin-price) PRICE_SCALE_BPS))
@@ -1129,6 +1129,7 @@
           bin-id: bin-id,
           unsigned-bin-id: unsigned-bin-id,
           x-amount: x-amount,
+          updated-x-amount: updated-x-amount,
           updated-max-x-amount: updated-max-x-amount,
           x-amount-fees-protocol: x-amount-fees-protocol,
           x-amount-fees-provider: x-amount-fees-provider,
@@ -1140,7 +1141,7 @@
           updated-y-balance: updated-y-balance
         }
       })
-      (ok dy)
+      (ok {in: updated-x-amount, out: dy})
     )
   )
 )
@@ -1186,15 +1187,15 @@
     (max-y-amount (/ (* x-balance bin-price) PRICE_SCALE_BPS))
     (updated-max-y-amount (if (> swap-fee-total u0) (/ (* max-y-amount FEE_SCALE_BPS) (- FEE_SCALE_BPS swap-fee-total)) max-y-amount))
 
-    ;; Assert that y-amount is less than or equal to updated-max-y-amount
-    (y-amount-check (asserts! (<= y-amount updated-max-y-amount) ERR_MAXIMUM_Y_AMOUNT))
+    ;; Calculate y-amount to use for the swap
+    (updated-y-amount (if (>= y-amount updated-max-y-amount) updated-max-y-amount y-amount))
 
     ;; Calculate fees and dy
-    (y-amount-fees-protocol (/ (* y-amount protocol-fee) FEE_SCALE_BPS))
-    (y-amount-fees-provider (/ (* y-amount provider-fee) FEE_SCALE_BPS))
-    (y-amount-fees-variable (/ (* y-amount variable-fee) FEE_SCALE_BPS))
+    (y-amount-fees-protocol (/ (* updated-y-amount protocol-fee) FEE_SCALE_BPS))
+    (y-amount-fees-provider (/ (* updated-y-amount provider-fee) FEE_SCALE_BPS))
+    (y-amount-fees-variable (/ (* updated-y-amount variable-fee) FEE_SCALE_BPS))
     (y-amount-fees-total (+ y-amount-fees-protocol y-amount-fees-provider y-amount-fees-variable))
-    (dy (- y-amount y-amount-fees-total))
+    (dy (- updated-y-amount y-amount-fees-total))
 
     ;; Calculate dx
     (dx (/ (* dy PRICE_SCALE_BPS) bin-price))
@@ -1262,6 +1263,7 @@
           bin-id: bin-id,
           unsigned-bin-id: unsigned-bin-id,
           y-amount: y-amount,
+          updated-y-amount: updated-y-amount,
           updated-max-y-amount: updated-max-y-amount,
           y-amount-fees-protocol: y-amount-fees-protocol,
           y-amount-fees-provider: y-amount-fees-provider,
@@ -1273,7 +1275,7 @@
           updated-y-balance: updated-y-balance
         }
       })
-      (ok dx)
+      (ok {in: updated-y-amount, out: dx})
     )
   )
 )
