@@ -13,7 +13,7 @@
 
 ;; Add liquidity to multiple bins in multiple pools
 (define-public (add-liquidity-multi
-    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, bin-id: int, x-amount: uint, y-amount: uint, min-dlp: uint}))
+    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, bin-id: int, x-amount: uint, y-amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint}))
   )
   (let (
     (add-liquidity-result (try! (fold fold-add-liquidity-multi positions (ok (list )))))
@@ -25,7 +25,7 @@
 
 ;; Add liquidity to multiple bins in multiple pools relative to the active bin
 (define-public (add-relative-liquidity-multi
-    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, active-bin-id-offset: int, x-amount: uint, y-amount: uint, min-dlp: uint}))
+    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, active-bin-id-offset: int, x-amount: uint, y-amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint}))
   )
   (let (
     (add-liquidity-result (try! (fold fold-add-relative-liquidity-multi positions (ok (list )))))
@@ -97,7 +97,7 @@
 
 ;; Move liquidity for multiple bins in multiple pools
 (define-public (move-liquidity-multi
-    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, to-bin-id: int, amount: uint, min-dlp: uint}))
+    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, to-bin-id: int, amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint}))
   )
   (let (
     (move-liquidity-result (try! (fold fold-move-liquidity-multi positions (ok (list )))))
@@ -109,7 +109,7 @@
 
 ;; Move liquidity for multiple bins in multiple pools relative to the active bin
 (define-public (move-relative-liquidity-multi
-    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, active-bin-id-offset: int, amount: uint, min-dlp: uint}))
+    (positions (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, active-bin-id-offset: int, amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint}))
   )
   (let (
     (move-liquidity-result (try! (fold fold-move-relative-liquidity-multi positions (ok (list )))))
@@ -121,12 +121,12 @@
 
 ;; Fold function to add liquidity to multiple bins in multiple pools
 (define-private (fold-add-liquidity-multi
-    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, bin-id: int, x-amount: uint, y-amount: uint, min-dlp: uint})
+    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, bin-id: int, x-amount: uint, y-amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint})
     (result (response (list 350 uint) uint))
   )
   (let (
     (result-data (unwrap! result ERR_NO_RESULT_DATA))
-    (add-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 add-liquidity (get pool-trait position) (get x-token-trait position) (get y-token-trait position) (get bin-id position) (get x-amount position) (get y-amount position) (get min-dlp position))))
+    (add-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 add-liquidity (get pool-trait position) (get x-token-trait position) (get y-token-trait position) (get bin-id position) (get x-amount position) (get y-amount position) (get min-dlp position) (get max-x-liquidity-fee position) (get max-y-liquidity-fee position))))
     (updated-result (unwrap! (as-max-len? (append result-data add-liquidity-result) u350) ERR_RESULTS_LIST_OVERFLOW))
   )
     (ok updated-result)
@@ -135,7 +135,7 @@
 
 ;; Fold function to add liquidity to multiple bins in multiple pools relative to the active bin
 (define-private (fold-add-relative-liquidity-multi
-    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, active-bin-id-offset: int, x-amount: uint, y-amount: uint, min-dlp: uint})
+    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, active-bin-id-offset: int, x-amount: uint, y-amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint})
     (result (response (list 350 uint) uint))
   )
   (let (
@@ -143,7 +143,7 @@
     (pool-trait (get pool-trait position))
     (active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
     (bin-id (+ active-bin-id (get active-bin-id-offset position)))
-    (add-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 add-liquidity pool-trait (get x-token-trait position) (get y-token-trait position) bin-id (get x-amount position) (get y-amount position) (get min-dlp position))))
+    (add-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 add-liquidity pool-trait (get x-token-trait position) (get y-token-trait position) bin-id (get x-amount position) (get y-amount position) (get min-dlp position) (get max-x-liquidity-fee position) (get max-y-liquidity-fee position))))
     (updated-result (unwrap! (as-max-len? (append result-data add-liquidity-result) u350) ERR_RESULTS_LIST_OVERFLOW))
   )
     (ok updated-result)
@@ -222,12 +222,12 @@
 
 ;; Fold function to move liquidity for multiple bins in multiple pools
 (define-private (fold-move-liquidity-multi
-    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, to-bin-id: int, amount: uint, min-dlp: uint})
+    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, to-bin-id: int, amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint})
     (result (response (list 350 uint) uint))
   )
   (let (
     (result-data (unwrap! result ERR_NO_RESULT_DATA))
-    (move-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 move-liquidity (get pool-trait position) (get x-token-trait position) (get y-token-trait position) (get from-bin-id position) (get to-bin-id position) (get amount position) (get min-dlp position))))
+    (move-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 move-liquidity (get pool-trait position) (get x-token-trait position) (get y-token-trait position) (get from-bin-id position) (get to-bin-id position) (get amount position) (get min-dlp position) (get max-x-liquidity-fee position) (get max-y-liquidity-fee position))))
     (updated-result (unwrap! (as-max-len? (append result-data move-liquidity-result) u350) ERR_RESULTS_LIST_OVERFLOW))
   )
     (ok updated-result)
@@ -236,7 +236,7 @@
 
 ;; Fold function to move liquidity for multiple bins in multiple pools relative to the active bin
 (define-private (fold-move-relative-liquidity-multi
-    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, active-bin-id-offset: int, amount: uint, min-dlp: uint})
+    (position {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, from-bin-id: int, active-bin-id-offset: int, amount: uint, min-dlp: uint, max-x-liquidity-fee: uint, max-y-liquidity-fee: uint})
     (result (response (list 350 uint) uint))
   )
   (let (
@@ -244,7 +244,7 @@
     (pool-trait (get pool-trait position))
     (active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
     (to-bin-id (+ active-bin-id (get active-bin-id-offset position)))
-    (move-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 move-liquidity pool-trait (get x-token-trait position) (get y-token-trait position) (get from-bin-id position) to-bin-id (get amount position) (get min-dlp position))))
+    (move-liquidity-result (try! (contract-call? .dlmm-core-v-1-1 move-liquidity pool-trait (get x-token-trait position) (get y-token-trait position) (get from-bin-id position) to-bin-id (get amount position) (get min-dlp position) (get max-x-liquidity-fee position) (get max-y-liquidity-fee position))))
     (updated-result (unwrap! (as-max-len? (append result-data move-liquidity-result) u350) ERR_RESULTS_LIST_OVERFLOW))
   )
     (ok updated-result)

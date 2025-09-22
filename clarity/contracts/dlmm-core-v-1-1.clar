@@ -34,30 +34,32 @@
 (define-constant ERR_INVALID_MIN_DLP_AMOUNT (err u1027))
 (define-constant ERR_INVALID_LIQUIDITY_VALUE (err u1028))
 (define-constant ERR_INVALID_FEE (err u1029))
-(define-constant ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA (err u1030))
-(define-constant ERR_MINIMUM_BURN_AMOUNT (err u1031))
-(define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1032))
-(define-constant ERR_INVALID_BIN_STEP (err u1033))
-(define-constant ERR_ALREADY_BIN_STEP (err u1034))
-(define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1035))
-(define-constant ERR_NO_BIN_FACTORS (err u1036))
-(define-constant ERR_INVALID_BIN_FACTOR (err u1037))
-(define-constant ERR_INVALID_FIRST_BIN_FACTOR (err u1038))
-(define-constant ERR_INVALID_CENTER_BIN_FACTOR (err u1039))
-(define-constant ERR_UNSORTED_BIN_FACTORS_LIST (err u1040))
-(define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1041))
-(define-constant ERR_INVALID_INITIAL_PRICE (err u1042))
-(define-constant ERR_INVALID_BIN_PRICE (err u1043))
-(define-constant ERR_MATCHING_BIN_ID (err u1044))
-(define-constant ERR_NOT_ACTIVE_BIN (err u1045))
-(define-constant ERR_NO_BIN_SHARES (err u1046))
-(define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1047))
-(define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1048))
-(define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1049))
-(define-constant ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST (err u1050))
-(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1051))
-(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1052))
-(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1053))
+(define-constant ERR_MAXIMUM_X_LIQUIDITY_FEE (err u1030))
+(define-constant ERR_MAXIMUM_Y_LIQUIDITY_FEE (err u1031))
+(define-constant ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA (err u1032))
+(define-constant ERR_MINIMUM_BURN_AMOUNT (err u1033))
+(define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1034))
+(define-constant ERR_INVALID_BIN_STEP (err u1035))
+(define-constant ERR_ALREADY_BIN_STEP (err u1036))
+(define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1037))
+(define-constant ERR_NO_BIN_FACTORS (err u1038))
+(define-constant ERR_INVALID_BIN_FACTOR (err u1039))
+(define-constant ERR_INVALID_FIRST_BIN_FACTOR (err u1040))
+(define-constant ERR_INVALID_CENTER_BIN_FACTOR (err u1041))
+(define-constant ERR_UNSORTED_BIN_FACTORS_LIST (err u1042))
+(define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1043))
+(define-constant ERR_INVALID_INITIAL_PRICE (err u1044))
+(define-constant ERR_INVALID_BIN_PRICE (err u1045))
+(define-constant ERR_MATCHING_BIN_ID (err u1046))
+(define-constant ERR_NOT_ACTIVE_BIN (err u1047))
+(define-constant ERR_NO_BIN_SHARES (err u1048))
+(define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1049))
+(define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1050))
+(define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1051))
+(define-constant ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST (err u1052))
+(define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1053))
+(define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1054))
+(define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1055))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -1302,6 +1304,7 @@
     (pool-trait <dlmm-pool-trait>)
     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
     (bin-id int) (x-amount uint) (y-amount uint) (min-dlp uint)
+    (max-x-liquidity-fee uint) (max-y-liquidity-fee uint)
   )
   (let (
     ;; Gather all pool data and check if pool is valid
@@ -1415,6 +1418,12 @@
       (asserts! (> min-dlp u0) ERR_INVALID_MIN_DLP_AMOUNT)
       (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
+      ;; Assert that x-amount-fees-liquidity is less than or equal to max-x-liquidity-fee
+      (asserts! (<= x-amount-fees-liquidity max-x-liquidity-fee) ERR_MAXIMUM_X_LIQUIDITY_FEE)
+
+      ;; Assert that y-amount-fees-liquidity is less than or equal to max-y-liquidity-fee
+      (asserts! (<= y-amount-fees-liquidity max-y-liquidity-fee) ERR_MAXIMUM_Y_LIQUIDITY_FEE)
+
       ;; Transfer x-amount x tokens from caller to pool-contract (includes x-amount-fees-liquidity)
       (if (> x-amount u0)
           (try! (contract-call? x-token-trait transfer x-amount caller pool-contract none))
@@ -1453,6 +1462,8 @@
           y-amount-fees-liquidity: y-amount-fees-liquidity,
           dlp: dlp-post-fees,
           min-dlp: min-dlp,
+          max-x-liquidity-fee: max-x-liquidity-fee,
+          max-y-liquidity-fee: max-y-liquidity-fee,
           add-liquidity-value: add-liquidity-value-post-fees,
           bin-liquidity-value: bin-liquidity-value,
           updated-x-balance: updated-x-balance,
@@ -1568,6 +1579,7 @@
     (pool-trait <dlmm-pool-trait>)
     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
     (from-bin-id int) (to-bin-id int) (amount uint) (min-dlp uint)
+    (max-x-liquidity-fee uint) (max-y-liquidity-fee uint)
   )
   (let (
     ;; Gather all pool data and check if pool is valid
@@ -1705,6 +1717,12 @@
       (asserts! (> min-dlp u0) ERR_INVALID_MIN_DLP_AMOUNT)
       (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
+      ;; Assert that x-amount-fees-liquidity is less than or equal to max-x-liquidity-fee
+      (asserts! (<= x-amount-fees-liquidity max-x-liquidity-fee) ERR_MAXIMUM_X_LIQUIDITY_FEE)
+
+      ;; Assert that y-amount-fees-liquidity is less than or equal to max-y-liquidity-fee
+      (asserts! (<= y-amount-fees-liquidity max-y-liquidity-fee) ERR_MAXIMUM_Y_LIQUIDITY_FEE)
+
       ;; Update bin balances for from-bin-id
       (try! (contract-call? pool-trait update-bin-balances-on-withdraw unsigned-from-bin-id updated-x-balance-a updated-y-balance-a bin-shares-a))
 
@@ -1742,6 +1760,8 @@
           y-amount-fees-liquidity: y-amount-fees-liquidity,
           dlp: dlp-post-fees,
           min-dlp: min-dlp,
+          max-x-liquidity-fee: max-x-liquidity-fee,
+          max-y-liquidity-fee: max-y-liquidity-fee,
           add-liquidity-value: add-liquidity-value-post-fees,
           bin-liquidity-value: bin-liquidity-value,
           updated-x-balance-a: updated-x-balance-a,
