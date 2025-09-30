@@ -1069,7 +1069,7 @@
 
     ;; Calculate maximum x-amount with fees
     (swap-fee-total (+ protocol-fee provider-fee variable-fee))
-    (max-x-amount (/ (* y-balance PRICE_SCALE_BPS) bin-price))
+    (max-x-amount (/ (+ (* y-balance PRICE_SCALE_BPS) (- bin-price u1)) bin-price))
     (updated-max-x-amount (if (> swap-fee-total u0) (/ (* max-x-amount FEE_SCALE_BPS) (- FEE_SCALE_BPS swap-fee-total)) max-x-amount))
 
     ;; Calculate x-amount to use for the swap
@@ -1083,7 +1083,8 @@
     (dx (- updated-x-amount x-amount-fees-total))
 
     ;; Calculate dy
-    (dy (/ (* dx bin-price) PRICE_SCALE_BPS))
+    (dy-before-cap (/ (* dx bin-price) PRICE_SCALE_BPS))
+    (dy (if (> dy-before-cap y-balance) y-balance dy-before-cap))
 
     ;; Calculate updated bin balances
     (updated-x-balance (+ x-balance dx x-amount-fees-provider x-amount-fees-variable))
@@ -1203,7 +1204,7 @@
 
     ;; Calculate maximum y-amount with fees
     (swap-fee-total (+ protocol-fee provider-fee variable-fee))
-    (max-y-amount (/ (* x-balance bin-price) PRICE_SCALE_BPS))
+    (max-y-amount (/ (+ (* x-balance bin-price) (- PRICE_SCALE_BPS u1)) PRICE_SCALE_BPS))
     (updated-max-y-amount (if (> swap-fee-total u0) (/ (* max-y-amount FEE_SCALE_BPS) (- FEE_SCALE_BPS swap-fee-total)) max-y-amount))
 
     ;; Calculate y-amount to use for the swap
@@ -1217,7 +1218,8 @@
     (dy (- updated-y-amount y-amount-fees-total))
 
     ;; Calculate dx
-    (dx (/ (* dy PRICE_SCALE_BPS) bin-price))
+    (dx-before-cap (/ (* dy PRICE_SCALE_BPS) bin-price))
+    (dx (if (> dx-before-cap x-balance) x-balance dx-before-cap))
 
     ;; Calculate updated bin balances
     (updated-x-balance (- x-balance dx))
