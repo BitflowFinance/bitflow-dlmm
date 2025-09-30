@@ -1076,10 +1076,10 @@
     (updated-x-amount (if (>= x-amount updated-max-x-amount) updated-max-x-amount x-amount))
 
     ;; Calculate fees and dx
+    (x-amount-fees-total (/ (* updated-x-amount swap-fee-total) FEE_SCALE_BPS))
     (x-amount-fees-protocol (/ (* updated-x-amount protocol-fee) FEE_SCALE_BPS))
-    (x-amount-fees-provider (/ (* updated-x-amount provider-fee) FEE_SCALE_BPS))
     (x-amount-fees-variable (/ (* updated-x-amount variable-fee) FEE_SCALE_BPS))
-    (x-amount-fees-total (+ x-amount-fees-protocol x-amount-fees-provider x-amount-fees-variable))
+    (x-amount-fees-provider (- x-amount-fees-total x-amount-fees-protocol x-amount-fees-variable))
     (dx (- updated-x-amount x-amount-fees-total))
 
     ;; Calculate dy
@@ -1210,10 +1210,10 @@
     (updated-y-amount (if (>= y-amount updated-max-y-amount) updated-max-y-amount y-amount))
 
     ;; Calculate fees and dy
+    (y-amount-fees-total (/ (* updated-y-amount swap-fee-total) FEE_SCALE_BPS))
     (y-amount-fees-protocol (/ (* updated-y-amount protocol-fee) FEE_SCALE_BPS))
-    (y-amount-fees-provider (/ (* updated-y-amount provider-fee) FEE_SCALE_BPS))
     (y-amount-fees-variable (/ (* updated-y-amount variable-fee) FEE_SCALE_BPS))
-    (y-amount-fees-total (+ y-amount-fees-protocol y-amount-fees-provider y-amount-fees-variable))
+    (y-amount-fees-provider (- y-amount-fees-total y-amount-fees-protocol y-amount-fees-variable))
     (dy (- updated-y-amount y-amount-fees-total))
 
     ;; Calculate dx
