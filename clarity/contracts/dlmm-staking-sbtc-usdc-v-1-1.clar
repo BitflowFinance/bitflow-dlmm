@@ -389,7 +389,7 @@
       (var-set total-rewards-per-block updated-total-rewards-per-block)
 
       ;; Update bin-data mapping
-      (map-set bin-data bin-id (merge (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height} current-bin-data) {
+      (map-set bin-data bin-id (merge (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height} (map-get? bin-data bin-id)) {
         reward-per-block: reward
       }))
       
@@ -433,7 +433,7 @@
       (var-set total-lp-staked updated-total-lp-staked)
 
       ;; Update bin-data mapping
-      (map-set bin-data unsigned-bin-id (merge current-bin-data {
+      (map-set bin-data unsigned-bin-id (merge (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA) {
         lp-staked: updated-bin-lp-staked
       }))
 
@@ -500,7 +500,7 @@
       (var-set total-lp-staked updated-total-lp-staked)
 
       ;; Update bin-data mapping
-      (map-set bin-data unsigned-bin-id (merge current-bin-data {
+      (map-set bin-data unsigned-bin-id (merge (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA) {
         lp-staked: updated-bin-lp-staked
       }))
 
@@ -568,7 +568,7 @@
       (var-set total-lp-staked updated-total-lp-staked)
 
       ;; Update bin-data mapping
-      (map-set bin-data unsigned-bin-id (merge current-bin-data {
+      (map-set bin-data unsigned-bin-id (merge (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA) {
         lp-staked: updated-bin-lp-staked
       }))
 
@@ -687,7 +687,7 @@
     (if (> stacks-block-height (get last-reward-index-update current-bin-data))
         (begin
           ;; Update bin-data mapping
-          (map-set bin-data bin-id (merge current-bin-data {
+          (map-set bin-data bin-id (merge (unwrap! (map-get? bin-data bin-id) ERR_NO_BIN_DATA) {
             reward-index: (get reward-index updated-reward-index),
             last-reward-index-update: stacks-block-height
           }))
