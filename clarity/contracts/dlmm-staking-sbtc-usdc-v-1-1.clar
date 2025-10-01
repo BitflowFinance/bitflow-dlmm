@@ -26,7 +26,6 @@
 (define-constant ERR_NO_LP_TO_UNSTAKE (err u4020))
 (define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4021))
 (define-constant ERR_INVALID_FEE (err u4022))
-(define-constant ERR_MIN_REWARD_BUFFER_BLOCKS_PASSED (err u4023))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -35,8 +34,8 @@
 (define-constant NUM_OF_BINS u1001)
 (define-constant CENTER_BIN_ID (/ NUM_OF_BINS u2))
 
-;; Minimum runway when setting reward-per-block for a bin
-(define-constant MIN_REWARD_BUFFER_BLOCKS u10000)
+;; Fixed reward period length in blocks
+(define-constant FIXED_REWARD_PERIOD_BLOCKS u10000)
 
 ;; Maximum BPS
 (define-constant FEE_SCALE_BPS u10000)
@@ -63,20 +62,22 @@
 ;; Total amount of LP tokens staked
 (define-data-var total-lp-staked uint u0)
 
-;; Total rewards per block and claimed across all bins
-(define-data-var total-rewards-per-block uint u0)
+;; Total rewards claimed across all bins
 (define-data-var total-rewards-claimed uint u0)
 
-;; Total rewards accrued accross all bins and last update to the data var
+;; Total rewards accrued accross all bins
 (define-data-var total-rewards-accrued uint u0)
-(define-data-var last-total-rewards-accrued-update uint u0)
+
+;; Total non-accrued rewards reserved for all active periods
+(define-data-var total-rewards-reserved uint u0)
 
 ;; Define bin-data map
 (define-map bin-data uint {
   lp-staked: uint,
   reward-per-block: uint,
   reward-index: uint,
-  last-reward-index-update: uint
+  last-reward-index-update: uint,
+  reward-period-end-block: uint
 })
 
 ;; Define user-data map
@@ -137,11 +138,6 @@
   (ok (var-get total-lp-staked))
 )
 
-;; Get total rewards per block
-(define-read-only (get-total-rewards-per-block)
-  (ok (var-get total-rewards-per-block))
-)
-
 ;; Get total rewards claimed
 (define-read-only (get-total-rewards-claimed)
   (ok (var-get total-rewards-claimed))
@@ -152,9 +148,9 @@
   (ok (var-get total-rewards-accrued))
 )
 
-;; Get last total rewards accrued update
-(define-read-only (get-last-total-rewards-accrued-update)
-  (ok (var-get last-total-rewards-accrued-update))
+;; Get total rewards reserved
+(define-read-only (get-total-rewards-reserved)
+  (ok (var-get total-rewards-reserved))
 )
 
 ;; Get bin data
@@ -177,20 +173,25 @@
   (let (
     (current-bin-data (unwrap! (map-get? bin-data bin-id) ERR_NO_BIN_DATA))
     (lp-staked (get lp-staked current-bin-data))
+    (reward-per-block (get reward-per-block current-bin-data))
     (reward-index (get reward-index current-bin-data))
     (last-reward-index-update (get last-reward-index-update current-bin-data))
+    (reward-period-end-block (get reward-period-end-block current-bin-data))
+    (reward-period-effective-block (if (> reward-period-end-block u0)
+                                   (if (> stacks-block-height reward-period-end-block) reward-period-end-block stacks-block-height)
+                                   stacks-block-height))
   )
-    ;; Get updated reward-index if current-total-lp-staked is greater than 0 and stacks-block-height is greater than last-reward-index-update
-    (if (and (> lp-staked u0) (> stacks-block-height last-reward-index-update))
+    ;; Get updated reward-index, rewards-to-distribute, and reward-period-effective-block
+    (if (and (> lp-staked u0) (> reward-period-effective-block last-reward-index-update) (> reward-per-block u0))
       (let (
-        (blocks-since-last-update (- stacks-block-height last-reward-index-update))
-        (rewards-to-distribute (* (get reward-per-block current-bin-data) blocks-since-last-update))
+        (blocks-since-last-update (- reward-period-effective-block last-reward-index-update))
+        (rewards-to-distribute (* reward-per-block blocks-since-last-update))
         (reward-index-delta (/ (* rewards-to-distribute REWARD_SCALE_BPS) lp-staked))
       )
-        (ok {reward-index: (+ reward-index reward-index-delta), rewards-to-distribute: rewards-to-distribute})
+        (ok {reward-index: (+ reward-index reward-index-delta), rewards-to-distribute: rewards-to-distribute, reward-period-effective-block: reward-period-effective-block})
       )
-      ;; Return reward-index and rewards-to-distribute
-      (ok {reward-index: reward-index, rewards-to-distribute: u0})
+      ;; Return reward-index, rewards-to-distribute, and reward-period-effective-block
+      (ok {reward-index: reward-index, rewards-to-distribute: u0, reward-period-effective-block: last-reward-index-update})
     )
   )
 )
@@ -214,9 +215,9 @@
     (current-contract-balance (unwrap-panic (get-reward-token-balance)))
     (current-total-rewards-accrued (var-get total-rewards-accrued))
     (current-total-rewards-claimed (var-get total-rewards-claimed))
-    (reserved-contract-balance (if (>= current-total-rewards-accrued current-total-rewards-claimed)
+    (reserved-contract-balance (+ (var-get total-rewards-reserved) (if (>= current-total-rewards-accrued current-total-rewards-claimed)
                                     (- current-total-rewards-accrued current-total-rewards-claimed)
-                                    u0))
+                                    u0)))
   )
     ;; Return available contract balance
     (ok (if (>= current-contract-balance reserved-contract-balance)
@@ -368,9 +369,6 @@
 ;; Set reward emitted per block for a bin
 (define-public (set-reward-per-block (bin-id uint) (reward uint))
   (let (
-    (current-bin-data (map-get? bin-data bin-id))
-    (current-reward-per-block (default-to u0 (get reward-per-block current-bin-data)))
-    (updated-total-rewards-per-block (+ (- (var-get total-rewards-per-block) current-reward-per-block) reward))
     (caller tx-sender)
   )
     (begin
@@ -378,23 +376,57 @@
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
 
       ;; Update reward-index for bin
-      (if (is-some current-bin-data)
+      (if (is-some (map-get? bin-data bin-id))
           (unwrap-panic (update-reward-index bin-id))
           false)
 
-      ;; Assert contract has sufficient reward balance for new reward rate
-      (asserts! (>= (unwrap-panic (get-available-contract-balance)) (* updated-total-rewards-per-block MIN_REWARD_BUFFER_BLOCKS)) ERR_INSUFFICIENT_TOKEN_BALANCE)
-      
-      ;; Update total-rewards-per-block
-      (var-set total-rewards-per-block updated-total-rewards-per-block)
+      ;; Update total-rewards-reserved
+      (let (
+        (updated-bin-data (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height, reward-period-end-block: u0} (map-get? bin-data bin-id)))
+        (reward-per-block (get reward-per-block updated-bin-data))
+        (reward-period-end-block (get reward-period-end-block updated-bin-data))
+        (current-remaining-rewards (if (and (> reward-period-end-block stacks-block-height) (> reward-per-block u0))
+                                       (* reward-per-block (- reward-period-end-block stacks-block-height))
+                                       u0))
+        (current-total-rewards-reserved (var-get total-rewards-reserved))
+      )
+        (if (> current-remaining-rewards u0)
+            (var-set total-rewards-reserved (if (>= current-total-rewards-reserved current-remaining-rewards)
+                                                (- current-total-rewards-reserved current-remaining-rewards)
+                                                u0))
+            false)
+      )
 
-      ;; Update bin-data mapping
-      (map-set bin-data bin-id (merge (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height} (map-get? bin-data bin-id)) {
-        reward-per-block: reward
-      }))
+      ;; Start new reward period and pre-reserve full amount
+      (if (> reward u0)
+        (let (
+          (rewards-needed (* reward FIXED_REWARD_PERIOD_BLOCKS))
+          (current-available-contract-balance (unwrap-panic (get-available-contract-balance)))
+        )
+          (asserts! (>= current-available-contract-balance rewards-needed) ERR_INSUFFICIENT_TOKEN_BALANCE)
+          (var-set total-rewards-reserved (+ (var-get total-rewards-reserved) rewards-needed))
+          (map-set bin-data bin-id (merge (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height, reward-period-end-block: u0} (map-get? bin-data bin-id)) {
+            reward-per-block: reward,
+            reward-period-end-block: (+ stacks-block-height FIXED_REWARD_PERIOD_BLOCKS)
+          }))
+        )
+        (map-set bin-data bin-id (merge (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height, reward-period-end-block: u0} (map-get? bin-data bin-id)) {
+          reward-per-block: u0,
+          reward-period-end-block: stacks-block-height
+        })))
       
       ;; Print function data and return true
-      (print {action: "set-reward-per-block", caller: caller, data: {bin-id: bin-id, reward: reward}})
+      (print {
+        action: "set-reward-per-block",
+        caller: caller,
+        data: {
+          bin-id: bin-id,
+          reward: reward,
+          reward-period-end-block: (if (> reward u0)
+                                   (+ stacks-block-height FIXED_REWARD_PERIOD_BLOCKS)
+                                   stacks-block-height)
+        }
+      })
       (ok true)
     )
   )
@@ -611,7 +643,6 @@
   (let (
     (caller tx-sender)
     (unsigned-bin-id (to-uint (+ bin-id (to-int CENTER_BIN_ID))))
-    (current-bin-data (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA))
     (current-user-data-at-bin (unwrap! (map-get? user-data-at-bin {user: caller, bin-id: unsigned-bin-id}) ERR_NO_USER_DATA_AT_BIN))
     (unclaimed-rewards (try! (get-unclaimed-rewards caller bin-id)))
   )
@@ -654,15 +685,9 @@
       ;; Assert amount is greater than 0
       (asserts! (> amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert blocks since last-total-rewards-accrued-update is less than or equal to MIN_REWARD_BUFFER_BLOCKS
-      (asserts! (<= (- stacks-block-height (var-get last-total-rewards-accrued-update)) MIN_REWARD_BUFFER_BLOCKS) ERR_MIN_REWARD_BUFFER_BLOCKS_PASSED)
-
       ;; Assert amount is less than or equal to available contract reward balance
       (asserts! (<= amount current-available-contract-balance) ERR_INSUFFICIENT_TOKEN_BALANCE)
       
-      ;; Assert contract has sufficient reward balance for reward rate
-      (asserts! (>= (- current-available-contract-balance amount) (* (var-get total-rewards-per-block) MIN_REWARD_BUFFER_BLOCKS)) ERR_INSUFFICIENT_TOKEN_BALANCE)
-
       ;; Transfer amount rewards token from contract to recipient
       (try! (as-contract (transfer-reward-token amount tx-sender recipient)))
 
@@ -678,23 +703,29 @@
   (let (
     (current-bin-data (unwrap! (map-get? bin-data bin-id) ERR_NO_BIN_DATA))
     (updated-reward-index (unwrap-panic (get-updated-reward-index bin-id)))
+    (rewards-to-distribute (get rewards-to-distribute updated-reward-index))
+    (reward-period-effective-block (get reward-period-effective-block updated-reward-index))
     (caller tx-sender)
   )
-    ;; Update last-total-rewards-accrued-update
-    (var-set last-total-rewards-accrued-update stacks-block-height)
-
-    ;; Update reward index if stacks-block-height is greater than last-reward-index-update
-    (if (> stacks-block-height (get last-reward-index-update current-bin-data))
+    ;; Update reward index if reward-period-effective-block is greater than last-reward-index-update
+    (if (> reward-period-effective-block (get last-reward-index-update current-bin-data))
         (begin
           ;; Update bin-data mapping
           (map-set bin-data bin-id (merge (unwrap! (map-get? bin-data bin-id) ERR_NO_BIN_DATA) {
             reward-index: (get reward-index updated-reward-index),
-            last-reward-index-update: stacks-block-height
+            last-reward-index-update: reward-period-effective-block
           }))
 
-          ;; Update total-rewards-accrued
-          (var-set total-rewards-accrued (+ (var-get total-rewards-accrued) (get rewards-to-distribute updated-reward-index)))
-          
+          ;; Update total-rewards-accrued and total-rewards-reserved
+          (if (> rewards-to-distribute u0)
+            (begin
+              (var-set total-rewards-accrued (+ (var-get total-rewards-accrued) rewards-to-distribute))
+              (var-set total-rewards-reserved (if (>= (var-get total-rewards-reserved) rewards-to-distribute)
+                                                  (- (var-get total-rewards-reserved) rewards-to-distribute)
+                                                  u0))
+            )
+            false)
+
           ;; Print function data and return true
           (print {action: "update-reward-index", caller: caller, data: {updated-reward-index: updated-reward-index}})
           (ok true)
