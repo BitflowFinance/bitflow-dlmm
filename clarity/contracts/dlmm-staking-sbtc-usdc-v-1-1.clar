@@ -461,25 +461,26 @@
           (try! (claim-rewards bin-id))
           u0)
 
-      ;; Update total LP staked
-      (var-set total-lp-staked updated-total-lp-staked)
-
-      ;; Update bin-data mapping
-      (map-set bin-data unsigned-bin-id (merge (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA) {
-        lp-staked: updated-bin-lp-staked
-      }))
+      ;; Update total LP staked, bin-data mapping, and user-data-at-bin mapping
+      (let (
+        (updated-bin-data (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA))
+        (reward-index (get reward-index updated-bin-data))
+      )
+        (var-set total-lp-staked updated-total-lp-staked)
+        (map-set bin-data unsigned-bin-id (merge updated-bin-data {
+          lp-staked: updated-bin-lp-staked
+        }))
+        (map-set user-data-at-bin {user: caller, bin-id: unsigned-bin-id} {
+          lp-staked: (+ (default-to u0 (get lp-staked current-user-data-at-bin)) amount),
+          reward-index: reward-index,
+          last-stake-height: stacks-block-height
+        })
+      )
 
       ;; Update user-data mapping
       (map-set user-data caller {
         bins-staked: updated-user-bins-staked,
         lp-staked: updated-user-lp-staked
-      })
-
-      ;; Update user-data-at-bin mapping
-      (map-set user-data-at-bin {user: caller, bin-id: unsigned-bin-id} {
-        lp-staked: (+ (default-to u0 (get lp-staked current-user-data-at-bin)) amount),
-        reward-index: (get reward-index (unwrap-panic (get-updated-reward-index unsigned-bin-id))),
-        last-stake-height: stacks-block-height
       })
 
       ;; Transfer amount LP tokens from caller to contract
