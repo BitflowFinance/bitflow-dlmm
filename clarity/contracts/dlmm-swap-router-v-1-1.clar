@@ -53,28 +53,6 @@
   )
 )
 
-;; Swap through multiple bins in multiple pools using the same token pair
-(define-public (swap-same-multi
-    (swaps (list 350 {pool-trait: <dlmm-pool-trait>, expected-bin-id: int, min-received: uint, x-for-y: bool}))
-    (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
-    (amount uint) (min-x-amount-total uint) (min-y-amount-total uint) (max-unfavorable-bins uint)
-  )
-  (let (
-    (initial-x-for-y (get x-for-y (unwrap! (element-at? swaps u0) ERR_EMPTY_SWAPS_LIST)))
-    (x-amount-for-swap (if initial-x-for-y amount u0))
-    (y-amount-for-swap (if initial-x-for-y u0 amount))
-    (swap-result (try! (fold fold-swap-same-multi swaps (ok {x-token-trait: x-token-trait, y-token-trait: y-token-trait, results: (list ), x-amount-for-swap: x-amount-for-swap, y-amount-for-swap: y-amount-for-swap, x-amount: u0, y-amount: u0, unfavorable: u0}))))
-    (x-amount-total (get x-amount swap-result))
-    (y-amount-total (get y-amount swap-result))
-    (unfavorable (get unfavorable swap-result))
- )
-    (asserts! (<= unfavorable max-unfavorable-bins) ERR_BIN_SLIPPAGE)
-    (asserts! (>= x-amount-total min-x-amount-total) ERR_MINIMUM_X_AMOUNT)
-    (asserts! (>= y-amount-total min-y-amount-total) ERR_MINIMUM_Y_AMOUNT)
-    (ok {results: (get results swap-result), x-amount: x-amount-total, y-amount: y-amount-total, unfavorable: unfavorable})
-  )
-)
-
 ;; Swap through multiple bins in multiple pools using the same token pair and X for Y direction
 (define-public (swap-x-for-y-same-multi
     (swaps (list 350 {pool-trait: <dlmm-pool-trait>, expected-bin-id: int, min-received: uint}))
@@ -168,57 +146,6 @@
       results: updated-results,
       unfavorable: (+ (get unfavorable result-data) (if is-unfavorable (abs-int bin-id-delta) u0))
     })
-  )
-)
-
-;; Fold function to swap through multiple bins in multiple pools using the same token pair
-(define-private (fold-swap-same-multi
-    (swap {pool-trait: <dlmm-pool-trait>, expected-bin-id: int, min-received: uint, x-for-y: bool})
-    (result (response {x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, results: (list 350 {in: uint, out: uint}), x-amount-for-swap: uint, y-amount-for-swap: uint, x-amount: uint, y-amount: uint, unfavorable: uint} uint))
-  )
-  (let (
-      (result-data (unwrap! result ERR_NO_RESULT_DATA))
-      (pool-trait (get pool-trait swap))
-      (expected-bin-id (get expected-bin-id swap))
-      (expected-bin-id-check (asserts! (and (>= expected-bin-id MIN_BIN_ID) (<= expected-bin-id MAX_BIN_ID)) ERR_INVALID_BIN_ID))
-      (x-for-y (get x-for-y swap))
-      (x-token-trait (get x-token-trait result-data))
-      (y-token-trait (get y-token-trait result-data))
-      (x-amount-for-swap (get x-amount-for-swap result-data))
-      (y-amount-for-swap (get y-amount-for-swap result-data))
-      (x-amount (get x-amount result-data))
-      (y-amount (get y-amount result-data))
-      (amount-for-swap (if x-for-y x-amount-for-swap y-amount-for-swap))
-  )
-    (if (> amount-for-swap u0)
-        (let (
-          (active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
-          (bin-id-delta (- active-bin-id expected-bin-id))
-          (is-unfavorable (if x-for-y (< bin-id-delta 0) (> bin-id-delta 0)))
-          (swap-result (if x-for-y
-                           (try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id amount-for-swap))
-                           (try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id amount-for-swap))))
-          (in (get in swap-result))
-          (out (get out swap-result))
-          (updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u350) ERR_RESULTS_LIST_OVERFLOW))
-          (updated-x-amount-for-swap (if x-for-y (- x-amount-for-swap in) (+ x-amount-for-swap out)))
-          (updated-y-amount-for-swap (if x-for-y (+ y-amount-for-swap out) (- y-amount-for-swap in)))
-          (updated-x-amount (if x-for-y x-amount (+ x-amount out)))
-          (updated-y-amount (if x-for-y (+ y-amount out) y-amount))
-        )
-          (asserts! (>= out (get min-received swap)) ERR_MINIMUM_RECEIVED)
-          (ok {
-            x-token-trait: x-token-trait,
-            y-token-trait: y-token-trait,
-            results: updated-results,
-            x-amount-for-swap: updated-x-amount-for-swap,
-            y-amount-for-swap: updated-y-amount-for-swap,
-            x-amount: updated-x-amount,
-            y-amount: updated-y-amount,
-            unfavorable: (+ (get unfavorable result-data) (if is-unfavorable (abs-int bin-id-delta) u0))
-          })
-        )
-        (ok result-data))
   )
 )
 
