@@ -917,9 +917,7 @@
       ;; Assert that x-token-contract and y-token-contract are not matching
       (asserts! (not (is-eq x-token-contract y-token-contract)) ERR_MATCHING_TOKEN_CONTRACTS)
 
-      ;; Assert that addresses are standard principals
-      (asserts! (is-standard x-token-contract) ERR_INVALID_PRINCIPAL)
-      (asserts! (is-standard y-token-contract) ERR_INVALID_PRINCIPAL)
+      ;; Assert that fee-address is standard principal
       (asserts! (is-standard fee-address) ERR_INVALID_PRINCIPAL)
 
       ;; Assert that reverse token direction is not registered
