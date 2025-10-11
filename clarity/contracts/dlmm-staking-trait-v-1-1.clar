@@ -10,7 +10,6 @@
     (get-early-unstake-fee () (response uint uint))
     (get-minimum-staking-duration () (response uint uint))
     (get-total-lp-staked () (response uint uint))
-    (get-total-rewards-accrued () (response uint uint))
     (get-total-rewards-claimed () (response uint uint))
     (get-total-rewards-reserved () (response uint uint))
     (get-bin (uint) (response (optional {
