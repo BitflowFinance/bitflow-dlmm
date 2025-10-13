@@ -23,11 +23,10 @@
 (define-constant ERR_NO_BIN_DATA (err u4017))
 (define-constant ERR_NO_USER_DATA (err u4018))
 (define-constant ERR_NO_USER_DATA_AT_BIN (err u4019))
-(define-constant ERR_NO_LP_STAKED (err u4020))
-(define-constant ERR_NO_LP_TO_UNSTAKE (err u4021))
-(define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4022))
-(define-constant ERR_INVALID_FEE (err u4023))
-(define-constant ERR_REMAINING_REWARDS_UNDERFLOW (err u4024))
+(define-constant ERR_NO_LP_TO_UNSTAKE (err u4020))
+(define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4021))
+(define-constant ERR_INVALID_FEE (err u4022))
+(define-constant ERR_REMAINING_REWARDS_UNDERFLOW (err u4023))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -391,10 +390,7 @@
                                        u0))
         (current-total-rewards-reserved (var-get total-rewards-reserved))
       )
-        (begin
-          ;; Assert reward is equal to 0 or lp-staked is greater than 0
-          (asserts! (or (is-eq reward u0) (> (get lp-staked current-bin-data) u0)) ERR_NO_LP_STAKED)
-          
+        (begin   
           ;; Update total-rewards-reserved and transfer any new rewards from caller to contract
           (if (> updated-remaining-rewards current-remaining-rewards)
               (begin
