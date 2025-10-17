@@ -20,15 +20,16 @@
 (define-constant ERR_MINIMUM_STAKING_DURATION_HAS_NOT_PASSED (err u4014))
 (define-constant ERR_MINIMUM_STAKING_DURATION_PASSED (err u4015))
 (define-constant ERR_INVALID_REWARD_PERIOD_DURATION (err u4016))
-(define-constant ERR_BINS_STAKED_OVERFLOW (err u4017))
-(define-constant ERR_INVALID_BIN_ID (err u4018))
-(define-constant ERR_NO_BIN_DATA (err u4019))
-(define-constant ERR_NO_USER_DATA (err u4020))
-(define-constant ERR_NO_USER_DATA_AT_BIN (err u4021))
-(define-constant ERR_NO_LP_TO_UNSTAKE (err u4022))
-(define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4023))
-(define-constant ERR_NO_CLAIMABLE_REWARDS (err u4024))
-(define-constant ERR_INVALID_FEE (err u4025))
+(define-constant ERR_REWARD_PERIOD_HAS_NOT_PASSED (err u4017))
+(define-constant ERR_BINS_STAKED_OVERFLOW (err u4018))
+(define-constant ERR_INVALID_BIN_ID (err u4019))
+(define-constant ERR_NO_BIN_DATA (err u4020))
+(define-constant ERR_NO_USER_DATA (err u4021))
+(define-constant ERR_NO_USER_DATA_AT_BIN (err u4022))
+(define-constant ERR_NO_LP_TO_UNSTAKE (err u4023))
+(define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4024))
+(define-constant ERR_NO_CLAIMABLE_REWARDS (err u4025))
+(define-constant ERR_INVALID_FEE (err u4026))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -59,8 +60,8 @@
 ;; Minimum staking duration in blocks
 (define-data-var minimum-staking-duration uint u1)
 
-;; Reward period duration in blocks
-(define-data-var reward-period-duration uint u10000)
+;; Default reward period duration in blocks
+(define-data-var default-reward-period-duration uint u10000)
 
 ;; Total amount of LP tokens staked
 (define-data-var total-lp-staked uint u0)
@@ -72,6 +73,7 @@
 (define-map bin-data uint {
   lp-staked: uint,
   reward-per-block: uint,
+  reward-period-duration: uint,
   reward-index: uint,
   last-reward-index-update: uint,
   reward-period-end-block: uint
@@ -131,9 +133,9 @@
   (ok (var-get minimum-staking-duration))
 )
 
-;; Get reward period duration
-(define-read-only (get-reward-period-duration)
-  (ok (var-get reward-period-duration))
+;; Get default reward period duration
+(define-read-only (get-default-reward-period-duration)
+  (ok (var-get default-reward-period-duration))
 )
 
 ;; Get total LP staked
@@ -345,8 +347,8 @@
   )
 )
 
-;; Set the reward period duration in blocks for future reward periods
-(define-public (set-reward-period-duration (duration uint))
+;; Set the default reward period duration in blocks
+(define-public (set-default-reward-period-duration (duration uint))
   (let (
     (caller tx-sender)
   )
@@ -355,11 +357,41 @@
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (> duration u0) ERR_INVALID_REWARD_PERIOD_DURATION)
 
-      ;; Set reward-period-duration to duration
-      (var-set reward-period-duration duration)
+      ;; Set default-reward-period-duration to duration
+      (var-set default-reward-period-duration duration)
 
       ;; Print function data and return true
-      (print {action: "set-reward-period-duration", caller: caller, data: {duration: duration}})
+      (print {action: "set-default-reward-period-duration", caller: caller, data: {duration: duration}})
+      (ok true)
+    )
+  )
+)
+
+;; Set the reward period duration in blocks for a bin
+(define-public (set-reward-period-duration (bin-id int) (duration uint))
+  (let (
+    (unsigned-bin-id (to-uint (+ bin-id (to-int CENTER_BIN_ID))))
+    (current-bin-data (unwrap! (map-get? bin-data unsigned-bin-id) ERR_NO_BIN_DATA))
+    (updated-reward-index (unwrap-panic (get-updated-reward-index unsigned-bin-id)))
+    (caller tx-sender)
+  )
+    (begin
+      ;; Assert caller is an admin and duration is greater than 0
+      (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
+      (asserts! (> duration u0) ERR_INVALID_REWARD_PERIOD_DURATION)
+
+      ;; Assert current reward period has passed
+      (asserts! (> stacks-block-height (get reward-period-end-block current-bin-data)) ERR_REWARD_PERIOD_HAS_NOT_PASSED)
+
+      ;; Update bin-data mapping
+      (map-set bin-data unsigned-bin-id (merge current-bin-data {
+        reward-index: (get reward-index updated-reward-index),
+        reward-period-duration: duration,
+        last-reward-index-update: (get reward-period-effective-block updated-reward-index)
+      }))
+
+      ;; Print function data and return true
+      (print {action: "set-reward-period-duration", caller: caller, data: {bin-id: bin-id, duration: duration}})
       (ok true)
     )
   )
@@ -384,9 +416,9 @@
           false)
 
       (let (
-        (current-reward-period-duration (var-get reward-period-duration))
-        (current-bin-data (default-to {lp-staked: u0, reward-per-block: u0, reward-index: u0, last-reward-index-update: stacks-block-height, reward-period-end-block: u0} (map-get? bin-data unsigned-bin-id)))
+        (current-bin-data (default-to {lp-staked: u0, reward-per-block: u0, reward-period-duration: (var-get default-reward-period-duration), reward-index: u0, last-reward-index-update: stacks-block-height, reward-period-end-block: u0} (map-get? bin-data unsigned-bin-id)))
         (current-reward-per-block (get reward-per-block current-bin-data))
+        (current-reward-period-duration (get reward-period-duration current-bin-data))
         (current-reward-period-end-block (get reward-period-end-block current-bin-data))
         (reward-period-is-active (> current-reward-period-end-block stacks-block-height))
         (reward-period-time-left (if reward-period-is-active
@@ -668,7 +700,7 @@
       (var-set total-rewards-claimed (+ (var-get total-rewards-claimed) claimable-rewards))
 
       ;; Print function data and return true
-      (print {action: "claim-rewards", caller: caller, data: {claimable-rewards: claimable-rewards}})
+      (print {action: "claim-rewards", caller: caller, data: {bin-id: bin-id, claimable-rewards: claimable-rewards}})
       (ok claimable-rewards)
     )
   )
@@ -718,7 +750,7 @@
           }))
 
           ;; Print function data and return true
-          (print {action: "update-reward-index", caller: caller, data: {updated-reward-index: updated-reward-index}})
+          (print {action: "update-reward-index", caller: caller, data: {bin-id: bin-id, updated-reward-index: updated-reward-index}})
           (ok true)
         )
         (ok true))
@@ -731,6 +763,14 @@
     (bin-ids (list 350 int))
   )
   (ok (map get-claimable-rewards users bin-ids))
+)
+
+;; Set reward period duration for multiple bins
+(define-public (set-reward-period-duration-multi
+    (bin-ids (list 350 int))
+    (durations (list 350 uint))
+  )
+  (ok (map set-reward-period-duration bin-ids durations))
 )
 
 ;; Set rewards to distribute for multiple bins

@@ -9,12 +9,13 @@
     (get-early-unstake-fee-address () (response principal uint))
     (get-early-unstake-fee () (response uint uint))
     (get-minimum-staking-duration () (response uint uint))
-    (get-reward-period-duration () (response uint uint))
+    (get-default-reward-period-duration () (response uint uint))
     (get-total-lp-staked () (response uint uint))
     (get-total-rewards-claimed () (response uint uint))
     (get-bin (uint) (response (optional {
       lp-staked: uint,
       reward-per-block: uint,
+      reward-period-duration: uint,
       reward-index: uint,
       last-reward-index-update: uint,
       reward-period-end-block: uint
