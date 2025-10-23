@@ -1118,12 +1118,12 @@
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
       ;; Transfer updated-x-amount x tokens from caller to pool-contract
-      (if (not initial-bin-balances-empty)
+      (if (and (> updated-x-amount u0) (not initial-bin-balances-empty))
           (try! (contract-call? x-token-trait transfer updated-x-amount caller pool-contract none))
           false)
 
       ;; Transfer dy y tokens from pool-contract to caller
-      (if (not initial-bin-balances-empty)
+      (if (and (> dy u0) (not initial-bin-balances-empty))
           (try! (contract-call? pool-trait pool-transfer y-token-trait dy caller))
           false)
 
@@ -1135,7 +1135,7 @@
           false)
 
       ;; Update bin balances
-      (if (not initial-bin-balances-empty)
+      (if (and (> updated-x-amount u0) (not initial-bin-balances-empty))
           (try! (contract-call? pool-trait update-bin-balances unsigned-bin-id updated-x-balance updated-y-balance))
           false)
 
@@ -1263,12 +1263,12 @@
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
       ;; Transfer updated-y-amount y tokens from caller to pool-contract
-      (if (not initial-bin-balances-empty)
+      (if (and (> updated-y-amount u0) (not initial-bin-balances-empty))
           (try! (contract-call? y-token-trait transfer updated-y-amount caller pool-contract none))
           false)
 
       ;; Transfer dx x tokens from pool-contract to caller
-      (if (not initial-bin-balances-empty)
+      (if (and (> dx u0) (not initial-bin-balances-empty))
           (try! (contract-call? pool-trait pool-transfer x-token-trait dx caller))
           false)
 
@@ -1280,7 +1280,7 @@
           false)
 
       ;; Update bin balances
-      (if (not initial-bin-balances-empty)
+      (if (and (> updated-y-amount u0) (not initial-bin-balances-empty))
           (try! (contract-call? pool-trait update-bin-balances unsigned-bin-id updated-x-balance updated-y-balance))
           false)
 
