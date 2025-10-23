@@ -11,9 +11,10 @@
 (define-non-fungible-token pool-token-id {token-id: uint, owner: principal})
 
 ;; Error constants
+(define-constant ERR_INSUFFICIENT_BALANCE_SIP_013 (err u1))
+(define-constant ERR_MATCHING_PRINCIPALS_SIP_013 (err u2))
+(define-constant ERR_INVALID_AMOUNT_SIP_013 (err u3))
 (define-constant ERR_NOT_AUTHORIZED_SIP_013 (err u4))
-(define-constant ERR_INVALID_AMOUNT_SIP_013 (err u1))
-(define-constant ERR_INVALID_PRINCIPAL_SIP_013 (err u5))
 (define-constant ERR_NOT_AUTHORIZED (err u3001))
 (define-constant ERR_INVALID_AMOUNT (err u3002))
 (define-constant ERR_INVALID_PRINCIPAL (err u3003))
@@ -465,13 +466,13 @@
     (begin
       ;; Assert that caller is sender and sender is not recipient
       (asserts! (or (is-eq caller sender) (is-eq contract-caller sender)) ERR_NOT_AUTHORIZED_SIP_013)
-      (asserts! (not (is-eq sender recipient)) ERR_INVALID_PRINCIPAL_SIP_013)
+      (asserts! (not (is-eq sender recipient)) ERR_MATCHING_PRINCIPALS_SIP_013)
 
       ;; Assert that addresses are standard principals and amount is valid
-      (asserts! (is-standard sender) ERR_INVALID_PRINCIPAL_SIP_013)
-      (asserts! (is-standard recipient) ERR_INVALID_PRINCIPAL_SIP_013)
+      (asserts! (is-standard sender) ERR_INVALID_PRINCIPAL)
+      (asserts! (is-standard recipient) ERR_INVALID_PRINCIPAL)
       (asserts! (> amount u0) ERR_INVALID_AMOUNT_SIP_013)
-      (asserts! (<= amount sender-balance) ERR_INVALID_AMOUNT_SIP_013)
+      (asserts! (<= amount sender-balance) ERR_INSUFFICIENT_BALANCE_SIP_013)
 
       ;; Try to transfer pool token
       (try! (ft-transfer? pool-token amount sender recipient))
