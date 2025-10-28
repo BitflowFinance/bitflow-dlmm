@@ -260,8 +260,8 @@
 ;; Set core migration address
 (define-public (set-core-migration-address (address principal))
   (let (
-    (caller tx-sender)
     (migration-execution-time (+ stacks-block-time (var-get core-migration-cooldown)))
+    (caller tx-sender)
   )
     (begin
       ;; Assert caller is an admin
@@ -269,6 +269,9 @@
 
       ;; Assert that address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set core-migration-address to address
       (var-set core-migration-address address)
@@ -303,6 +306,9 @@
       ;; Assert that cooldown is greater than or equal to MIN_CORE_MIGRATION_COOLDOWN
       (asserts! (>= cooldown MIN_CORE_MIGRATION_COOLDOWN) ERR_INVALID_CORE_MIGRATION_COOLDOWN)
 
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
       ;; Set core-migration-cooldown to cooldown
       (var-set core-migration-cooldown cooldown)
 
@@ -333,6 +339,9 @@
 
       ;; Assert that current-core-migration-address is not equal to the pool's current core address
       (asserts! (not (is-eq current-core-migration-address (get core-address pool-data))) ERR_CORE_ADDRESS_ALREADY_MIGRATED)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set core address for pool
       (try! (contract-call? pool-trait set-core-address current-core-migration-address))
@@ -380,6 +389,9 @@
     ;; Assert factors list is in ascending order
     (try! (fold fold-are-bin-factors-ascending factors (ok u0)))
 
+    ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+    (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
     ;; Add bin step to list with max length of 1000
     (var-set bin-steps (unwrap! (as-max-len? (append bin-steps-list step) u1000) ERR_BIN_STEP_LIMIT_REACHED))
 
@@ -404,6 +416,9 @@
 
       ;; Assert that min-bin is greater than min-burnt
       (asserts! (> min-bin min-burnt) ERR_INVALID_MIN_BURNT_SHARES)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Update minimum-bin-shares and minimum-burnt-shares
       (var-set minimum-bin-shares min-bin)
@@ -432,6 +447,9 @@
       ;; Assert caller is an admin
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
 
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
       ;; Set public-pool-creation to status
       (var-set public-pool-creation status)
 
@@ -455,6 +473,9 @@
     ;; Assert that hash length is 32
     (asserts! (is-eq (len hash) u32) ERR_INVALID_VERIFIED_POOL_CODE_HASH)
 
+    ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+    (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
     ;; Add code hash to verified pool code hashes list with max length of 10000
     (var-set verified-pool-code-hashes (unwrap! (as-max-len? (append verified-pool-code-hashes-list hash) u10000) ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED))
 
@@ -473,6 +494,9 @@
     ;; Assert caller is an admin and code hash to remove is in the list
     (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
     (asserts! (is-some (index-of verified-pool-code-hashes-list hash)) ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST)
+
+    ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+    (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
     ;; Set verified-pool-code-hashes-helper to hash to remove and filter verified-pool-code-hashes to remove hash
     (var-set verified-pool-code-hashes-helper hash)
@@ -499,7 +523,10 @@
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
       ;; Assert that address is standard principal
-      (asserts! (is-standard address) ERR_INVALID_PRINCIPAL) 
+      (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Update swap-fee-exemptions mapping
       (map-set swap-fee-exemptions {address: address, id: pool-id} exempt)
@@ -598,6 +625,9 @@
       ;; Assert that uri length is greater than 0
       (asserts! (> (len uri) u0) ERR_INVALID_POOL_URI)
 
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
       ;; Set pool uri for pool
       (try! (contract-call? pool-trait set-pool-uri uri))
 
@@ -630,6 +660,9 @@
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set pool status for pool
       (map-set pools (get pool-id pool-data) (merge pool-map-data {status: status}))
@@ -668,7 +701,10 @@
       (asserts! (not freeze-variable-fees-manager) ERR_VARIABLE_FEES_MANAGER_FROZEN)
 
       ;; Assert that address is standard principal
-      (asserts! (is-standard manager) ERR_INVALID_PRINCIPAL) 
+      (asserts! (is-standard manager) ERR_INVALID_PRINCIPAL)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set variable fees manager for pool
       (try! (contract-call? pool-trait set-variable-fees-manager manager))
@@ -704,6 +740,9 @@
 
       ;; Assert that address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set fee address for pool
       (try! (contract-call? pool-trait set-fee-address address))
@@ -752,6 +791,9 @@
       ;; Assert y-fee + y-protocol-fee + y-provider-fee is less than maximum FEE_SCALE_BPS
       (asserts! (< (+ y-fee y-protocol-fee y-provider-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
       ;; Set variable fees for pool
       (try! (contract-call? pool-trait set-variable-fees x-fee y-fee))
 
@@ -793,6 +835,9 @@
       ;; Assert protocol-fee + provider-fee + x-variable-fee is less than maximum FEE_SCALE_BPS
       (asserts! (< (+ protocol-fee provider-fee x-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
       ;; Set x fees for pool
       (try! (contract-call? pool-trait set-x-fees protocol-fee provider-fee))
 
@@ -831,6 +876,9 @@
       ;; Assert protocol-fee + provider-fee + y-variable-fee is less than maximum FEE_SCALE_BPS
       (asserts! (< (+ protocol-fee provider-fee y-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
       ;; Set y fees for pool
       (try! (contract-call? pool-trait set-y-fees protocol-fee provider-fee))
 
@@ -864,6 +912,9 @@
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set variable fees cooldown for pool
       (try! (contract-call? pool-trait set-variable-fees-cooldown cooldown))
@@ -900,6 +951,9 @@
 
       ;; Assert that variable fees manager is not frozen
       (asserts! (not freeze-variable-fees-manager) ERR_VARIABLE_FEES_MANAGER_FROZEN)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set freeze variable fees manager for pool
       (try! (contract-call? pool-trait set-freeze-variable-fees-manager))
@@ -939,6 +993,9 @@
 
       ;; Assert that config is greater than 0
       (asserts! (> (len config) u0) ERR_INVALID_DYNAMIC_CONFIG)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
       ;; Set dynamic config for pool
       (try! (contract-call? pool-trait set-dynamic-config config))
@@ -1944,6 +2001,9 @@
     (asserts! (is-some (index-of admins-list caller)) ERR_NOT_AUTHORIZED)
     (asserts! (is-none (index-of admins-list admin)) ERR_ALREADY_ADMIN)
 
+    ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+    (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
     ;; Add admin to list with max length of 5
     (var-set admins (unwrap! (as-max-len? (append admins-list admin) u5) ERR_ADMIN_LIMIT_REACHED))
 
@@ -1965,6 +2025,9 @@
 
     ;; Assert contract deployer cannot be removed
     (asserts! (not (is-eq admin CONTRACT_DEPLOYER)) ERR_CANNOT_REMOVE_CONTRACT_DEPLOYER)
+
+    ;; Transfer 1 uSTX from caller to BURN_ADDRESS (post condition check)
+    (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
     ;; Set admin-helper to admin to remove and filter admins-list to remove admin
     (var-set admin-helper admin)
