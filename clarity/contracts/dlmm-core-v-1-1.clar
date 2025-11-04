@@ -267,16 +267,14 @@
       ;; Assert caller is an admin
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert that address is standard principal
+      ;; Assert address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
       (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
-      ;; Set core-migration-address to address
+      ;; Set core-migration-address and core-migration-execution-time
       (var-set core-migration-address address)
-
-      ;; Set core-migration-execution-time to migration-execution-time
       (var-set core-migration-execution-time migration-execution-time)
 
       ;; Print function data and return true
@@ -303,7 +301,7 @@
       ;; Assert caller is an admin
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert that cooldown is greater than or equal to MIN_CORE_MIGRATION_COOLDOWN
+      ;; Assert cooldown is greater than or equal to MIN_CORE_MIGRATION_COOLDOWN
       (asserts! (>= cooldown MIN_CORE_MIGRATION_COOLDOWN) ERR_INVALID_CORE_MIGRATION_COOLDOWN)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -322,7 +320,7 @@
 ;; Migrate core address for a pool
 (define-public (migrate-core-address (pool-trait <dlmm-pool-trait>))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (current-core-migration-address (var-get core-migration-address))
     (current-core-migration-execution-time (var-get core-migration-execution-time))
@@ -334,10 +332,10 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that core migration cooldown has passed
+      ;; Assert core migration cooldown has passed
       (asserts! (>= stacks-block-time current-core-migration-execution-time) ERR_CORE_MIGRATION_COOLDOWN)
 
-      ;; Assert that current-core-migration-address is not equal to the pool's current core address
+      ;; Assert current-core-migration-address is not equal to the pool's current core address
       (asserts! (not (is-eq current-core-migration-address (get core-address pool-data))) ERR_CORE_ADDRESS_ALREADY_MIGRATED)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -414,13 +412,13 @@
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (and (> min-bin u0) (> min-burnt u0)) ERR_INVALID_AMOUNT)
 
-      ;; Assert that min-bin is greater than min-burnt
+      ;; Assert min-bin is greater than min-burnt
       (asserts! (> min-bin min-burnt) ERR_INVALID_MIN_BURNT_SHARES)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
       (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
-      ;; Update minimum-bin-shares and minimum-burnt-shares
+      ;; Set minimum-bin-shares and minimum-burnt-shares
       (var-set minimum-bin-shares min-bin)
       (var-set minimum-burnt-shares min-burnt)
 
@@ -470,7 +468,7 @@
     (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
     (asserts! (is-none (index-of verified-pool-code-hashes-list hash)) ERR_ALREADY_VERIFIED_POOL_CODE_HASH)
 
-    ;; Assert that hash length is 32
+    ;; Assert hash length is 32
     (asserts! (is-eq (len hash) u32) ERR_INVALID_VERIFIED_POOL_CODE_HASH)
 
     ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -511,7 +509,7 @@
 ;; Set swap fee exemption for an address for a pool
 (define-public (set-swap-fee-exemption (pool-trait <dlmm-pool-trait>) (address principal) (exempt bool))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
     (caller tx-sender)
@@ -522,7 +520,7 @@
       (asserts! (is-valid-pool pool-id (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that address is standard principal
+      ;; Assert address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -554,7 +552,7 @@
     (x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
   )
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
     (pool-contract (contract-of pool-trait))
@@ -569,11 +567,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert that pool is created and valid
+      ;; Assert pool is created and valid
       (asserts! (is-valid-pool pool-id (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that correct token traits are used
+      ;; Assert correct token traits are used
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
@@ -612,7 +610,7 @@
 ;; Set pool uri for a pool
 (define-public (set-pool-uri (pool-trait <dlmm-pool-trait>) (uri (string-ascii 256)))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (caller tx-sender)
   )
@@ -622,7 +620,7 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that uri length is greater than 0
+      ;; Assert uri length is greater than 0
       (asserts! (> (len uri) u0) ERR_INVALID_POOL_URI)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -650,7 +648,7 @@
 ;; Set pool status for a pool
 (define-public (set-pool-status (pool-trait <dlmm-pool-trait>) (status bool))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-map-data (unwrap! (map-get? pools (get pool-id pool-data)) ERR_NO_POOL_DATA))
     (caller tx-sender)
@@ -686,7 +684,7 @@
 ;; Set variable fees manager for a pool
 (define-public (set-variable-fees-manager (pool-trait <dlmm-pool-trait>) (manager principal))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (freeze-variable-fees-manager (get freeze-variable-fees-manager pool-data))
     (caller tx-sender)
@@ -697,10 +695,10 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that variable fees manager is not frozen
+      ;; Assert variable fees manager is not frozen
       (asserts! (not freeze-variable-fees-manager) ERR_VARIABLE_FEES_MANAGER_FROZEN)
 
-      ;; Assert that address is standard principal
+      ;; Assert address is standard principal
       (asserts! (is-standard manager) ERR_INVALID_PRINCIPAL)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -728,7 +726,7 @@
 ;; Set fee address for a pool
 (define-public (set-fee-address (pool-trait <dlmm-pool-trait>) (address principal))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (caller tx-sender)
   )
@@ -738,7 +736,7 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that address is standard principal
+      ;; Assert address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -766,7 +764,7 @@
 ;; Set variable fees for a pool
 (define-public (set-variable-fees (pool-trait <dlmm-pool-trait>) (x-fee uint) (y-fee uint))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (variable-fees-manager (get variable-fees-manager pool-data))
     (freeze-variable-fees-manager (get freeze-variable-fees-manager pool-data))
@@ -782,7 +780,7 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that caller is variable fees manager if variable fees manager is frozen
+      ;; Assert caller is variable fees manager if variable fees manager is frozen
       (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
 
       ;; Assert x-fee + x-protocol-fee + x-provider-fee is less than max FEE_SCALE_BPS
@@ -821,7 +819,7 @@
 ;; Set x fees for a pool
 (define-public (set-x-fees (pool-trait <dlmm-pool-trait>) (protocol-fee uint) (provider-fee uint))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (x-variable-fee (get x-variable-fee pool-data))
     (caller tx-sender)
@@ -862,7 +860,7 @@
 ;; Set y fees for a pool
 (define-public (set-y-fees (pool-trait <dlmm-pool-trait>) (protocol-fee uint) (provider-fee uint))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (y-variable-fee (get y-variable-fee pool-data))
     (caller tx-sender)
@@ -903,7 +901,7 @@
 ;; Set variable fees cooldown for a pool
 (define-public (set-variable-fees-cooldown (pool-trait <dlmm-pool-trait>) (cooldown uint))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (caller tx-sender)
   )
@@ -938,7 +936,7 @@
 ;; Make variable fees manager immutable for a pool
 (define-public (set-freeze-variable-fees-manager (pool-trait <dlmm-pool-trait>))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (freeze-variable-fees-manager (get freeze-variable-fees-manager pool-data))
     (caller tx-sender)
@@ -949,7 +947,7 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that variable fees manager is not frozen
+      ;; Assert variable fees manager is not frozen
       (asserts! (not freeze-variable-fees-manager) ERR_VARIABLE_FEES_MANAGER_FROZEN)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -976,7 +974,7 @@
 ;; Set dynamic config for a pool
 (define-public (set-dynamic-config (pool-trait <dlmm-pool-trait>) (config (buff 4096)))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (variable-fees-manager (get variable-fees-manager pool-data))
     (freeze-variable-fees-manager (get freeze-variable-fees-manager pool-data))
@@ -988,10 +986,10 @@
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that caller is variable fees manager if variable fees manager is frozen
+      ;; Assert caller is variable fees manager if variable fees manager is frozen
       (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert that config is greater than 0
+      ;; Assert config is greater than 0
       (asserts! (> (len config) u0) ERR_INVALID_DYNAMIC_CONFIG)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
@@ -1019,18 +1017,18 @@
 ;; Reset variable fees for a pool
 (define-public (reset-variable-fees (pool-trait <dlmm-pool-trait>))
   (let (
-    ;; Gather all pool data
+    ;; Get pool data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (last-variable-fees-update (get last-variable-fees-update pool-data))
     (variable-fees-cooldown (get variable-fees-cooldown pool-data))
     (caller tx-sender)
   )
     (begin
-      ;; Assert that pool is created and valid
+      ;; Assert pool is created and valid
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
 
-      ;; Assert that variable fees cooldown period has passed
+      ;; Assert variable fees cooldown period has passed
       (asserts! (>= stacks-block-height (+ last-variable-fees-update variable-fees-cooldown)) ERR_VARIABLE_FEES_COOLDOWN)
 
       ;; Reset variable fees for pool
@@ -1063,7 +1061,7 @@
     (uri (string-ascii 256)) (status bool)
   )
   (let (
-    ;; Gather all pool data and pool contract
+    ;; Get pool data and pool contract
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
     (x-variable-fee (get x-variable-fee pool-data))
@@ -1097,49 +1095,49 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert that caller is an admin or public-pool-creation is true
+      ;; Assert caller is an admin or public-pool-creation is true
       (asserts! (or (is-some (index-of (var-get admins) caller)) (var-get public-pool-creation)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert that pool is not created
+      ;; Assert pool is not created
       (asserts! (not (get pool-created pool-data)) ERR_POOL_ALREADY_CREATED)
 
-      ;; Assert that x-token-contract and y-token-contract are not matching
+      ;; Assert x-token-contract and y-token-contract are not matching
       (asserts! (not (is-eq x-token-contract y-token-contract)) ERR_MATCHING_TOKEN_CONTRACTS)
 
-      ;; Assert that fee-address is standard principal
+      ;; Assert fee-address is standard principal
       (asserts! (is-standard fee-address) ERR_INVALID_PRINCIPAL)
 
-      ;; Assert that reverse token direction is not registered
+      ;; Assert reverse token direction is not registered
       (asserts! (is-none (map-get? allowed-token-direction {x-token: y-token-contract, y-token: x-token-contract})) ERR_INVALID_TOKEN_DIRECTION)
 
-      ;; Assert that x-amount-active-bin and y-amount-active-bin are greater than 0
+      ;; Assert x-amount-active-bin and y-amount-active-bin are greater than 0
       (asserts! (and (> x-amount-active-bin u0) (> y-amount-active-bin u0)) ERR_INVALID_AMOUNT)
 
-      ;; Assert that dlp minted meets min bin shares required
+      ;; Assert dlp minted meets min bin shares required
       (asserts! (>= dlp (var-get minimum-bin-shares)) ERR_MINIMUM_LP_AMOUNT)
 
-      ;; Assert that burn-amount-active-bin meets min shares required to burn
+      ;; Assert burn-amount-active-bin meets min shares required to burn
       (asserts! (>= burn-amount-active-bin (var-get minimum-burnt-shares)) ERR_MINIMUM_BURN_AMOUNT)
 
-      ;; Assert that dlp is greater than or equal to 0 after subtracting burn amount
+      ;; Assert dlp is greater than or equal to 0 after subtracting burn amount
       (asserts! (>= (- dlp burn-amount-active-bin) u0) ERR_MINIMUM_LP_AMOUNT)
 
-      ;; Assert that initial price is greater than 0
+      ;; Assert initial price is greater than 0
       (asserts! (> initial-price u0) ERR_INVALID_INITIAL_PRICE)
 
-      ;; Assert that length of pool uri, symbol, and name is greater than 0
+      ;; Assert length of pool uri, symbol, and name is greater than 0
       (asserts! (> (len uri) u0) ERR_INVALID_POOL_URI)
       (asserts! (> (len symbol) u0) ERR_INVALID_POOL_SYMBOL)
       (asserts! (> (len name) u0) ERR_INVALID_POOL_NAME)
 
-      ;; Assert that fees are less than max BPS
+      ;; Assert fees are less than max BPS
       (asserts! (< (+ x-protocol-fee x-provider-fee x-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
       (asserts! (< (+ y-protocol-fee y-provider-fee y-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
 
-      ;; Assert that bin step is valid
+      ;; Assert bin step is valid
       (asserts! (is-some (index-of (var-get bin-steps) bin-step)) ERR_INVALID_BIN_STEP)
 
-      ;; Assert that bin price is valid at extremes
+      ;; Assert bin price is valid at extremes
       (try! (get-bin-price initial-price bin-step MIN_BIN_ID))
 
       ;; Create pool, set fees, and set variable fees cooldown
@@ -1225,7 +1223,7 @@
     (bin-id int) (x-amount uint)
   )
   (let (
-    ;; Gather all pool data and check if pool is valid
+    ;; Get pool data and check if pool is valid
     (caller tx-sender)
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap true) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
@@ -1289,15 +1287,15 @@
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
   )
     (begin
-      ;; Assert that pool-status is true and correct token traits are used
+      ;; Assert pool-status is true and correct token traits are used
       (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
-      ;; Assert that x-amount is greater than 0
+      ;; Assert x-amount is greater than 0
       (asserts! (> x-amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that bin-id is equal to active-bin-id
+      ;; Assert bin-id is equal to active-bin-id
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
       ;; Transfer updated-x-amount x tokens from caller to pool-contract
@@ -1370,7 +1368,7 @@
     (bin-id int) (y-amount uint)
   )
   (let (
-    ;; Gather all pool data and check if pool is valid
+    ;; Get pool data and check if pool is valid
     (caller tx-sender)
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap false) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
@@ -1434,15 +1432,15 @@
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
   )
     (begin
-      ;; Assert that pool-status is true and correct token traits are used
+      ;; Assert pool-status is true and correct token traits are used
       (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
-      ;; Assert that y-amount is greater than 0
+      ;; Assert y-amount is greater than 0
       (asserts! (> y-amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that bin-id is equal to active-bin-id
+      ;; Assert bin-id is equal to active-bin-id
       (asserts! (is-eq bin-id active-bin-id) ERR_NOT_ACTIVE_BIN)
 
       ;; Transfer updated-y-amount y tokens from caller to pool-contract
@@ -1516,7 +1514,7 @@
     (max-x-liquidity-fee uint) (max-y-liquidity-fee uint)
   )
   (let (
-    ;; Gather all pool data and check if pool is valid
+    ;; Get pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-add) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
     (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
@@ -1616,26 +1614,26 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert that pool-status is true and correct token traits are used
+      ;; Assert pool-status is true and correct token traits are used
       (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
-      ;; Assert that x-amount + y-amount is greater than 0
+      ;; Assert x-amount + y-amount is greater than 0
       (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that correct token amounts are being added based on bin-id and active-bin-id
+      ;; Assert correct token amounts are being added based on bin-id and active-bin-id
       (asserts! (or (>= bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_X_AMOUNT)
       (asserts! (or (<= bin-id active-bin-id) (is-eq y-amount u0)) ERR_INVALID_Y_AMOUNT)
 
-      ;; Assert that min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
+      ;; Assert min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
       (asserts! (> min-dlp u0) ERR_INVALID_MIN_DLP_AMOUNT)
       (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
-      ;; Assert that x-amount-fees-liquidity is less than or equal to max-x-liquidity-fee
+      ;; Assert x-amount-fees-liquidity is less than or equal to max-x-liquidity-fee
       (asserts! (<= x-amount-fees-liquidity max-x-liquidity-fee) ERR_MAXIMUM_X_LIQUIDITY_FEE)
 
-      ;; Assert that y-amount-fees-liquidity is less than or equal to max-y-liquidity-fee
+      ;; Assert y-amount-fees-liquidity is less than or equal to max-y-liquidity-fee
       (asserts! (<= y-amount-fees-liquidity max-y-liquidity-fee) ERR_MAXIMUM_Y_LIQUIDITY_FEE)
 
       ;; Transfer x-amount x tokens from caller to pool-contract (includes x-amount-fees-liquidity)
@@ -1698,7 +1696,7 @@
     (bin-id int) (amount uint) (min-x-amount uint) (min-y-amount uint)
   )
   (let (
-    ;; Gather all pool data and check if pool is valid
+    ;; Get pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-withdraw) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
     (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
@@ -1714,7 +1712,7 @@
     (y-balance (get y-balance bin-balances))
     (bin-shares (get bin-shares bin-balances))
 
-    ;; Assert that bin shares is greater than 0
+    ;; Assert bin shares is greater than 0
     (bin-shares-check (asserts! (> bin-shares u0) ERR_NO_BIN_SHARES))
 
     ;; Calculate x-amount and y-amount to transfer
@@ -1727,23 +1725,23 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert that correct token traits are used
+      ;; Assert correct token traits are used
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
-      ;; Assert that amount is greater than 0
+      ;; Assert amount is greater than 0
       (asserts! (> amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that min-x-amount + min-y-amount is greater than 0
+      ;; Assert min-x-amount + min-y-amount is greater than 0
       (asserts! (> (+ min-x-amount min-y-amount) u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that x-amount + y-amount is greater than 0
+      ;; Assert x-amount + y-amount is greater than 0
       (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that x-amount is greater than or equal to min-x-amount
+      ;; Assert x-amount is greater than or equal to min-x-amount
       (asserts! (>= x-amount min-x-amount) ERR_MINIMUM_X_AMOUNT)
 
-      ;; Assert that y-amount is greater than or equal to min-y-amount
+      ;; Assert y-amount is greater than or equal to min-y-amount
       (asserts! (>= y-amount min-y-amount) ERR_MINIMUM_Y_AMOUNT)
 
       ;; Transfer x-amount x tokens from pool-contract to caller
@@ -1797,7 +1795,7 @@
     (max-x-liquidity-fee uint) (max-y-liquidity-fee uint)
   )
   (let (
-    ;; Gather all pool data and check if pool is valid
+    ;; Get pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-add) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
     (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
@@ -1817,7 +1815,7 @@
     (y-balance-a (get y-balance bin-balances-a))
     (bin-shares-a (get bin-shares bin-balances-a))
 
-    ;; Assert that bin shares for from-bin-id is greater than 0
+    ;; Assert bin shares for from-bin-id is greater than 0
     (bin-shares-check (asserts! (> bin-shares-a u0) ERR_NO_BIN_SHARES))
 
     ;; Calculate x-amount and y-amount to withdraw from from-bin-id
@@ -1889,20 +1887,25 @@
     (y-amount-post-fees (- y-amount y-amount-fees-liquidity))
     (y-amount-post-fees-scaled (* y-amount-post-fees PRICE_SCALE_BPS))
 
+    ;; Calculate bin balances post fees for to-bin-id
+    (x-balance-post-fees (+ x-balance-b x-amount-fees-liquidity))
+    (y-balance-post-fees-scaled (* (+ y-balance-b y-amount-fees-liquidity) PRICE_SCALE_BPS))
+
     ;; Get final liquidity value for to-bin-id and calculate dlp post fees
     (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (bin-liquidity-value-post-fees (unwrap! (get-liquidity-value x-balance-post-fees y-balance-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (burn-amount (if (is-eq bin-shares-b u0) (var-get minimum-burnt-shares) u0))
     (dlp-post-fees (if (is-eq bin-shares-b u0)
       (let (
         (intended-dlp (sqrti add-liquidity-value-post-fees))
-        (burn-amount (var-get minimum-burnt-shares))
       )
         (asserts! (>= intended-dlp (var-get minimum-bin-shares)) ERR_MINIMUM_LP_AMOUNT)
         (try! (contract-call? pool-trait pool-mint unsigned-to-bin-id burn-amount BURN_ADDRESS))
         (- intended-dlp burn-amount)
       )
-      (if (is-eq bin-liquidity-value u0)
+      (if (is-eq bin-liquidity-value-post-fees u0)
           (sqrti add-liquidity-value-post-fees)
-          (/ (* add-liquidity-value-post-fees bin-shares-b) bin-liquidity-value))))
+          (/ (* add-liquidity-value-post-fees bin-shares-b) bin-liquidity-value-post-fees))))
 
     ;; Calculate updated bin balances for to-bin-id
     (updated-x-balance-b (+ x-balance-b x-amount))
@@ -1910,32 +1913,32 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert that pool-status is true and correct token traits are used
+      ;; Assert pool-status is true and correct token traits are used
       (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
 
-      ;; Assert that amount is greater than 0
+      ;; Assert amount is greater than 0
       (asserts! (> amount u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that x-amount + y-amount is greater than 0
+      ;; Assert x-amount + y-amount is greater than 0
       (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
 
-      ;; Assert that from-bin-id is not equal to to-bin-id
+      ;; Assert from-bin-id is not equal to to-bin-id
       (asserts! (not (is-eq from-bin-id to-bin-id)) ERR_MATCHING_BIN_ID)
 
-      ;; Assert that correct token amounts are being added based on to-bin-id and active-bin-id
+      ;; Assert correct token amounts are being added based on to-bin-id and active-bin-id
       (asserts! (or (>= to-bin-id active-bin-id) (is-eq x-amount u0)) ERR_INVALID_X_AMOUNT)
       (asserts! (or (<= to-bin-id active-bin-id) (is-eq y-amount u0)) ERR_INVALID_Y_AMOUNT)
 
-      ;; Assert that min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
+      ;; Assert min-dlp is greater than 0 and dlp-post-fees is greater than or equal to min-dlp
       (asserts! (> min-dlp u0) ERR_INVALID_MIN_DLP_AMOUNT)
       (asserts! (>= dlp-post-fees min-dlp) ERR_MINIMUM_LP_AMOUNT)
 
-      ;; Assert that x-amount-fees-liquidity is less than or equal to max-x-liquidity-fee
+      ;; Assert x-amount-fees-liquidity is less than or equal to max-x-liquidity-fee
       (asserts! (<= x-amount-fees-liquidity max-x-liquidity-fee) ERR_MAXIMUM_X_LIQUIDITY_FEE)
 
-      ;; Assert that y-amount-fees-liquidity is less than or equal to max-y-liquidity-fee
+      ;; Assert y-amount-fees-liquidity is less than or equal to max-y-liquidity-fee
       (asserts! (<= y-amount-fees-liquidity max-y-liquidity-fee) ERR_MAXIMUM_Y_LIQUIDITY_FEE)
 
       ;; Update bin balances for from-bin-id
@@ -1973,18 +1976,19 @@
           y-amount: y-amount-post-fees,
           x-amount-fees-liquidity: x-amount-fees-liquidity,
           y-amount-fees-liquidity: y-amount-fees-liquidity,
+          burn-amount: burn-amount,
           dlp: dlp-post-fees,
           min-dlp: min-dlp,
           max-x-liquidity-fee: max-x-liquidity-fee,
           max-y-liquidity-fee: max-y-liquidity-fee,
           add-liquidity-value-post-fees: add-liquidity-value-post-fees,
-          bin-liquidity-value: bin-liquidity-value,
+          bin-liquidity-value-post-fees: bin-liquidity-value-post-fees,
           updated-x-balance-a: updated-x-balance-a,
           updated-y-balance-a: updated-y-balance-a,
           updated-bin-shares-a: (- bin-shares-a amount),
           updated-x-balance-b: updated-x-balance-b,
           updated-y-balance-b: updated-y-balance-b,
-          updated-bin-shares-b: (+ bin-shares-b dlp-post-fees)
+          updated-bin-shares-b: (+ bin-shares-b dlp-post-fees burn-amount)
         }
       })
       (ok dlp-post-fees)
@@ -2050,7 +2054,7 @@
   (not (is-eq hash (var-get verified-pool-code-hashes-helper)))
 )
 
-;; Helper function to validate that bin-factors list is in ascending order
+;; Helper function to validate bin-factors list is in ascending order
 (define-private (fold-are-bin-factors-ascending (factor uint) (result (response uint uint)))
   (if (> factor (try! result))
       (ok factor)
