@@ -514,7 +514,7 @@
       )
 
       ;; Transfer amount LP tokens from caller to contract
-      (try! (transfer-lp-token unsigned-bin-id amount caller (unwrap-panic (as-contract? () tx-sender))))
+      (try! (transfer-lp-token unsigned-bin-id amount caller current-contract))
 
       ;; Print function data and return true
       (print {
@@ -832,7 +832,7 @@
 ;; Get reward token balance for contract
 (define-private (get-reward-token-balance)
   (ok (unwrap! (contract-call? .token-stx-v-1-1 get-balance
-               (unwrap-panic (as-contract? () tx-sender))) ERR_CANNOT_GET_TOKEN_BALANCE))
+               current-contract) ERR_CANNOT_GET_TOKEN_BALANCE))
 )
 
 ;; Transfer LP token
