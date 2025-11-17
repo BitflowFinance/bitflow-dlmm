@@ -71,6 +71,98 @@ interface TransactionLog {
   invariantChecks?: string[];
 }
 
+interface ViolationData {
+  type: 'calculation_mismatch' | 'rounding_error';
+  severity: 'critical' | 'warning' | 'info';
+  transactionNumber: number;
+  functionName: string;
+  binId: bigint;
+  caller: string;
+  
+  // Input parameters
+  inputAmount: bigint;
+  actualSwappedIn: bigint;
+  actualSwappedOut: bigint;
+  
+  // Calculation results
+  expectedInteger: bigint;
+  expectedFloat: bigint;
+  contractResult: bigint;
+  
+  // Differences
+  integerDiff: bigint;
+  floatDiff: bigint;
+  floatPercentDiff: number;
+  
+  // Context for reproduction
+  poolState: {
+    binPrice: bigint;
+    yBalanceBefore?: bigint;
+    yBalanceAfter?: bigint;
+    xBalanceBefore?: bigint;
+    xBalanceAfter?: bigint;
+    swapFeeTotal: number;
+    activeBinId: bigint;
+  };
+  
+  // Intermediate calculations (for debugging)
+  calculations: {
+    maxAmount: number;
+    updatedMaxAmount: number;
+    fees: bigint;
+    dx?: bigint;
+    dy?: bigint;
+    dyBeforeCap?: bigint;
+    dxBeforeCap?: bigint;
+  };
+  
+  // Timestamp and seed for reproducibility
+  timestamp: string;
+  randomSeed: number;
+}
+
+interface RoundingBiasData {
+  txNumber: number;
+  functionName: string;
+  biasDirection: 'pool_favored' | 'user_favored' | 'neutral';
+  biasAmount: bigint; // Positive = user gets more, Negative = pool gets more
+  biasPercent: number;
+  poolValueBefore: bigint;
+  poolValueAfter: bigint;
+  poolValueChange: bigint;
+  expectedPoolValueChange: bigint; // Based on fees only
+  poolValueLeakage: bigint; // Actual change - expected change
+}
+
+interface BalanceConservationData {
+  txNumber: number;
+  functionName: string;
+  xBalanceConserved: boolean;
+  yBalanceConserved: boolean;
+  xBalanceError?: bigint;
+  yBalanceError?: bigint;
+  poolValueConserved: boolean;
+  poolValueError?: bigint;
+}
+
+interface ViolationStats {
+  totalViolations: number;
+  byType: {
+    calculationMismatch: number;
+    roundingError: number;
+  };
+  bySeverity: {
+    critical: number;
+    warning: number;
+    info: number;
+  };
+  byFunction: {
+    'swap-x-for-y': number;
+    'swap-y-for-x': number;
+  };
+  worstCases: ViolationData[];
+}
+
 // ============================================================================
 // Logging System
 // ============================================================================
@@ -79,8 +171,18 @@ class FuzzTestLogger {
   private logFile: string;
   private jsonFile: string;
   private summaryFile: string;
+  private violationsFile: string;
+  private violationsCsvFile: string;
+  private violationsReportFile: string;
+  private roundingDifferencesFile: string;
   private logs: string[] = [];
   private transactionLogs: TransactionLog[] = [];
+  private violations: ViolationData[] = [];
+  private roundingDifferences: any[] = [];
+  private roundingBias: RoundingBiasData[] = [];
+  private balanceConservation: BalanceConservationData[] = [];
+  private cumulativePoolValueLeakage: bigint = 0n;
+  private randomSeed: number = 0;
   public stats = {
     totalTransactions: 0,
     successfulTransactions: 0,
@@ -92,19 +194,50 @@ class FuzzTestLogger {
     binCoverage: new Set<number>(),
   };
 
-  constructor() {
+  constructor(randomSeed: number) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const baseDir = path.join(process.cwd(), 'logs', 'fuzz-test-results');
     if (!fs.existsSync(baseDir)) {
       fs.mkdirSync(baseDir, { recursive: true });
     }
+    this.randomSeed = randomSeed;
     this.logFile = path.join(baseDir, `fuzz-test-log-${timestamp}.txt`);
     this.jsonFile = path.join(baseDir, `fuzz-test-data-${timestamp}.json`);
     this.summaryFile = path.join(baseDir, `fuzz-test-summary-${timestamp}.md`);
+    this.violationsFile = path.join(baseDir, `violations-${timestamp}.json`);
+    this.violationsCsvFile = path.join(baseDir, `violations-summary-${timestamp}.csv`);
+    this.violationsReportFile = path.join(baseDir, `violations-report-${timestamp}.md`);
+    this.roundingDifferencesFile = path.join(baseDir, `rounding-differences-${timestamp}.json`);
     this.log('=== FUZZ TEST STARTED ===');
     this.log(`Log file: ${this.logFile}`);
     this.log(`JSON file: ${this.jsonFile}`);
     this.log(`Summary file: ${this.summaryFile}`);
+    this.log(`Violations file: ${this.violationsFile}`);
+    this.log(`Violations CSV: ${this.violationsCsvFile}`);
+    this.log(`Violations report: ${this.violationsReportFile}`);
+  }
+
+  addViolation(violation: ViolationData) {
+    this.violations.push(violation);
+    if (violation.type === 'calculation_mismatch') {
+      this.stats.invariantViolations++;
+    } else {
+      this.stats.roundingErrors++;
+    }
+  }
+
+  logRoundingDifference(data: any) {
+    this.roundingDifferences.push(data);
+  }
+
+  logRoundingBias(data: RoundingBiasData) {
+    this.roundingBias.push(data);
+    // Track cumulative leakage
+    this.cumulativePoolValueLeakage += data.poolValueLeakage;
+  }
+
+  logBalanceConservation(data: BalanceConservationData) {
+    this.balanceConservation.push(data);
   }
 
   log(message: string) {
@@ -168,7 +301,9 @@ class FuzzTestLogger {
     this.log(`Successful: ${this.stats.successfulTransactions}`);
     this.log(`Failed: ${this.stats.failedTransactions}`);
     this.log(`Success Rate: ${successRate}%`);
-    this.log(`Invariant Violations: ${this.stats.invariantViolations}`);
+    this.log(`Calculation Mismatches: ${this.stats.invariantViolations}`);
+    this.log(`Rounding Errors: ${this.stats.roundingErrors}`);
+    this.log(`Total Violations: ${this.stats.invariantViolations + this.stats.roundingErrors}`);
     this.log(`Unique Bins Covered: ${this.stats.binCoverage.size}`);
     
     this.log('\nFunction Distribution:');
@@ -190,6 +325,148 @@ class FuzzTestLogger {
     this.log('\n=== FUZZ TEST COMPLETED ===');
   }
 
+  generateViolationStats(): ViolationStats {
+    const byType = {
+      calculationMismatch: this.violations.filter(v => v.type === 'calculation_mismatch').length,
+      roundingError: this.violations.filter(v => v.type === 'rounding_error').length,
+    };
+    
+    const bySeverity = {
+      critical: this.violations.filter(v => v.severity === 'critical').length,
+      warning: this.violations.filter(v => v.severity === 'warning').length,
+      info: this.violations.filter(v => v.severity === 'info').length,
+    };
+    
+    const byFunction = {
+      'swap-x-for-y': this.violations.filter(v => v.functionName === 'swap-x-for-y').length,
+      'swap-y-for-x': this.violations.filter(v => v.functionName === 'swap-y-for-x').length,
+    };
+    
+    // Sort by severity (critical > warning > info) and then by absolute difference
+    const worstCases = [...this.violations].sort((a, b) => {
+      const severityOrder = { critical: 3, warning: 2, info: 1 };
+      if (severityOrder[a.severity] !== severityOrder[b.severity]) {
+        return severityOrder[b.severity] - severityOrder[a.severity];
+      }
+      const aDiff = Number(a.floatDiff > a.integerDiff ? a.floatDiff : a.integerDiff);
+      const bDiff = Number(b.floatDiff > b.integerDiff ? b.floatDiff : b.integerDiff);
+      return bDiff - aDiff;
+    }).slice(0, 10);
+    
+    return {
+      totalViolations: this.violations.length,
+      byType,
+      bySeverity,
+      byFunction,
+      worstCases,
+    };
+  }
+
+  writeViolationsToFile() {
+    if (this.violations.length === 0) {
+      return;
+    }
+    
+    const stats = this.generateViolationStats();
+    
+    // Write JSON file with all violations
+    fs.writeFileSync(
+      this.violationsFile,
+      JSON.stringify({
+        stats,
+        violations: this.violations,
+      }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2),
+      'utf-8'
+    );
+    
+    // Write CSV file for easy analysis
+    const csvHeaders = [
+      'Transaction',
+      'Type',
+      'Severity',
+      'Function',
+      'BinId',
+      'InputAmount',
+      'ActualOut',
+      'ExpectedInteger',
+      'ExpectedFloat',
+      'IntegerDiff',
+      'FloatDiff',
+      'FloatPercentDiff',
+      'BinPrice',
+      'SwapFeeTotal',
+      'RandomSeed'
+    ];
+    
+    const csvRows = this.violations.map(v => [
+      v.transactionNumber,
+      v.type,
+      v.severity,
+      v.functionName,
+      v.binId.toString(),
+      v.inputAmount.toString(),
+      v.actualSwappedOut.toString(),
+      v.expectedInteger.toString(),
+      v.expectedFloat.toString(),
+      v.integerDiff.toString(),
+      v.floatDiff.toString(),
+      v.floatPercentDiff.toFixed(4),
+      v.poolState.binPrice.toString(),
+      v.poolState.swapFeeTotal,
+      v.randomSeed,
+    ]);
+    
+    const csvContent = [
+      csvHeaders.join(','),
+      ...csvRows.map(row => row.join(','))
+    ].join('\n');
+    
+    fs.writeFileSync(this.violationsCsvFile, csvContent, 'utf-8');
+    
+    // Write markdown report
+    const report = this.generateViolationsReport(stats);
+    fs.writeFileSync(this.violationsReportFile, report, 'utf-8');
+  }
+
+  generateViolationsReport(stats: ViolationStats): string {
+    let md = `# Violations Report\n\n`;
+    md += `**Generated:** ${new Date().toISOString()}\n\n`;
+    md += `## Summary\n\n`;
+    md += `| Metric | Count |\n`;
+    md += `|--------|-------|\n`;
+    md += `| Total Violations | ${stats.totalViolations} |\n`;
+    md += `| Calculation Mismatches | ${stats.byType.calculationMismatch} |\n`;
+    md += `| Rounding Errors | ${stats.byType.roundingError} |\n`;
+    md += `| Critical | ${stats.bySeverity.critical} |\n`;
+    md += `| Warning | ${stats.bySeverity.warning} |\n`;
+    md += `| Info | ${stats.bySeverity.info} |\n\n`;
+    
+    md += `## By Function\n\n`;
+    md += `| Function | Count |\n`;
+    md += `|----------|-------|\n`;
+    md += `| swap-x-for-y | ${stats.byFunction['swap-x-for-y']} |\n`;
+    md += `| swap-y-for-x | ${stats.byFunction['swap-y-for-x']} |\n\n`;
+    
+    if (stats.worstCases.length > 0) {
+      md += `## Worst Cases (Top 10)\n\n`;
+      for (const v of stats.worstCases) {
+        md += `### Transaction ${v.transactionNumber} - ${v.severity.toUpperCase()} ${v.type}\n\n`;
+        md += `- **Function:** ${v.functionName}\n`;
+        md += `- **Bin ID:** ${v.binId}\n`;
+        md += `- **Input Amount:** ${v.inputAmount.toString()}\n`;
+        md += `- **Contract Output:** ${v.contractResult.toString()}\n`;
+        md += `- **Expected (Integer):** ${v.expectedInteger.toString()} (diff: ${v.integerDiff.toString()})\n`;
+        md += `- **Expected (Float):** ${v.expectedFloat.toString()} (diff: ${v.floatDiff.toString()}, ${v.floatPercentDiff.toFixed(4)}%)\n`;
+        md += `- **Bin Price:** ${v.poolState.binPrice.toString()}\n`;
+        md += `- **Swap Fee Total:** ${v.poolState.swapFeeTotal}\n`;
+        md += `- **Random Seed:** ${v.randomSeed}\n`;
+        md += `- **Reproduce:** Use seed ${v.randomSeed}, transaction ${v.transactionNumber}\n\n`;
+      }
+    }
+    
+    return md;
+  }
+
   writeToFile() {
     // Write text log
     const content = this.logs.join('\n');
@@ -205,6 +482,7 @@ class FuzzTestLogger {
           ? (this.stats.successfulTransactions / this.stats.totalTransactions) * 100 
           : 0,
         invariantViolations: this.stats.invariantViolations,
+        roundingErrors: this.stats.roundingErrors,
         uniqueBinsCovered: this.stats.binCoverage.size,
         functionCounts: Object.fromEntries(this.stats.functionCounts),
         errorCounts: Object.fromEntries(this.stats.errorCounts),
@@ -222,10 +500,54 @@ class FuzzTestLogger {
     const summary = this.generateMarkdownSummary();
     fs.writeFileSync(this.summaryFile, summary, 'utf-8');
     
+    // Write violation reports
+    this.writeViolationsToFile();
+    
+    // Write rounding differences for analysis
+    if (this.roundingDifferences.length > 0) {
+      fs.writeFileSync(
+        this.roundingDifferencesFile,
+        JSON.stringify(this.roundingDifferences, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2),
+        'utf-8'
+      );
+    }
+    
+    // Write adversarial analysis data
+    if (this.roundingBias.length > 0 || this.balanceConservation.length > 0) {
+      const adversarialFile = this.roundingDifferencesFile.replace('rounding-differences', 'adversarial-analysis');
+      fs.writeFileSync(
+        adversarialFile,
+        JSON.stringify({
+          roundingBias: this.roundingBias,
+          balanceConservation: this.balanceConservation,
+          cumulativePoolValueLeakage: this.cumulativePoolValueLeakage.toString(),
+          stats: {
+            totalSwaps: this.roundingBias.length,
+            userFavored: this.roundingBias.filter(b => b.biasDirection === 'user_favored').length,
+            poolFavored: this.roundingBias.filter(b => b.biasDirection === 'pool_favored').length,
+            neutral: this.roundingBias.filter(b => b.biasDirection === 'neutral').length,
+            totalBias: this.roundingBias.reduce((sum, b) => sum + b.biasAmount, 0n).toString(),
+            totalLeakage: this.cumulativePoolValueLeakage.toString(),
+            balanceConservationViolations: this.balanceConservation.filter(b => !b.xBalanceConserved || !b.yBalanceConserved || !b.poolValueConserved).length,
+          },
+        }, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2),
+        'utf-8'
+      );
+      this.log(`  - Adversarial Analysis: ${adversarialFile}`);
+    }
+    
     this.log(`\nResults saved:`);
     this.log(`  - Log: ${this.logFile}`);
     this.log(`  - JSON: ${this.jsonFile}`);
     this.log(`  - Summary: ${this.summaryFile}`);
+    if (this.violations.length > 0) {
+      this.log(`  - Violations JSON: ${this.violationsFile}`);
+      this.log(`  - Violations CSV: ${this.violationsCsvFile}`);
+      this.log(`  - Violations Report: ${this.violationsReportFile}`);
+    }
+    if (this.roundingDifferences.length > 0) {
+      this.log(`  - Rounding Differences: ${this.roundingDifferencesFile}`);
+    }
   }
 
   generateMarkdownSummary(): string {
@@ -247,7 +569,9 @@ class FuzzTestLogger {
     md += `| Failed | ${this.stats.failedTransactions} |\n`;
     md += `| Success Rate | ${successRate}% |\n`;
     md += `| Failure Rate | ${failureRate}% |\n`;
-    md += `| Invariant Violations | ${this.stats.invariantViolations} |\n`;
+    md += `| Calculation Mismatches | ${this.stats.invariantViolations} |\n`;
+    md += `| Rounding Errors | ${this.stats.roundingErrors} |\n`;
+    md += `| Total Violations | ${this.stats.invariantViolations + this.stats.roundingErrors} |\n`;
     md += `| Unique Bins Covered | ${this.stats.binCoverage.size} |\n\n`;
 
     md += `## Function Distribution\n\n`;
@@ -293,9 +617,15 @@ class FuzzTestLogger {
     }
 
     if (this.stats.invariantViolations === 0) {
-      md += `✅ **PASS**: No invariant violations detected\n\n`;
+      md += `✅ **PASS**: No calculation mismatches detected (test logic is correct)\n\n`;
     } else {
-      md += `❌ **FAIL**: ${this.stats.invariantViolations} invariant violations detected\n\n`;
+      md += `❌ **FAIL**: ${this.stats.invariantViolations} calculation mismatches detected (test logic error)\n\n`;
+    }
+    
+    if (this.stats.roundingErrors === 0) {
+      md += `✅ **PASS**: No significant rounding errors detected\n\n`;
+    } else {
+      md += `⚠️ **WARNING**: ${this.stats.roundingErrors} rounding errors detected (see violations report for details)\n\n`;
     }
 
     if (this.stats.binCoverage.size >= 20) {
@@ -410,15 +740,27 @@ function generateRandomSwapAmount(
     // For x-for-y: we need Y in the bin, and user needs X tokens
     // Use smaller percentage to avoid hitting limits
     const maxFromUser = userBalance.xToken;
-    // Be more conservative - use 10-30% of available
+    // For rounding analysis: vary the percentage more, including very small amounts
     const maxFromBin = (binData.yBalance * 80n) / 100n; // Leave 20% buffer for fees and safety
     const maxAmount = maxFromUser < maxFromBin ? maxFromUser : maxFromBin;
     
-    if (maxAmount < 10000n) return null; // Higher minimum for swaps
+    if (maxAmount < 100n) return null; // Lower minimum to allow small amounts
     
-    const percentage = rng.next() * 0.2 + 0.1; // 10% to 30%
-    const amount = (maxAmount * BigInt(Math.floor(percentage * 100))) / 100n;
-    return amount < 10000n ? null : amount;
+    // Vary percentage: 20% very small (<0.1%), 30% small (0.1-1%), 30% medium (1-10%), 20% large (10-30%)
+    const rand = rng.next();
+    let percentage: number;
+    if (rand < 0.2) {
+      percentage = rng.next() * 0.001; // 0% to 0.1% - very small amounts
+    } else if (rand < 0.5) {
+      percentage = rng.next() * 0.009 + 0.001; // 0.1% to 1% - small amounts
+    } else if (rand < 0.8) {
+      percentage = rng.next() * 0.09 + 0.01; // 1% to 10% - medium amounts
+    } else {
+      percentage = rng.next() * 0.2 + 0.1; // 10% to 30% - large amounts
+    }
+    
+    const amount = (maxAmount * BigInt(Math.floor(percentage * 10000))) / 10000n;
+    return amount < 100n ? null : amount;
   } else {
     // Need X tokens in bin to swap Y for X
     if (binData.xBalance === 0n || userBalance.yToken === 0n) return null;
@@ -427,11 +769,23 @@ function generateRandomSwapAmount(
     const maxFromBin = (binData.xBalance * 80n) / 100n; // Leave 20% buffer
     const maxAmount = maxFromUser < maxFromBin ? maxFromUser : maxFromBin;
     
-    if (maxAmount < 10000n) return null;
+    if (maxAmount < 100n) return null; // Lower minimum to allow small amounts
     
-    const percentage = rng.next() * 0.2 + 0.1; // 10% to 30%
-    const amount = (maxAmount * BigInt(Math.floor(percentage * 100))) / 100n;
-    return amount < 10000n ? null : amount;
+    // Vary percentage: 20% very small (<0.1%), 30% small (0.1-1%), 30% medium (1-10%), 20% large (10-30%)
+    const rand = rng.next();
+    let percentage: number;
+    if (rand < 0.2) {
+      percentage = rng.next() * 0.001; // 0% to 0.1% - very small amounts
+    } else if (rand < 0.5) {
+      percentage = rng.next() * 0.009 + 0.001; // 0.1% to 1% - small amounts
+    } else if (rand < 0.8) {
+      percentage = rng.next() * 0.09 + 0.01; // 1% to 10% - medium amounts
+    } else {
+      percentage = rng.next() * 0.2 + 0.1; // 10% to 30% - large amounts
+    }
+    
+    const amount = (maxAmount * BigInt(Math.floor(percentage * 10000))) / 10000n;
+    return amount < 100n ? null : amount;
   }
 }
 
@@ -830,13 +1184,28 @@ function checkMoveLiquidityInvariants(
   return issues;
 }
 
+// Helper function to determine violation severity
+function determineSeverity(floatDiff: bigint, floatPercentDiff: number): 'critical' | 'warning' | 'info' {
+  const absDiff = Number(floatDiff);
+  if (absDiff > 1000 || floatPercentDiff > 5) {
+    return 'critical';
+  } else if (absDiff > 100 || floatPercentDiff > 1) {
+    return 'warning';
+  } else {
+    return 'info';
+  }
+}
+
 function checkRoundingErrors(
   functionName: string,
   beforeState: PoolState,
   afterState: PoolState,
   params: any,
   result: any,
-  user: string
+  user: string,
+  txNumber: number,
+  randomSeed: number,
+  logger: FuzzTestLogger
 ): string[] {
   const issues: string[] = [];
   const binId = params.binId || params.sourceBinId;
@@ -939,54 +1308,213 @@ function checkRoundingErrors(
         // Use actualSwappedIn from result - this is the actual amount swapped after capping
         const updatedXAmount = Number(actualSwappedIn);
         
-        // Step 4: Calculate fees and dx from the actual swapped amount (lines 1267-1271)
-        // Formula: x-amount-fees-total = (updated-x-amount * swap-fee-total) / FEE_SCALE_BPS
-        // Use integer arithmetic to match contract exactly
+        // ========================================================================
+        // CHECK 1: Exact Integer Match (Verify our test logic matches contract)
+        // ========================================================================
         const updatedXAmountBigInt = BigInt(actualSwappedIn);
         const swapFeeTotalBigInt = BigInt(swapFeeTotal);
         const FEE_SCALE_BPS_BIGINT = 10000n;
         const xAmountFeesTotalBigInt = (updatedXAmountBigInt * swapFeeTotalBigInt) / FEE_SCALE_BPS_BIGINT;
-        // Formula: dx = updated-x-amount - x-amount-fees-total
         const dxBigInt = updatedXAmountBigInt - xAmountFeesTotalBigInt;
-        
-        // Step 5: Calculate dy from dx (line 1274)
-        // Formula: dy-before-cap = (dx * bin-price) / PRICE_SCALE_BPS
-        // Use integer arithmetic to match contract exactly
         const PRICE_SCALE_BPS_BIGINT = 100000000n;
         const dyBeforeCapBigInt = (dxBigInt * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT;
-        
-        // Step 6: Second cap - Cap dy at y-balance BEFORE swap (line 1275)
-        // Formula: dy = (if (> dy-before-cap y-balance) y-balance dy-before-cap)
         const yBalanceBeforeSwapBigInt = beforeBin.yBalance;
-        const expectedDy = dyBeforeCapBigInt > yBalanceBeforeSwapBigInt ? yBalanceBeforeSwapBigInt : dyBeforeCapBigInt;
+        const expectedDyInteger = dyBeforeCapBigInt > yBalanceBeforeSwapBigInt ? yBalanceBeforeSwapBigInt : dyBeforeCapBigInt;
         
-        // Compare expected to actual - allow only 1-2 token difference for legitimate rounding
-        // CRITICAL: The contract returns result.in as the ACTUAL amount swapped (after capping)
-        // and result.out as the ACTUAL output. We need to verify our calculation matches.
-        if (expectedDy !== actualSwappedOut) {
-          const diff = expectedDy > actualSwappedOut ? expectedDy - actualSwappedOut : actualSwappedOut - expectedDy;
-          // Only allow 1-2 token difference for legitimate integer rounding
-          const maxTolerance = 2n; // Strict tolerance: only 2 tokens
-          if (diff > maxTolerance) {
-            // Build detailed error message with all intermediate values
-            const errorDetails = [
-              `expected out: ${expectedDy}`,
-              `actual out: ${actualSwappedOut}`,
-              `diff: ${diff}`,
-              `binPrice: ${binPriceBigInt}`,
-              `dx: ${dxBigInt}`,
-              `fees: ${xAmountFeesTotalBigInt}`,
-              `yBalanceBeforeSwap: ${beforeBin.yBalance}`,
-              `yBalanceAfterSwap: ${afterBin.yBalance}`,
-              `dyBeforeCap: ${dyBeforeCapBigInt}`,
-              `updatedXAmount: ${updatedXAmountBigInt}`,
-              `updatedMaxXAmount: ${updatedMaxXAmount.toFixed(6)}`,
-              `maxXAmount: ${maxXAmount.toFixed(6)}`,
-              `inputXAmount: ${inputXAmount.toFixed(6)}`,
-              `swapFeeTotal: ${swapFeeTotal}`
-            ].join(', ');
-            issues.push(`Rounding error: Swap calculation mismatch - ${errorDetails}`);
-          }
+        // Calculate float values for complete violation data
+        const xAmountFeesTotalFloat = (updatedXAmount * swapFeeTotal) / FEE_SCALE_BPS;
+        const dxFloat = updatedXAmount - xAmountFeesTotalFloat;
+        const dyBeforeCapFloat = (dxFloat * binPrice) / PRICE_SCALE_BPS;
+        const expectedDyFloat = Math.min(dyBeforeCapFloat, yBalanceBeforeSwap);
+        const expectedDyFloatBigInt = BigInt(Math.floor(expectedDyFloat));
+        const floatDiff = expectedDyFloatBigInt > actualSwappedOut 
+          ? expectedDyFloatBigInt - actualSwappedOut 
+          : actualSwappedOut - expectedDyFloatBigInt;
+        const floatPercentDiff = actualSwappedOut > 0n 
+          ? (Number(floatDiff) / Number(actualSwappedOut)) * 100 
+          : 0;
+        
+        // Check 1: Exact match with contract's integer arithmetic
+        const integerDiff = expectedDyInteger > actualSwappedOut ? expectedDyInteger - actualSwappedOut : actualSwappedOut - expectedDyInteger;
+        if (integerDiff > 2n) {
+          const violation: ViolationData = {
+            type: 'calculation_mismatch',
+            severity: 'critical', // Calculation mismatches are always critical
+            transactionNumber: txNumber,
+            functionName: 'swap-x-for-y',
+            binId,
+            caller: user,
+            inputAmount: BigInt(params.amount),
+            actualSwappedIn,
+            actualSwappedOut,
+            expectedInteger: expectedDyInteger,
+            expectedFloat: expectedDyFloatBigInt,
+            contractResult: actualSwappedOut,
+            integerDiff,
+            floatDiff,
+            floatPercentDiff,
+            poolState: {
+              binPrice: binPriceBigInt,
+              yBalanceBefore: beforeBin.yBalance,
+              yBalanceAfter: afterBin.yBalance,
+              swapFeeTotal,
+              activeBinId: beforeState.activeBinId,
+            },
+            calculations: {
+              maxAmount: maxXAmount,
+              updatedMaxAmount: updatedMaxXAmount,
+              fees: xAmountFeesTotalBigInt,
+              dx: dxBigInt,
+              dyBeforeCap: dyBeforeCapBigInt,
+            },
+            timestamp: new Date().toISOString(),
+            randomSeed,
+          };
+          logger.addViolation(violation);
+          issues.push(`Calculation mismatch: Expected ${expectedDyInteger}, got ${actualSwappedOut}, diff: ${integerDiff}`);
+        }
+        
+        // ========================================================================
+        // CHECK 2: Rounding Error Detection (Compare to ideal float math)
+        // ========================================================================
+        // Float values already calculated above for Check 1
+        
+        // Log ALL rounding differences for analysis (not just violations)
+        const roundingData = {
+          txNumber,
+          functionName: 'swap-x-for-y',
+          binId: Number(binId),
+          inputAmount: Number(params.amount),
+          outputAmount: Number(actualSwappedOut),
+          binPrice: Number(binPriceBigInt),
+          swapFeeTotal,
+          yBalanceBefore: Number(beforeBin.yBalance),
+          expectedInteger: Number(expectedDyInteger),
+          expectedFloat: Number(expectedDyFloatBigInt),
+          integerDiff: Number(integerDiff),
+          floatDiff: Number(floatDiff),
+          floatPercentDiff,
+          activeBinId: Number(beforeState.activeBinId),
+        };
+        logger.logRoundingDifference(roundingData);
+        
+        // ========================================================================
+        // ADVERSARIAL ANALYSIS: Rounding Bias and Balance Conservation
+        // ========================================================================
+        
+        // Calculate rounding bias (does rounding favor pool or users?)
+        // For swap-x-for-y: actualSwappedOut is Y tokens user receives
+        // If actualSwappedOut > expectedFloat, user gets MORE (user_favored, positive bias)
+        // If actualSwappedOut < expectedFloat, user gets LESS (pool_favored, negative bias)
+        const actualBias = actualSwappedOut - expectedDyFloatBigInt;
+        const biasPercent = actualSwappedOut > 0n 
+          ? (Number(actualBias > 0n ? actualBias : -actualBias) / Number(actualSwappedOut)) * 100 
+          : 0;
+        const biasDirection = actualBias > 0n ? 'user_favored' : (actualBias < 0n ? 'pool_favored' : 'neutral');
+        
+        // Calculate pool value before and after
+        // Pool value = xBalance * price + yBalance (in Y token terms)
+        const poolValueBefore = (beforeBin.xBalance * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT + beforeBin.yBalance;
+        const poolValueAfter = (afterBin.xBalance * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT + afterBin.yBalance;
+        const poolValueChange = poolValueAfter - poolValueBefore;
+        
+        // Expected pool value change = fees collected (in Y token terms)
+        // Fees are in X tokens, convert to Y: feesY = (feesX * binPrice) / PRICE_SCALE_BPS
+        const feesInY = (xAmountFeesTotalBigInt * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT;
+        const expectedPoolValueChange = feesInY; // Pool should gain exactly the fees
+        
+        // Pool value leakage = actual change - expected change
+        // Positive = pool gained more than expected (good for pool)
+        // Negative = pool gained less than expected (bad for pool, value leaked to users)
+        const poolValueLeakage = poolValueChange - expectedPoolValueChange;
+        
+        logger.logRoundingBias({
+          txNumber,
+          functionName: 'swap-x-for-y',
+          biasDirection,
+          biasAmount: actualBias,
+          biasPercent,
+          poolValueBefore,
+          poolValueAfter,
+          poolValueChange,
+          expectedPoolValueChange,
+          poolValueLeakage,
+        });
+        
+        // Check balance conservation
+        // For swap-x-for-y:
+        // X: afterX = beforeX + dx + providerFees + variableFees
+        //    where dx = actualSwappedIn - totalFees
+        //    so: afterX = beforeX + actualSwappedIn - protocolFee
+        // Y: beforeY - actualSwappedOut = afterY
+        // Calculate protocol fee (already have protocolFee from poolData)
+        const protocolFeeBigInt = (updatedXAmountBigInt * BigInt(protocolFee)) / FEE_SCALE_BPS_BIGINT;
+        const xBalanceExpected = beforeBin.xBalance + actualSwappedIn - protocolFeeBigInt;
+        const xBalanceError = afterBin.xBalance > xBalanceExpected 
+          ? afterBin.xBalance - xBalanceExpected 
+          : xBalanceExpected - afterBin.xBalance;
+        const xBalanceConserved = xBalanceError <= 2n; // Allow 2 token tolerance for rounding
+        
+        const yBalanceExpected = beforeBin.yBalance - actualSwappedOut;
+        const yBalanceError = afterBin.yBalance > yBalanceExpected
+          ? afterBin.yBalance - yBalanceExpected
+          : yBalanceExpected - afterBin.yBalance;
+        const yBalanceConserved = yBalanceError <= 2n;
+        
+        // Pool value should change by exactly fees (accounting for rounding)
+        const poolValueError = poolValueLeakage > 0n ? poolValueLeakage : -poolValueLeakage;
+        const poolValueConserved = poolValueError <= (feesInY / 1000n); // Allow 0.1% tolerance
+        
+        logger.logBalanceConservation({
+          txNumber,
+          functionName: 'swap-x-for-y',
+          xBalanceConserved,
+          yBalanceConserved,
+          xBalanceError: xBalanceError > 2n ? xBalanceError : undefined,
+          yBalanceError: yBalanceError > 2n ? yBalanceError : undefined,
+          poolValueConserved,
+          poolValueError: poolValueError > (feesInY / 1000n) ? poolValueError : undefined,
+        });
+        
+        // Flag if rounding error is significant (>1% or >100 tokens)
+        const maxRoundingDiff = Math.max(100, Number(actualSwappedOut) * 0.01);
+        if (Number(floatDiff) > maxRoundingDiff) {
+          const severity = determineSeverity(floatDiff, floatPercentDiff);
+          const violation: ViolationData = {
+            type: 'rounding_error',
+            severity,
+            transactionNumber: txNumber,
+            functionName: 'swap-x-for-y',
+            binId,
+            caller: user,
+            inputAmount: BigInt(params.amount),
+            actualSwappedIn,
+            actualSwappedOut,
+            expectedInteger: expectedDyInteger,
+            expectedFloat: expectedDyFloatBigInt,
+            contractResult: actualSwappedOut,
+            integerDiff,
+            floatDiff,
+            floatPercentDiff,
+            poolState: {
+              binPrice: binPriceBigInt,
+              yBalanceBefore: beforeBin.yBalance,
+              yBalanceAfter: afterBin.yBalance,
+              swapFeeTotal,
+              activeBinId: beforeState.activeBinId,
+            },
+            calculations: {
+              maxAmount: maxXAmount,
+              updatedMaxAmount: updatedMaxXAmount,
+              fees: xAmountFeesTotalBigInt,
+              dx: dxBigInt,
+              dyBeforeCap: dyBeforeCapBigInt,
+            },
+            timestamp: new Date().toISOString(),
+            randomSeed,
+          };
+          logger.addViolation(violation);
+          issues.push(`Rounding error detected: Contract ${actualSwappedOut} vs ideal ${expectedDyFloatBigInt}, diff: ${floatDiff} (${floatPercentDiff.toFixed(4)}%)`);
         }
       } catch (e) {
         // If we can't get pool data or calculate, skip this check
@@ -1068,54 +1596,211 @@ function checkRoundingErrors(
         // Use actualSwappedIn from result - this is the actual amount swapped after capping
         const updatedYAmount = Number(actualSwappedIn);
         
-        // Step 4: Calculate fees and dy from the actual swapped amount (lines 1412-1416)
-        // Formula: y-amount-fees-total = (updated-y-amount * swap-fee-total) / FEE_SCALE_BPS
-        // Use integer arithmetic to match contract exactly
+        // ========================================================================
+        // CHECK 1: Exact Integer Match (Verify our test logic matches contract)
+        // ========================================================================
         const updatedYAmountBigInt = BigInt(actualSwappedIn);
         const swapFeeTotalBigInt = BigInt(swapFeeTotal);
         const FEE_SCALE_BPS_BIGINT = 10000n;
         const yAmountFeesTotalBigInt = (updatedYAmountBigInt * swapFeeTotalBigInt) / FEE_SCALE_BPS_BIGINT;
-        // Formula: dy = updated-y-amount - y-amount-fees-total
         const dyBigInt = updatedYAmountBigInt - yAmountFeesTotalBigInt;
-        
-        // Step 5: Calculate dx from dy (line 1419)
-        // Formula: dx-before-cap = (dy * PRICE_SCALE_BPS) / bin-price
-        // Use integer arithmetic to match contract exactly
         const PRICE_SCALE_BPS_BIGINT = 100000000n;
         const dxBeforeCapBigInt = (dyBigInt * PRICE_SCALE_BPS_BIGINT) / binPriceBigInt;
-        
-        // Step 6: Second cap - Cap dx at x-balance BEFORE swap (line 1420)
-        // Formula: dx = (if (> dx-before-cap x-balance) x-balance dx-before-cap)
         const xBalanceBeforeSwapBigInt = beforeBin.xBalance;
-        const expectedDx = dxBeforeCapBigInt > xBalanceBeforeSwapBigInt ? xBalanceBeforeSwapBigInt : dxBeforeCapBigInt;
+        const expectedDxInteger = dxBeforeCapBigInt > xBalanceBeforeSwapBigInt ? xBalanceBeforeSwapBigInt : dxBeforeCapBigInt;
         
-        // Compare expected to actual - allow only 1-2 token difference for legitimate rounding
-        // CRITICAL: The contract returns result.in as the ACTUAL amount swapped (after capping)
-        // and result.out as the ACTUAL output. We need to verify our calculation matches.
-        if (expectedDx !== actualSwappedOut) {
-          const diff = expectedDx > actualSwappedOut ? expectedDx - actualSwappedOut : actualSwappedOut - expectedDx;
-          // Only allow 1-2 token difference for legitimate integer rounding
-          const maxTolerance = 2n; // Strict tolerance: only 2 tokens
-          if (diff > maxTolerance) {
-            // Build detailed error message with all intermediate values
-            const errorDetails = [
-              `expected out: ${expectedDx}`,
-              `actual out: ${actualSwappedOut}`,
-              `diff: ${diff}`,
-              `binPrice: ${binPriceBigInt}`,
-              `dy: ${dyBigInt}`,
-              `fees: ${yAmountFeesTotalBigInt}`,
-              `xBalanceBeforeSwap: ${beforeBin.xBalance}`,
-              `xBalanceAfterSwap: ${afterBin.xBalance}`,
-              `dxBeforeCap: ${dxBeforeCapBigInt}`,
-              `updatedYAmount: ${updatedYAmountBigInt}`,
-              `updatedMaxYAmount: ${updatedMaxYAmount.toFixed(6)}`,
-              `maxYAmount: ${maxYAmount.toFixed(6)}`,
-              `inputYAmount: ${inputYAmount.toFixed(6)}`,
-              `swapFeeTotal: ${swapFeeTotal}`
-            ].join(', ');
-            issues.push(`Rounding error: Swap calculation mismatch - ${errorDetails}`);
-          }
+        // Calculate float values for complete violation data
+        const yAmountFeesTotalFloat = (updatedYAmount * swapFeeTotal) / FEE_SCALE_BPS;
+        const dyFloat = updatedYAmount - yAmountFeesTotalFloat;
+        const dxBeforeCapFloat = (dyFloat * PRICE_SCALE_BPS) / binPrice;
+        const expectedDxFloat = Math.min(dxBeforeCapFloat, xBalanceBeforeSwap);
+        const expectedDxFloatBigInt = BigInt(Math.floor(expectedDxFloat));
+        const floatDiff = expectedDxFloatBigInt > actualSwappedOut 
+          ? expectedDxFloatBigInt - actualSwappedOut 
+          : actualSwappedOut - expectedDxFloatBigInt;
+        const floatPercentDiff = actualSwappedOut > 0n 
+          ? (Number(floatDiff) / Number(actualSwappedOut)) * 100 
+          : 0;
+        
+        // Check 1: Exact match with contract's integer arithmetic
+        const integerDiff = expectedDxInteger > actualSwappedOut ? expectedDxInteger - actualSwappedOut : actualSwappedOut - expectedDxInteger;
+        if (integerDiff > 2n) {
+          const violation: ViolationData = {
+            type: 'calculation_mismatch',
+            severity: 'critical', // Calculation mismatches are always critical
+            transactionNumber: txNumber,
+            functionName: 'swap-y-for-x',
+            binId,
+            caller: user,
+            inputAmount: BigInt(params.amount),
+            actualSwappedIn,
+            actualSwappedOut,
+            expectedInteger: expectedDxInteger,
+            expectedFloat: expectedDxFloatBigInt,
+            contractResult: actualSwappedOut,
+            integerDiff,
+            floatDiff,
+            floatPercentDiff,
+            poolState: {
+              binPrice: binPriceBigInt,
+              xBalanceBefore: beforeBin.xBalance,
+              xBalanceAfter: afterBin.xBalance,
+              swapFeeTotal,
+              activeBinId: beforeState.activeBinId,
+            },
+            calculations: {
+              maxAmount: maxYAmount,
+              updatedMaxAmount: updatedMaxYAmount,
+              fees: yAmountFeesTotalBigInt,
+              dy: dyBigInt,
+              dxBeforeCap: dxBeforeCapBigInt,
+            },
+            timestamp: new Date().toISOString(),
+            randomSeed,
+          };
+          logger.addViolation(violation);
+          issues.push(`Calculation mismatch: Expected ${expectedDxInteger}, got ${actualSwappedOut}, diff: ${integerDiff}`);
+        }
+        
+        // ========================================================================
+        // CHECK 2: Rounding Error Detection (Compare to ideal float math)
+        // ========================================================================
+        // Float values already calculated above for Check 1
+        
+        // Log ALL rounding differences for analysis (not just violations)
+        const roundingDataY = {
+          txNumber,
+          functionName: 'swap-y-for-x',
+          binId: Number(binId),
+          inputAmount: Number(params.amount),
+          outputAmount: Number(actualSwappedOut),
+          binPrice: Number(binPriceBigInt),
+          swapFeeTotal,
+          xBalanceBefore: Number(beforeBin.xBalance),
+          expectedInteger: Number(expectedDxInteger),
+          expectedFloat: Number(expectedDxFloatBigInt),
+          integerDiff: Number(integerDiff),
+          floatDiff: Number(floatDiff),
+          floatPercentDiff,
+          activeBinId: Number(beforeState.activeBinId),
+        };
+        logger.logRoundingDifference(roundingDataY);
+        
+        // ========================================================================
+        // ADVERSARIAL ANALYSIS: Rounding Bias and Balance Conservation
+        // ========================================================================
+        
+        // Calculate rounding bias (does rounding favor pool or users?)
+        // For swap-y-for-x: actualSwappedOut is X tokens user receives
+        // If actualSwappedOut > expectedFloat, user gets MORE (user_favored, positive bias)
+        // If actualSwappedOut < expectedFloat, user gets LESS (pool_favored, negative bias)
+        const actualBiasY = actualSwappedOut - expectedDxFloatBigInt;
+        const biasPercentY = actualSwappedOut > 0n 
+          ? (Number(actualBiasY > 0n ? actualBiasY : -actualBiasY) / Number(actualSwappedOut)) * 100 
+          : 0;
+        const biasDirectionY = actualBiasY > 0n ? 'user_favored' : (actualBiasY < 0n ? 'pool_favored' : 'neutral');
+        
+        // Calculate pool value before and after (in X token terms for swap-y-for-x)
+        // Pool value = xBalance + (yBalance * PRICE_SCALE_BPS) / binPrice
+        const poolValueBeforeY = beforeBin.xBalance + (beforeBin.yBalance * PRICE_SCALE_BPS_BIGINT) / binPriceBigInt;
+        const poolValueAfterY = afterBin.xBalance + (afterBin.yBalance * PRICE_SCALE_BPS_BIGINT) / binPriceBigInt;
+        const poolValueChangeY = poolValueAfterY - poolValueBeforeY;
+        
+        // Expected pool value change = fees collected (in X token terms)
+        // Fees are in Y tokens, convert to X: feesX = (feesY * PRICE_SCALE_BPS) / binPrice
+        const feesInX = (yAmountFeesTotalBigInt * PRICE_SCALE_BPS_BIGINT) / binPriceBigInt;
+        const expectedPoolValueChangeY = feesInX;
+        
+        // Pool value leakage
+        const poolValueLeakageY = poolValueChangeY - expectedPoolValueChangeY;
+        
+        logger.logRoundingBias({
+          txNumber,
+          functionName: 'swap-y-for-x',
+          biasDirection: biasDirectionY,
+          biasAmount: actualBiasY,
+          biasPercent: biasPercentY,
+          poolValueBefore: poolValueBeforeY,
+          poolValueAfter: poolValueAfterY,
+          poolValueChange: poolValueChangeY,
+          expectedPoolValueChange: expectedPoolValueChangeY,
+          poolValueLeakage: poolValueLeakageY,
+        });
+        
+        // Check balance conservation for swap-y-for-x
+        // X: beforeX - actualSwappedOut = afterX
+        // Y: afterY = beforeY + dy + providerFees + variableFees
+        //    where dy = actualSwappedIn - totalFees
+        //    so: afterY = beforeY + actualSwappedIn - protocolFee
+        const xBalanceExpectedY = beforeBin.xBalance - actualSwappedOut;
+        const xBalanceErrorY = afterBin.xBalance > xBalanceExpectedY
+          ? afterBin.xBalance - xBalanceExpectedY
+          : xBalanceExpectedY - afterBin.xBalance;
+        const xBalanceConservedY = xBalanceErrorY <= 2n;
+        
+        // Calculate protocol fee for Y (already have protocolFeeY from poolData)
+        const protocolFeeY = Number(poolData.yProtocolFee || 0n);
+        const protocolFeeYBigInt = (updatedYAmountBigInt * BigInt(protocolFeeY)) / FEE_SCALE_BPS_BIGINT;
+        const yBalanceExpectedY = beforeBin.yBalance + actualSwappedIn - protocolFeeYBigInt;
+        const yBalanceErrorY = afterBin.yBalance > yBalanceExpectedY
+          ? afterBin.yBalance - yBalanceExpectedY
+          : yBalanceExpectedY - afterBin.yBalance;
+        const yBalanceConservedY = yBalanceErrorY <= 2n;
+        
+        // Pool value should change by exactly fees
+        const poolValueErrorY = poolValueLeakageY > 0n ? poolValueLeakageY : -poolValueLeakageY;
+        const poolValueConservedY = poolValueErrorY <= (feesInX / 1000n);
+        
+        logger.logBalanceConservation({
+          txNumber,
+          functionName: 'swap-y-for-x',
+          xBalanceConserved: xBalanceConservedY,
+          yBalanceConserved: yBalanceConservedY,
+          xBalanceError: xBalanceErrorY > 2n ? xBalanceErrorY : undefined,
+          yBalanceError: yBalanceErrorY > 2n ? yBalanceErrorY : undefined,
+          poolValueConserved: poolValueConservedY,
+          poolValueError: poolValueErrorY > (feesInX / 1000n) ? poolValueErrorY : undefined,
+        });
+        
+        // Flag if rounding error is significant (>1% or >100 tokens)
+        const maxRoundingDiff = Math.max(100, Number(actualSwappedOut) * 0.01);
+        if (Number(floatDiff) > maxRoundingDiff) {
+          const severity = determineSeverity(floatDiff, floatPercentDiff);
+          const violation: ViolationData = {
+            type: 'rounding_error',
+            severity,
+            transactionNumber: txNumber,
+            functionName: 'swap-y-for-x',
+            binId,
+            caller: user,
+            inputAmount: BigInt(params.amount),
+            actualSwappedIn,
+            actualSwappedOut,
+            expectedInteger: expectedDxInteger,
+            expectedFloat: expectedDxFloatBigInt,
+            contractResult: actualSwappedOut,
+            integerDiff,
+            floatDiff,
+            floatPercentDiff,
+            poolState: {
+              binPrice: binPriceBigInt,
+              xBalanceBefore: beforeBin.xBalance,
+              xBalanceAfter: afterBin.xBalance,
+              swapFeeTotal,
+              activeBinId: beforeState.activeBinId,
+            },
+            calculations: {
+              maxAmount: maxYAmount,
+              updatedMaxAmount: updatedMaxYAmount,
+              fees: yAmountFeesTotalBigInt,
+              dy: dyBigInt,
+              dxBeforeCap: dxBeforeCapBigInt,
+            },
+            timestamp: new Date().toISOString(),
+            randomSeed,
+          };
+          logger.addViolation(violation);
+          issues.push(`Rounding error detected: Contract ${actualSwappedOut} vs ideal ${expectedDxFloatBigInt}, diff: ${floatDiff} (${floatPercentDiff.toFixed(4)}%)`);
         }
       } catch (e) {
         // If we can't get pool data or calculate, skip this check
@@ -1242,7 +1927,7 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
     setupTestEnvironment();
     
     // Initialize logger
-    logger = new FuzzTestLogger();
+    logger = new FuzzTestLogger(RANDOM_SEED);
     logger.log(`Random seed: ${RANDOM_SEED}`);
     
     // Initialize RNG
@@ -1629,7 +2314,7 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
         }
 
         // Check for rounding errors
-        const roundingIssues = checkRoundingErrors(functionName, beforeState, afterState, params, result, caller);
+        const roundingIssues = checkRoundingErrors(functionName, beforeState, afterState, params, result, caller, txNum, RANDOM_SEED, logger);
         invariantIssues.push(...roundingIssues);
 
         // Check global invariants
@@ -1671,7 +2356,9 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
     console.log(`\n✅ Test completed in ${totalTime}s`);
     console.log(`📁 Results saved to: logs/fuzz-test-results/`);
     console.log(`📊 Success rate: ${((logger.stats.successfulTransactions / NUM_TRANSACTIONS) * 100).toFixed(2)}%`);
-    console.log(`🔍 Invariant violations: ${logger.stats.invariantViolations}`);
+    console.log(`🔍 Calculation mismatches: ${logger.stats.invariantViolations}`);
+    console.log(`⚠️  Rounding errors: ${logger.stats.roundingErrors}`);
+    console.log(`📈 Total violations: ${logger.stats.invariantViolations + logger.stats.roundingErrors}`);
     
     // Read and display summary
     try {
