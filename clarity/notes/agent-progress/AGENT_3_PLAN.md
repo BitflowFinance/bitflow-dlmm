@@ -1,12 +1,47 @@
 # Agent 3: Move-Liquidity Rounding Checks - Implementation Plan
 
-**Status**: Draft - Pending Review  
+**Status**: Plan Complete - Lessons Learned Applied - Test Running  
 **Assigned To**: Agent 3  
-**Created**: 2025-01-XX
+**Created**: 2025-01-XX  
+**Last Updated**: 2025-01-XX (Lessons learned applied, 10K test started)
 
 ## Executive Summary
 
 Add comprehensive float comparison rounding checks for `move-liquidity` function in the comprehensive fuzz test, following the exact pattern established by swap rounding checks. This will detect potential rounding exploits where integer math differs from ideal float math.
+
+## Lessons Learned Applied
+
+### Critical Lessons from Previous Agents
+
+1. **Adversarial Exploit Detection** (`adversarial-exploit-detection.md`):
+   - **CRITICAL**: Any user-favored bias (even 1 token) must fail immediately
+   - User getting MORE than float math suggests = EXPLOIT (can be repeated)
+   - Separate user-favored (critical) from pool-favored (warning) checks
+   - Security is binary - no tolerance for user-favored bias
+
+2. **Integer vs Float Math Separation** (`integer-vs-float-math-separation.md`):
+   - **CRITICAL**: Use BigInt for ALL integer math replication (Check 1)
+   - **CRITICAL**: Separate integer replication from float comparison (Check 2)
+   - No tolerance for integer matches (must be 0 difference)
+   - Mixing float math in integer replication causes false positives
+
+3. **Real-Time Progress Bars** (`real-time-progress-bars.md`):
+   - Already implemented in test (uses `/dev/tty`)
+   - Not applicable to this implementation (test infrastructure)
+
+4. **Testing Context** (`testing-context.md`):
+   - Focus on rounding exploits
+   - User-favored bias is the primary concern
+   - Can be compounded over multiple transactions
+
+### Application to Move-Liquidity Implementation
+
+- ✅ Use BigInt for all integer math replication
+- ✅ Separate integer replication (Check 1) from float comparison (Check 2)
+- ✅ Fail immediately if `dlpReceived > expectedDLPFloat` (even 1 token)
+- ✅ No tolerance for integer matches (0 difference required)
+- ✅ Check for fee exemptions if applicable
+- ✅ Log all rounding differences for analysis
 
 ## Context
 
@@ -163,24 +198,77 @@ const PRICE_SCALE_BPS = 100000000;
 
 **Purpose**: Verify our test logic matches contract's integer arithmetic exactly
 
-**Implementation**:
-1. Replicate contract's integer math step-by-step
-2. Compare `expectedDLPInteger` vs `dlpReceived`
-3. If difference > 2, log as `calculation_mismatch` (critical violation)
-4. Also compare X/Y amounts moved (integer vs contract)
+**CRITICAL LESSON**: Use **BigInt for ALL calculations** when replicating contract integer math. Do NOT mix float math for intermediate values.
 
-**Tolerance**: 2 tokens (same as swap/add-liquidity checks)
+**Implementation**:
+1. Replicate contract's integer math step-by-step using **BigInt for ALL calculations**
+2. Compare `expectedDLPInteger` vs `dlpReceived`
+3. **NO TOLERANCE** - If difference > 0, log as `calculation_mismatch` (critical violation)
+4. Also compare X/Y amounts moved (integer vs contract) - must match exactly (0 difference)
+
+**Key Principle**: Integer arithmetic MUST match exactly (0 difference). Any difference indicates test logic error, not acceptable tolerance.
+
+**Example Pattern**:
+```typescript
+// ✅ CORRECT - Use BigInt for ALL integer calculations
+const xAmountInteger = (amount * beforeSourceBin.xBalance) / beforeSourceBin.totalSupply;
+const yAmountInteger = (amount * beforeSourceBin.yBalance) / beforeSourceBin.totalSupply;
+
+// Scale Y using BigInt
+const yAmountScaledBigInt = yAmountInteger * BigInt(PRICE_SCALE_BPS);
+const yBalanceScaledBigInt = beforeDestBin.yBalance * BigInt(PRICE_SCALE_BPS);
+
+// Calculate liquidity values using BigInt
+const addLiquidityValueBigInt = (destBinPriceBigInt * xAmountInteger) + yAmountScaledBigInt;
+const binLiquidityValueBigInt = (destBinPriceBigInt * beforeDestBin.xBalance) + yBalanceScaledBigInt;
+
+// ... continue with BigInt for all calculations
+```
 
 ### Phase 5: Implement Check 2 - Rounding Error Detection
 
 **Purpose**: Compare contract results vs ideal float math
 
+**CRITICAL LESSON**: Separate integer math replication (Check 1) from float math comparison (Check 2). Use float math ONLY for rounding analysis, not for integer replication.
+
 **Implementation**:
-1. Calculate float-based expected DLP
+1. **Separately** calculate float-based expected DLP (using JavaScript Number type)
 2. Compare `expectedDLPFloat` vs `dlpReceived`
 3. Calculate float difference and percentage
 4. **Log ALL rounding differences** (not just violations) using `logger.logRoundingDifference()`
-5. Flag as violation if difference > threshold (>1% or >100 LP tokens)
+
+**CRITICAL EXPLOIT CHECK** (Must Fail Immediately):
+```typescript
+// ========================================================================
+// CRITICAL EXPLOIT CHECK: User-favored bias (dlpReceived > expectedDLPFloat)
+// ========================================================================
+// If user receives MORE than float math suggests, this is an exploit
+// Fail immediately regardless of magnitude - even 1 token is unacceptable
+if (dlpReceived > expectedDLPFloat) {
+  const exploitAmount = dlpReceived - expectedDLPFloat;
+  const violation: ViolationData = {
+    type: 'rounding_error',
+    severity: 'critical', // User-favored bias is always critical
+    // ... violation data
+  };
+  logger.addViolation(violation);
+  issues.push(`🚨 EXPLOIT DETECTED: User received ${exploitAmount} MORE LP tokens than float math suggests (expected ${expectedDLPFloat}, got ${dlpReceived})`);
+}
+```
+
+**Pool-Favored Check** (Only Flag if Significant):
+```typescript
+// Pool-favored cases (user gets less) - only flag if significant
+const maxRoundingDiff = Math.max(100, Number(dlpReceived) * 0.01);
+if (dlpReceived < expectedDLPFloat && Number(floatDiff) > maxRoundingDiff) {
+  // Warning - user got less than expected (less concerning)
+  // Flag as violation but with lower severity
+}
+```
+
+**Key Distinction**:
+- `dlpReceived > expectedDLPFloat`: **CRITICAL EXPLOIT** - Fail immediately (even 1 token)
+- `dlpReceived < expectedDLPFloat`: **Warning** - Only flag if significant (>1% or >100 LP tokens)
 
 **Logging Structure** (matching swap pattern):
 ```typescript
@@ -444,11 +532,15 @@ Insert after line 2297 in `checkRoundingErrors()` function, before `return issue
 
 ### Critical Points:
 - ✅ Follow exact same structure as swap checks
+- ✅ **CRITICAL**: Use BigInt for ALL integer math replication (Check 1)
+- ✅ **CRITICAL**: Separate integer replication from float comparison (Check 2)
+- ✅ **CRITICAL**: Fail immediately if user-favored bias detected (even 1 token)
+- ✅ **CRITICAL**: No tolerance for integer matches (must be 0 difference)
 - ✅ Log ALL rounding differences (not just violations)
 - ✅ Track bias direction (user-favored vs pool-favored)
 - ✅ Verify balance conservation in both bins
 - ✅ Handle edge cases gracefully (empty bins, etc.)
-- ✅ Use same tolerance values as other checks (2 tokens)
+- ✅ Check for fee exemptions if applicable
 
 ## Plan Critique & Iteration
 
@@ -468,4 +560,15 @@ Insert after line 2297 in `checkRoundingErrors()` function, before `return issue
 
 ### Final Plan:
 This plan is comprehensive and ready for implementation. It follows the established patterns, addresses all requirements, includes proper error handling and testing strategy, and provides clear step-by-step guidance with formulas and code structure.
+
+## Test Execution Status
+
+**10,000 Transaction Test**: Started in background
+- **Command**: `FUZZ_SIZE=10000 yarn test dlmm-core-comprehensive-fuzz.test.ts`
+- **Timeout**: 6 hours (21600000ms) - allows 2 seconds per transaction
+- **Status**: Running in background
+- **Expected Duration**: ~5.5 hours (10,000 transactions × 2 seconds = 20,000 seconds)
+- **Results Location**: `logs/fuzz-test-results/`
+
+**Note**: The test includes real-time progress bars using `/dev/tty` for live updates during execution.
 

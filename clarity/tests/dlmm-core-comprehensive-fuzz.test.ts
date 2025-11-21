@@ -2511,32 +2511,422 @@ function checkRoundingErrors(
       // (this shouldn't happen, but don't fail the test if it does)
     }
   } else if (functionName === 'withdraw-liquidity') {
-    // Check that withdrawn amounts are proportional to LP tokens burned
-    // const lpBurned = params.amount; // Not used in current checks
-    const xOut = result?.xAmount || 0n;
-    const yOut = result?.yAmount || 0n;
+    // Comprehensive rounding checks for withdraw-liquidity
+    // Contract formula: x-amount = (amount * x-balance) / bin-shares
+    //                   y-amount = (amount * y-balance) / bin-shares
     
-    // Check bin balance decreases
-    // Note: Withdrawal may have fees, so bin decrease may be more than user output
-    const xDecrease = beforeBin.xBalance - afterBin.xBalance;
-    const yDecrease = beforeBin.yBalance - afterBin.yBalance;
+    const lpBurned = params.amount || 0n;
+    const actualXOut = result?.xAmount || 0n;
+    const actualYOut = result?.yAmount || 0n;
+    const binShares = beforeBin.totalSupply;
+    const xBalance = beforeBin.xBalance;
+    const yBalance = beforeBin.yBalance;
     
-    // Bin should decrease, but only flag if decrease is significantly more than output
-    // (more than 1% difference suggests an issue)
-    if (xOut > 0n && xDecrease > xOut) {
-      const diff = xDecrease - xOut;
-      const percentDiff = (diff * 10000n) / xOut; // Basis points
-      if (percentDiff > 100n) { // More than 1% difference
-        issues.push(`Rounding error: X balance decrease (${xDecrease}) > output (${xOut}), diff: ${diff} (${percentDiff/100n}%)`);
-      }
+    // Edge case: Skip if no LP burned or no bin shares
+    if (lpBurned === 0n || binShares === 0n) {
+      return issues;
     }
     
-    if (yOut > 0n && yDecrease > yOut) {
-      const diff = yDecrease - yOut;
-      const percentDiff = (diff * 10000n) / yOut; // Basis points
-      if (percentDiff > 100n) { // More than 1% difference
-        issues.push(`Rounding error: Y balance decrease (${yDecrease}) > output (${yOut}), diff: ${diff} (${percentDiff/100n}%)`);
+    try {
+      // Get pool data for bin price (needed for pool value calculations)
+      const poolData = rovOk(sbtcUsdcPool.getPool());
+      const binStep = poolData.binStep;
+      const initialPrice = poolData.initialPrice;
+      const PRICE_SCALE_BPS = 100000000;
+      const PRICE_SCALE_BPS_BIGINT = 100000000n;
+      
+      // Get bin price
+      const binPriceBigInt = rovOk(dlmmCore.getBinPrice(initialPrice, binStep, binId));
+      const binPrice = Number(binPriceBigInt);
+      
+      // ========================================================================
+      // CHECK 1: Exact Integer Match (Verify our test logic matches contract)
+      // ========================================================================
+      // Use BigInt for ALL integer math replication (lesson: integer-vs-float-math-separation)
+      const expectedXInteger = (lpBurned * xBalance) / binShares;
+      const expectedYInteger = (lpBurned * yBalance) / binShares;
+      
+      // Check 1: Exact match with contract's integer arithmetic
+      // No tolerance - must match exactly (0 difference) per lessons learned
+      const xIntegerDiff = expectedXInteger > actualXOut ? expectedXInteger - actualXOut : actualXOut - expectedXInteger;
+      const yIntegerDiff = expectedYInteger > actualYOut ? expectedYInteger - actualYOut : actualYOut - expectedYInteger;
+      
+      if (xIntegerDiff > 0n) {
+        const violation: ViolationData = {
+          type: 'calculation_mismatch',
+          severity: 'critical', // Calculation mismatches are always critical
+          transactionNumber: txNumber,
+          functionName: 'withdraw-liquidity',
+          binId,
+          caller: user,
+          inputAmount: lpBurned,
+          actualSwappedIn: lpBurned,
+          actualSwappedOut: actualXOut,
+          expectedInteger: expectedXInteger,
+          expectedFloat: BigInt(0), // Will be calculated in Check 2
+          contractResult: actualXOut,
+          integerDiff: xIntegerDiff,
+          floatDiff: 0n,
+          floatPercentDiff: 0,
+          poolState: {
+            binPrice: binPriceBigInt,
+            yBalanceBefore: xBalance,
+            yBalanceAfter: afterBin.xBalance,
+            swapFeeTotal: 0,
+            activeBinId: beforeState.activeBinId,
+          },
+          calculations: {},
+          timestamp: new Date().toISOString(),
+          randomSeed,
+        };
+        logger.addViolation(violation);
+        issues.push(`Calculation mismatch (X): Expected ${expectedXInteger}, got ${actualXOut}, diff: ${xIntegerDiff}`);
       }
+      
+      if (yIntegerDiff > 0n) {
+        const violation: ViolationData = {
+          type: 'calculation_mismatch',
+          severity: 'critical',
+          transactionNumber: txNumber,
+          functionName: 'withdraw-liquidity',
+          binId,
+          caller: user,
+          inputAmount: lpBurned,
+          actualSwappedIn: lpBurned,
+          actualSwappedOut: actualYOut,
+          expectedInteger: expectedYInteger,
+          expectedFloat: BigInt(0),
+          contractResult: actualYOut,
+          integerDiff: yIntegerDiff,
+          floatDiff: 0n,
+          floatPercentDiff: 0,
+          poolState: {
+            binPrice: binPriceBigInt,
+            yBalanceBefore: yBalance,
+            yBalanceAfter: afterBin.yBalance,
+            swapFeeTotal: 0,
+            activeBinId: beforeState.activeBinId,
+          },
+          calculations: {},
+          timestamp: new Date().toISOString(),
+          randomSeed,
+        };
+        logger.addViolation(violation);
+        issues.push(`Calculation mismatch (Y): Expected ${expectedYInteger}, got ${actualYOut}, diff: ${yIntegerDiff}`);
+      }
+      
+      // ========================================================================
+      // CHECK 2: Rounding Error Detection (Compare to ideal float math)
+      // ========================================================================
+      // Separate float calculations for rounding analysis (lesson: integer-vs-float-math-separation)
+      const expectedXFloat = (Number(lpBurned) * Number(xBalance)) / Number(binShares);
+      const expectedYFloat = (Number(lpBurned) * Number(yBalance)) / Number(binShares);
+      const expectedXFloatBigInt = BigInt(Math.floor(expectedXFloat));
+      const expectedYFloatBigInt = BigInt(Math.floor(expectedYFloat));
+      
+      const xFloatDiff = expectedXFloatBigInt > actualXOut 
+        ? expectedXFloatBigInt - actualXOut 
+        : actualXOut - expectedXFloatBigInt;
+      const yFloatDiff = expectedYFloatBigInt > actualYOut 
+        ? expectedYFloatBigInt - actualYOut 
+        : actualYOut - expectedYFloatBigInt;
+      
+      const xFloatPercentDiff = actualXOut > 0n 
+        ? (Number(xFloatDiff) / Number(actualXOut)) * 100 
+        : 0;
+      const yFloatPercentDiff = actualYOut > 0n 
+        ? (Number(yFloatDiff) / Number(actualYOut)) * 100 
+        : 0;
+      
+      // Log ALL rounding differences for analysis (not just violations)
+      const roundingDataX = {
+        txNumber,
+        functionName: 'withdraw-liquidity',
+        binId: Number(binId),
+        inputAmount: Number(lpBurned),
+        outputAmount: Number(actualXOut),
+        binPrice: Number(binPriceBigInt),
+        swapFeeTotal: 0,
+        yBalanceBefore: Number(xBalance),
+        expectedInteger: Number(expectedXInteger),
+        expectedFloat: Number(expectedXFloatBigInt),
+        integerDiff: Number(xIntegerDiff),
+        floatDiff: Number(xFloatDiff),
+        floatPercentDiff: xFloatPercentDiff,
+        activeBinId: Number(beforeState.activeBinId),
+      };
+      logger.logRoundingDifference(roundingDataX);
+      
+      const roundingDataY = {
+        txNumber,
+        functionName: 'withdraw-liquidity',
+        binId: Number(binId),
+        inputAmount: Number(lpBurned),
+        outputAmount: Number(actualYOut),
+        binPrice: Number(binPriceBigInt),
+        swapFeeTotal: 0,
+        yBalanceBefore: Number(yBalance),
+        expectedInteger: Number(expectedYInteger),
+        expectedFloat: Number(expectedYFloatBigInt),
+        integerDiff: Number(yIntegerDiff),
+        floatDiff: Number(yFloatDiff),
+        floatPercentDiff: yFloatPercentDiff,
+        activeBinId: Number(beforeState.activeBinId),
+      };
+      logger.logRoundingDifference(roundingDataY);
+      
+      // ========================================================================
+      // ADVERSARIAL ANALYSIS: Rounding Bias and Balance Conservation
+      // ========================================================================
+      
+      // Calculate rounding bias for X (lesson: adversarial-exploit-detection)
+      // If actualXOut > expectedXFloat, user gets MORE (user_favored, positive bias)
+      // If actualXOut < expectedXFloat, user gets LESS (pool_favored, negative bias)
+      const xBias = actualXOut - expectedXFloatBigInt;
+      const xBiasPercent = actualXOut > 0n 
+        ? (Number(xBias > 0n ? xBias : -xBias) / Number(actualXOut)) * 100 
+        : 0;
+      const xBiasDirection = xBias > 0n ? 'user_favored' : (xBias < 0n ? 'pool_favored' : 'neutral');
+      
+      // Calculate rounding bias for Y
+      const yBias = actualYOut - expectedYFloatBigInt;
+      const yBiasPercent = actualYOut > 0n 
+        ? (Number(yBias > 0n ? yBias : -yBias) / Number(actualYOut)) * 100 
+        : 0;
+      const yBiasDirection = yBias > 0n ? 'user_favored' : (yBias < 0n ? 'pool_favored' : 'neutral');
+      
+      // Calculate pool value before and after (in Y token terms)
+      // Pool value = xBalance * price + yBalance (in Y token terms)
+      const poolValueBefore = (beforeBin.xBalance * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT + beforeBin.yBalance;
+      const poolValueAfter = (afterBin.xBalance * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT + afterBin.yBalance;
+      const poolValueChange = poolValueAfter - poolValueBefore;
+      
+      // Expected pool value change = 0 (withdraw-liquidity has no fees)
+      // Pool value should decrease by exactly the value of tokens withdrawn
+      const expectedXValueInY = (actualXOut * binPriceBigInt) / PRICE_SCALE_BPS_BIGINT;
+      const expectedPoolValueChange = -(expectedXValueInY + actualYOut); // Negative because value is withdrawn
+      const poolValueLeakage = poolValueChange - expectedPoolValueChange;
+      
+      // Log bias for X
+      logger.logRoundingBias({
+        txNumber,
+        functionName: 'withdraw-liquidity-x',
+        biasDirection: xBiasDirection,
+        biasAmount: xBias,
+        biasPercent: xBiasPercent,
+        poolValueBefore,
+        poolValueAfter,
+        poolValueChange,
+        expectedPoolValueChange: 0n, // No fees for withdrawals
+        poolValueLeakage,
+      });
+      
+      // Log bias for Y
+      logger.logRoundingBias({
+        txNumber,
+        functionName: 'withdraw-liquidity-y',
+        biasDirection: yBiasDirection,
+        biasAmount: yBias,
+        biasPercent: yBiasPercent,
+        poolValueBefore,
+        poolValueAfter,
+        poolValueChange,
+        expectedPoolValueChange: 0n,
+        poolValueLeakage,
+      });
+      
+      // Check balance conservation
+      // X: beforeX - actualXOut = afterX
+      const xBalanceExpected = beforeBin.xBalance - actualXOut;
+      const xBalanceError = afterBin.xBalance > xBalanceExpected 
+        ? afterBin.xBalance - xBalanceExpected 
+        : xBalanceExpected - afterBin.xBalance;
+      const xBalanceConserved = xBalanceError <= 2n; // Allow 2 token tolerance for rounding
+      
+      // Y: beforeY - actualYOut = afterY
+      const yBalanceExpected = beforeBin.yBalance - actualYOut;
+      const yBalanceError = afterBin.yBalance > yBalanceExpected
+        ? afterBin.yBalance - yBalanceExpected
+        : yBalanceExpected - afterBin.yBalance;
+      const yBalanceConserved = yBalanceError <= 2n;
+      
+      // LP supply: beforeSupply - lpBurned = afterSupply
+      const lpSupplyExpected = beforeBin.totalSupply - lpBurned;
+      const lpSupplyError = afterBin.totalSupply > lpSupplyExpected
+        ? afterBin.totalSupply - lpSupplyExpected
+        : lpSupplyExpected - afterBin.totalSupply;
+      const lpSupplyConserved = lpSupplyError <= 2n;
+      
+      // Pool value conservation (withdraw-liquidity has no fees, so value should decrease by exactly tokens withdrawn)
+      const poolValueError = poolValueLeakage > 0n ? poolValueLeakage : -poolValueLeakage;
+      const minTolerance = 2n; // Minimum 2 tokens tolerance
+      const tolerance = minTolerance; // No fees, so simple tolerance
+      const poolValueConserved = poolValueError <= tolerance;
+      
+      logger.logBalanceConservation({
+        txNumber,
+        functionName: 'withdraw-liquidity',
+        xBalanceConserved,
+        yBalanceConserved,
+        xBalanceError: xBalanceError > 2n ? xBalanceError : undefined,
+        yBalanceError: yBalanceError > 2n ? yBalanceError : undefined,
+        poolValueConserved,
+        poolValueError: poolValueError > tolerance ? poolValueError : undefined,
+        lpSupplyConserved,
+        lpSupplyError: lpSupplyError > 2n ? lpSupplyError : undefined,
+      });
+      
+      // ========================================================================
+      // CRITICAL EXPLOIT CHECK: User-favored bias (lesson: adversarial-exploit-detection)
+      // ========================================================================
+      // If user receives MORE than float math suggests, this is an exploit
+      // Fail immediately regardless of magnitude - even 1 token is unacceptable
+      
+      if (actualXOut > expectedXFloatBigInt) {
+        const exploitAmount = actualXOut - expectedXFloatBigInt;
+        const exploitPercent = actualXOut > 0n 
+          ? (Number(exploitAmount) / Number(actualXOut)) * 100 
+          : 0;
+        const violation: ViolationData = {
+          type: 'rounding_error',
+          severity: 'critical', // User-favored bias is always critical
+          transactionNumber: txNumber,
+          functionName: 'withdraw-liquidity',
+          binId,
+          caller: user,
+          inputAmount: lpBurned,
+          actualSwappedIn: lpBurned,
+          actualSwappedOut: actualXOut,
+          expectedInteger: expectedXInteger,
+          expectedFloat: expectedXFloatBigInt,
+          contractResult: actualXOut,
+          integerDiff: xIntegerDiff,
+          floatDiff: exploitAmount,
+          floatPercentDiff: exploitPercent,
+          poolState: {
+            binPrice: binPriceBigInt,
+            yBalanceBefore: xBalance,
+            yBalanceAfter: afterBin.xBalance,
+            swapFeeTotal: 0,
+            activeBinId: beforeState.activeBinId,
+          },
+          calculations: {},
+          timestamp: new Date().toISOString(),
+          randomSeed,
+        };
+        logger.addViolation(violation);
+        issues.push(`🚨 EXPLOIT DETECTED (X): User received ${exploitAmount} MORE tokens than float math (${exploitPercent.toFixed(6)}%) - actual: ${actualXOut}, expected: ${expectedXFloatBigInt}`);
+      }
+      
+      if (actualYOut > expectedYFloatBigInt) {
+        const exploitAmount = actualYOut - expectedYFloatBigInt;
+        const exploitPercent = actualYOut > 0n 
+          ? (Number(exploitAmount) / Number(actualYOut)) * 100 
+          : 0;
+        const violation: ViolationData = {
+          type: 'rounding_error',
+          severity: 'critical',
+          transactionNumber: txNumber,
+          functionName: 'withdraw-liquidity',
+          binId,
+          caller: user,
+          inputAmount: lpBurned,
+          actualSwappedIn: lpBurned,
+          actualSwappedOut: actualYOut,
+          expectedInteger: expectedYInteger,
+          expectedFloat: expectedYFloatBigInt,
+          contractResult: actualYOut,
+          integerDiff: yIntegerDiff,
+          floatDiff: exploitAmount,
+          floatPercentDiff: exploitPercent,
+          poolState: {
+            binPrice: binPriceBigInt,
+            yBalanceBefore: yBalance,
+            yBalanceAfter: afterBin.yBalance,
+            swapFeeTotal: 0,
+            activeBinId: beforeState.activeBinId,
+          },
+          calculations: {},
+          timestamp: new Date().toISOString(),
+          randomSeed,
+        };
+        logger.addViolation(violation);
+        issues.push(`🚨 EXPLOIT DETECTED (Y): User received ${exploitAmount} MORE tokens than float math (${exploitPercent.toFixed(6)}%) - actual: ${actualYOut}, expected: ${expectedYFloatBigInt}`);
+      }
+      
+      // Flag if rounding error is significant (>1% or >100 tokens) for pool-favored cases
+      // Pool-favored cases (user gets less) are less critical, only flag if significant
+      const maxRoundingDiffX = Math.max(100, Number(actualXOut) * 0.01);
+      if (actualXOut < expectedXFloatBigInt && Number(xFloatDiff) > maxRoundingDiffX) {
+        const severity = determineSeverity(xFloatDiff, xFloatPercentDiff);
+        const violation: ViolationData = {
+          type: 'rounding_error',
+          severity,
+          transactionNumber: txNumber,
+          functionName: 'withdraw-liquidity',
+          binId,
+          caller: user,
+          inputAmount: lpBurned,
+          actualSwappedIn: lpBurned,
+          actualSwappedOut: actualXOut,
+          expectedInteger: expectedXInteger,
+          expectedFloat: expectedXFloatBigInt,
+          contractResult: actualXOut,
+          integerDiff: xIntegerDiff,
+          floatDiff: xFloatDiff,
+          floatPercentDiff: xFloatPercentDiff,
+          poolState: {
+            binPrice: binPriceBigInt,
+            yBalanceBefore: xBalance,
+            yBalanceAfter: afterBin.xBalance,
+            swapFeeTotal: 0,
+            activeBinId: beforeState.activeBinId,
+          },
+          calculations: {},
+          timestamp: new Date().toISOString(),
+          randomSeed,
+        };
+        logger.addViolation(violation);
+        issues.push(`Rounding error (X): Contract ${actualXOut} < float ${expectedXFloatBigInt}, diff: ${xFloatDiff} (${xFloatPercentDiff.toFixed(6)}%)`);
+      }
+      
+      const maxRoundingDiffY = Math.max(100, Number(actualYOut) * 0.01);
+      if (actualYOut < expectedYFloatBigInt && Number(yFloatDiff) > maxRoundingDiffY) {
+        const severity = determineSeverity(yFloatDiff, yFloatPercentDiff);
+        const violation: ViolationData = {
+          type: 'rounding_error',
+          severity,
+          transactionNumber: txNumber,
+          functionName: 'withdraw-liquidity',
+          binId,
+          caller: user,
+          inputAmount: lpBurned,
+          actualSwappedIn: lpBurned,
+          actualSwappedOut: actualYOut,
+          expectedInteger: expectedYInteger,
+          expectedFloat: expectedYFloatBigInt,
+          contractResult: actualYOut,
+          integerDiff: yIntegerDiff,
+          floatDiff: yFloatDiff,
+          floatPercentDiff: yFloatPercentDiff,
+          poolState: {
+            binPrice: binPriceBigInt,
+            yBalanceBefore: yBalance,
+            yBalanceAfter: afterBin.yBalance,
+            swapFeeTotal: 0,
+            activeBinId: beforeState.activeBinId,
+          },
+          calculations: {},
+          timestamp: new Date().toISOString(),
+          randomSeed,
+        };
+        logger.addViolation(violation);
+        issues.push(`Rounding error (Y): Contract ${actualYOut} < float ${expectedYFloatBigInt}, diff: ${yFloatDiff} (${yFloatPercentDiff.toFixed(6)}%)`);
+      }
+      
+    } catch (e) {
+      // If we can't get pool data or calculate, skip this check
+      // (this shouldn't happen, but don't fail the test if it does)
     }
   }
   
@@ -2616,17 +3006,20 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
     const startTime = Date.now();
 
     // Open /dev/tty for direct terminal output - bypasses Vitest's output capture
+    // CRITICAL: Must open TTY BEFORE any async operations to ensure it's available
     let ttyFd: number | null = null;
     try {
       ttyFd = fs.openSync('/dev/tty', 'w');
     } catch (e) {
-      // /dev/tty not available, will use stderr fallback
+      // /dev/tty not available, will use stderr fallback (will be buffered)
+      ttyFd = null;
     }
 
     let lastPrintedPercent = -1; // Track last printed percentage for 1% increments
 
     for (let txNum = 1; txNum <= NUM_TRANSACTIONS; txNum++) {
       // Progress indicator - update every 1% of total transactions
+      // CRITICAL: Update BEFORE async work to ensure real-time display - writes must happen before await calls
       const currentPercent = Math.floor((txNum / NUM_TRANSACTIONS) * 100);
       const shouldUpdate = txNum === 1 || 
                            txNum === NUM_TRANSACTIONS || 
@@ -2634,28 +3027,27 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
       
       if (shouldUpdate) {
         lastPrintedPercent = currentPercent;
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        const rate = txNum > 0 && (Date.now() - startTime) > 0 ? (txNum / (Date.now() - startTime) * 1000).toFixed(1) : '0';
-        const successRate = logger.stats.totalTransactions > 0 ? ((logger.stats.successfulTransactions / logger.stats.totalTransactions) * 100).toFixed(1) : '0';
         const percent = ((txNum / NUM_TRANSACTIONS) * 100).toFixed(1);
-        
-        // Create progress bar
         const barWidth = 40;
         const filled = Math.floor((txNum / NUM_TRANSACTIONS) * barWidth);
         const empty = barWidth - filled;
         const bar = '█'.repeat(filled) + '░'.repeat(empty);
         
-        // Build progress line
+        // Build progress line with stats
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        const rate = txNum > 1 && (Date.now() - startTime) > 0 ? ((txNum - 1) / (Date.now() - startTime) * 1000).toFixed(1) : '0';
+        const successRate = logger.stats.totalTransactions > 0 ? ((logger.stats.successfulTransactions / logger.stats.totalTransactions) * 100).toFixed(1) : '0';
         let progressLine = `📊 [${bar}] ${percent}% (${txNum}/${NUM_TRANSACTIONS}) | ✅ ${successRate}% | ⚡ ${rate} tx/s | ⏱️  ${elapsed}s`;
-        if (txNum > 0 && parseFloat(rate) > 0) {
+        if (txNum > 1 && parseFloat(rate) > 0) {
           const remaining = NUM_TRANSACTIONS - txNum;
           const eta = (remaining / parseFloat(rate)).toFixed(0);
           const etaMin = Math.floor(parseFloat(eta) / 60);
           const etaSec = parseFloat(eta) % 60;
           progressLine += ` | ⏳ ETA: ~${etaMin}m ${etaSec}s`;
         }
-        // Write directly to /dev/tty to bypass Vitest's output capture completely
-        // This ensures progress appears in real-time in the terminal
+        
+        // Write to TTY with \r to overwrite same line
+        // CRITICAL: Write BEFORE any async operations (await) to ensure immediate flush
         const lineEnd = txNum === NUM_TRANSACTIONS ? '\n' : '\r';
         if (ttyFd !== null) {
           try {
@@ -3083,6 +3475,6 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
     const attemptedTransactions = logger.stats.totalTransactions;
     const minSuccessRate = 0.3;
     expect(logger.stats.successfulTransactions).toBeGreaterThan(attemptedTransactions * minSuccessRate);
-  }, 1800000); // 30 minute timeout
+  }, 21600000); // 6 hour timeout (allows 2 seconds per transaction for 10,000 transactions)
 });
 
