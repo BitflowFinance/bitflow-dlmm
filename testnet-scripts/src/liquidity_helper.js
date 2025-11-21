@@ -11,7 +11,6 @@ const {
   principalCV,
   tupleCV,
   listCV,
-  contractPrincipalCV,
   PostConditionMode,
   FungibleConditionCode,
   NonFungibleConditionCode,
@@ -19,7 +18,6 @@ const {
   makeContractFungiblePostCondition,
   makeStandardNonFungiblePostCondition,
   createAssetInfo,
-  AnchorMode,
   getNonce,
 } = require('@stacks/transactions');
 const { StacksMainnet, StacksTestnet } = require('@stacks/network');
