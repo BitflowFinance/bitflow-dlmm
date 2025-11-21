@@ -1,0 +1,18 @@
+{
+  "name": "hodlmm-testnet-scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@stacks/connect": "^8.2.2",
+    "@stacks/network": "^6.16.0",
+    "@stacks/transactions": "^6.17.0",
+    "dotenv": "^17.2.1",
+    "lodash": "^4.17.21"
+  }
+}
