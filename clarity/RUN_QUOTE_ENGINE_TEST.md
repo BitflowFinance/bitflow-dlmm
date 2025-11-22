@@ -5,7 +5,6 @@
 From the `.bitflow-dlmm/clarity` directory, run:
 
 ```bash
-cd /Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity
 source ~/.nvm/nvm.sh
 nvm use node
 FUZZ_SIZE=10 RANDOM_SEED=12345 npm test -- tests/dlmm-core-quote-engine-validation-fuzz.test.ts --run
@@ -17,7 +16,6 @@ The progress bar uses `/dev/tty` for real-time updates. It may not display in Cu
 
 1. **Run in a separate terminal** (Terminal.app on Mac):
    ```bash
-   cd /Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity
    source ~/.nvm/nvm.sh
    nvm use node
    FUZZ_SIZE=100 RANDOM_SEED=12345 npm test -- tests/dlmm-core-quote-engine-validation-fuzz.test.ts --run
@@ -43,5 +41,6 @@ You should see:
 - Progress bar with stats (if running in a real terminal)
 - Exploit detections (if any)
 - Final summary with match rates
+
 
 

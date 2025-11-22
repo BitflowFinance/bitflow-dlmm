@@ -74,18 +74,18 @@ For each swap, log and compare:
 ## Files to Review
 
 ### Primary Files
-- `/Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity/tests/dlmm-core-comprehensive-fuzz.test.ts`
+- `tests/dlmm-core-comprehensive-fuzz.test.ts`
   - Lines 898-960: `swap-x-for-y` calculation check
   - Lines 989-1070: `swap-y-for-x` calculation check
   - Lines 537-616: `checkSwapInvariants` function
 
 ### Contract Files
-- `/Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity/contracts/dlmm-core-v-1-1.clar`
+- `contracts/dlmm-core-v-1-1.clar`
   - Lines 1219-1289: `swap-x-for-y` function
   - Lines 1365-1435: `swap-y-for-x` function
 
 ### Invariant Definitions
-- `/Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity/tests/invariants.ts`
+- `tests/invariants.ts`
   - Core invariant checking functions
 
 ## Next Steps
@@ -155,7 +155,6 @@ For each swap, log and compare:
 ## Running the Tests
 
 ```bash
-cd /Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity
 source ~/.nvm/nvm.sh
 nvm use 20
 npm test -- tests/dlmm-core-comprehensive-fuzz.test.ts

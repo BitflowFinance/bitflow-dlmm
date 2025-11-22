@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity
+cd "$(dirname "$0")/.."
 
 echo "📊 FUZZ TEST RESULTS VIEWER"
 echo "============================"

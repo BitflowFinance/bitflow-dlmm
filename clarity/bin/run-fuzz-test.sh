@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity
+cd "$(dirname "$0")/.."
 
 echo "🚀 Starting comprehensive fuzz test..."
 echo "This will run 10,000 transactions and may take 10-30 minutes"

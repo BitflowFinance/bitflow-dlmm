@@ -88,7 +88,6 @@ This will filter out minor rounding issues while still catching real problems.
 
 Run a small test first:
 ```bash
-cd /Users/dylanfloyd/Documents/Bitflow/git/hodlmm-tests/.bitflow-dlmm/clarity
 source ~/.nvm/nvm.sh && nvm use 20
 FUZZ_SIZE=100 npm test -- dlmm-core-comprehensive-fuzz.test.ts
 ```
