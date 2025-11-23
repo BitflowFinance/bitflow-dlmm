@@ -19,6 +19,7 @@ import {
   charlie,
   deployer,
   dlmmCore,
+  dlmmSwapRouter,
   sbtcUsdcPool,
   mockSbtcToken,
   mockUsdcToken,
@@ -36,6 +37,13 @@ import {
   calculateFeeRateBPS,
   BinData,
 } from './helpers/swap-calculations';
+import {
+  estimateBinsNeeded,
+  getSampleBins,
+  discoverBinsForSwap,
+  calculateMultiBinSwap,
+  PoolState as MultiBinPoolState,
+} from './helpers/multi-bin-quote-estimation';
 
 // ============================================================================
 // Seeded Random Number Generator
@@ -87,6 +95,7 @@ interface SwapValidationResult {
   binId: bigint;
   binPrice: bigint;
   feeRateBPS: bigint;
+  swapType?: 'single-bin' | 'multi-bin'; // Track swap type for logging
 }
 
 interface ValidationStats {
@@ -96,6 +105,8 @@ interface ValidationStats {
   integerMatches: number;
   floatMatches: number;
   exploitsDetected: number;
+  singleBinSwaps: number;
+  multiBinSwaps: number;
   roundingDifferences: Array<{
     txNumber: number;
     direction: string;
@@ -127,6 +138,8 @@ class ValidationLogger {
       integerMatches: 0,
       floatMatches: 0,
       exploitsDetected: 0,
+      singleBinSwaps: 0,
+      multiBinSwaps: 0,
       roundingDifferences: [],
     };
   }
@@ -151,6 +164,13 @@ class ValidationLogger {
     
     if (result.exploitDetected) {
       this.stats.exploitsDetected++;
+    }
+    
+    // Track swap type
+    if (result.swapType === 'multi-bin') {
+      this.stats.multiBinSwaps++;
+    } else {
+      this.stats.singleBinSwaps++;
     }
     
     // Log rounding differences (even if not exploits)
@@ -187,6 +207,8 @@ class ValidationLogger {
     md += `Generated: ${new Date().toISOString()}\n\n`;
     md += `## Summary\n\n`;
     md += `- Total Swaps: ${this.stats.totalSwaps}\n`;
+    md += `- Single-Bin Swaps: ${this.stats.singleBinSwaps}\n`;
+    md += `- Multi-Bin Swaps: ${this.stats.multiBinSwaps}\n`;
     md += `- Successful Swaps: ${this.stats.successfulSwaps}\n`;
     md += `- Failed Swaps: ${this.stats.failedSwaps}\n`;
     md += `- Integer Math Matches: ${this.stats.integerMatches} (${((this.stats.integerMatches / this.stats.totalSwaps) * 100).toFixed(2)}%)\n`;
@@ -248,6 +270,36 @@ async function capturePoolState(): Promise<PoolState> {
 
   return { activeBinId, binBalances };
 }
+
+/**
+ * Capture pool state including multiple bins around the active bin.
+ * 
+ * @param maxBins - Maximum number of bins to capture on each side (default: 10)
+ * @returns Pool state with multiple bins
+ */
+async function capturePoolStateMultiBin(maxBins: number = 10): Promise<PoolState> {
+  const activeBinId = rovOk(sbtcUsdcPool.getActiveBinId());
+  const binBalances = new Map<bigint, { xBalance: bigint; yBalance: bigint }>();
+
+  // Capture bins around active bin
+  for (let offset = -maxBins; offset <= maxBins; offset++) {
+    const binId = activeBinId + BigInt(offset);
+    const unsignedBin = rovOk(dlmmCore.getUnsignedBinId(binId));
+    try {
+      const balances = rovOk(sbtcUsdcPool.getBinBalances(unsignedBin));
+      binBalances.set(binId, {
+        xBalance: balances.xBalance,
+        yBalance: balances.yBalance,
+      });
+    } catch (e) {
+      // Bin doesn't exist or has no liquidity, set to zero
+      binBalances.set(binId, { xBalance: 0n, yBalance: 0n });
+    }
+  }
+
+  return { activeBinId, binBalances };
+}
+
 
 // ============================================================================
 // Swap Validation
@@ -328,6 +380,186 @@ function validateSwap(
 }
 
 // ============================================================================
+// Multi-Bin Swap Functions
+// ============================================================================
+
+/**
+ * Generate a random swap amount that will require multiple bins.
+ */
+function generateRandomMultiBinSwapAmount(
+  rng: SeededRandom,
+  poolState: PoolState,
+  activeBinId: bigint,
+  _direction: 'x-for-y' | 'y-for-x',
+  userBalance: bigint,
+  _binPrice: bigint,
+  _poolData: any
+): bigint | null {
+  const activeBinData = poolState.binBalances.get(activeBinId);
+  if (!activeBinData) return null;
+
+  const minReserve = activeBinData.xBalance < activeBinData.yBalance 
+    ? activeBinData.xBalance 
+    : activeBinData.yBalance;
+  const activeBinCapacity = (minReserve * 80n) / 100n;
+
+  // Generate swaps that are likely to require multiple bins
+  // Use 80-120% of active bin capacity to ensure multi-bin swaps
+  const minAmount = (activeBinCapacity * 80n) / 100n;
+  const maxAmount = (activeBinCapacity * 120n) / 100n;
+  const effectiveMax = userBalance < maxAmount ? userBalance : maxAmount;
+  
+  if (effectiveMax < minAmount || effectiveMax < 100n) {
+    // Fallback: try smaller amounts that might still require multiple bins
+    const fallbackMin = (activeBinCapacity * 50n) / 100n;
+    const fallbackMax = effectiveMax;
+    if (fallbackMax < fallbackMin || fallbackMax < 100n) return null;
+    
+    const percentage = rng.next() * 0.5 + 0.5;
+    const amount = (fallbackMax * BigInt(Math.floor(percentage * 10000))) / 10000n;
+    return amount < 100n ? null : amount;
+  }
+
+  const percentage = rng.next() * 0.4 + 0.8; // 80-120% of capacity
+  const amount = (effectiveMax * BigInt(Math.floor(percentage * 10000))) / 10000n;
+  
+  return amount < 100n ? null : amount;
+}
+
+/**
+ * Execute a multi-bin swap using the swap router.
+ */
+async function executeMultiBinSwap(
+  direction: 'x-for-y' | 'y-for-x',
+  amount: bigint,
+  user: string
+): Promise<{ swappedIn: bigint; swappedOut: bigint }> {
+  if (direction === 'x-for-y') {
+    txOk(mockSbtcToken.transfer(amount, user, dlmmSwapRouter.identifier, null), user);
+    const result = txOk(
+      dlmmSwapRouter.swapXForYSimpleMulti(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        amount,
+        0n
+      ),
+      user
+    );
+    return { swappedIn: result.value.in, swappedOut: result.value.out };
+  } else {
+    txOk(mockUsdcToken.transfer(amount, user, dlmmSwapRouter.identifier, null), user);
+    const result = txOk(
+      dlmmSwapRouter.swapYForXSimpleMulti(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        amount,
+        0n
+      ),
+      user
+    );
+    return { swappedIn: result.value.in, swappedOut: result.value.out };
+  }
+}
+
+/**
+ * Validate a multi-bin swap against the quote engine.
+ */
+async function validateMultiBinSwap(
+  txNumber: number,
+  direction: 'x-for-y' | 'y-for-x',
+  inputAmount: bigint,
+  actualSwappedIn: bigint,
+  actualSwappedOut: bigint,
+  poolState: PoolState,
+  poolData: any,
+  protocolFeeBPS: bigint,
+  providerFeeBPS: bigint,
+  variableFeeBPS: bigint
+): Promise<SwapValidationResult> {
+  const feeRateBPS = calculateFeeRateBPS(protocolFeeBPS, providerFeeBPS, variableFeeBPS);
+  const swapForY = direction === 'x-for-y';
+  const activeBinId = poolState.activeBinId;
+  const binStep = poolData.binStep;
+  const initialPrice = poolData.initialPrice;
+
+  const multiBinPoolState: MultiBinPoolState = {
+    activeBinId,
+    binBalances: poolState.binBalances,
+  };
+
+  const activeBinData = poolState.binBalances.get(activeBinId);
+  if (!activeBinData) throw new Error('Active bin data not found');
+
+  const binData: BinData = {
+    reserve_x: activeBinData.xBalance,
+    reserve_y: activeBinData.yBalance,
+  };
+
+  const sampleBins = getSampleBins(multiBinPoolState, activeBinId, 2);
+  const estimatedBins = estimateBinsNeeded(actualSwappedIn > 0n ? actualSwappedIn : inputAmount, binData, sampleBins);
+
+  const getBinPrice = async (initialPrice: bigint, binStep: bigint, binId: bigint): Promise<bigint> => {
+    return rovOk(dlmmCore.getBinPrice(initialPrice, binStep, binId));
+  };
+
+  const getBinBalances = async (binId: bigint): Promise<{ xBalance: bigint; yBalance: bigint } | null> => {
+    try {
+      const unsignedBin = rovOk(dlmmCore.getUnsignedBinId(binId));
+      const balances = rovOk(sbtcUsdcPool.getBinBalances(unsignedBin));
+      return {
+        xBalance: balances.xBalance,
+        yBalance: balances.yBalance,
+      };
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const discoveredBins = await discoverBinsForSwap(
+    multiBinPoolState,
+    activeBinId,
+    swapForY,
+    estimatedBins,
+    getBinPrice,
+    initialPrice,
+    binStep,
+    getBinBalances
+  );
+
+  const quoteResult = calculateMultiBinSwap(
+    discoveredBins,
+    actualSwappedIn > 0n ? actualSwappedIn : inputAmount,
+    feeRateBPS,
+    swapForY
+  );
+
+  const expectedInteger = quoteResult.totalOut;
+  const expectedFloat = expectedInteger;
+  const integerMatch = expectedInteger === actualSwappedOut;
+  const floatMatch = expectedFloat === actualSwappedOut;
+  const exploitDetected = actualSwappedOut > expectedFloat;
+  const binPrice = rovOk(dlmmCore.getBinPrice(initialPrice, binStep, activeBinId));
+
+  return {
+    txNumber,
+    direction,
+    inputAmount,
+    actualSwappedIn,
+    actualSwappedOut,
+    expectedInteger,
+    expectedFloat,
+    integerMatch,
+    floatMatch,
+    exploitDetected,
+    binId: activeBinId,
+    binPrice,
+    feeRateBPS,
+  };
+}
+
+// ============================================================================
 // Random Amount Generation
 // ============================================================================
 
@@ -389,6 +621,7 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
   let rng: SeededRandom;
   const NUM_TRANSACTIONS = process.env.FUZZ_SIZE ? parseInt(process.env.FUZZ_SIZE) : 100;
   const RANDOM_SEED = process.env.RANDOM_SEED ? parseInt(process.env.RANDOM_SEED) : Date.now();
+  const MULTI_BIN_MODE = process.env.MULTI_BIN_MODE === 'true';
 
   beforeEach(async () => {
     setupTestEnvironment();
@@ -414,7 +647,8 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
 
     console.log(`\n🔍 Starting Quote Engine Validation Fuzz Test`);
     console.log(`   Transactions: ${NUM_TRANSACTIONS}`);
-    console.log(`   Random Seed: ${RANDOM_SEED}\n`);
+    console.log(`   Random Seed: ${RANDOM_SEED}`);
+    console.log(`   Multi-Bin Mode: ${MULTI_BIN_MODE ? 'ENABLED' : 'DISABLED'}\n`);
 
     // Open /dev/tty for direct terminal output - bypasses Vitest's output capture
     // CRITICAL: Must open TTY BEFORE any async operations to ensure it's available
@@ -491,8 +725,13 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
         }
       }
       
-      // Capture state before swap
-      const beforeState = await capturePoolState();
+      // Determine if this should be a multi-bin swap
+      const useMultiBin = MULTI_BIN_MODE && rng.next() < 0.5; // 50% multi-bin when enabled
+      
+      // Capture state before swap (use multi-bin capture if doing multi-bin swap)
+      const beforeState = useMultiBin 
+        ? await capturePoolStateMultiBin(20) // Capture 20 bins on each side
+        : await capturePoolState();
       const activeBinId = beforeState.activeBinId;
       
       // Get pool data for fees
@@ -512,8 +751,11 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
       const userYBalance = rovOk(mockUsdcToken.getBalance(user));
       const userBalance = direction === 'x-for-y' ? userXBalance : userYBalance;
       
-      // Generate swap amount (need binPrice for max calculation)
-      const swapAmount = generateRandomSwapAmount(rng, beforeState, activeBinId, direction, userBalance, binPrice);
+      // Generate swap amount
+      const swapAmount = useMultiBin
+        ? generateRandomMultiBinSwapAmount(rng, beforeState, activeBinId, direction, userBalance, binPrice, poolData)
+        : generateRandomSwapAmount(rng, beforeState, activeBinId, direction, userBalance, binPrice);
+      
       if (!swapAmount || swapAmount === 0n) {
         txNumber--; // Don't count skipped transactions
         continue;
@@ -524,49 +766,71 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
       let actualSwappedOut = 0n;
       
       try {
-        if (direction === 'x-for-y') {
-          const result = txOk(dlmmCore.swapXForY(
-            sbtcUsdcPool.identifier,
-            mockSbtcToken.identifier,
-            mockUsdcToken.identifier,
-            Number(activeBinId),
-            swapAmount
-          ), user);
-          actualSwappedIn = result.value.in;
-          actualSwappedOut = result.value.out;
+        if (useMultiBin) {
+          // Use multi-bin swap router
+          const result = await executeMultiBinSwap(direction, swapAmount, user);
+          actualSwappedIn = result.swappedIn;
+          actualSwappedOut = result.swappedOut;
         } else {
-          const result = txOk(dlmmCore.swapYForX(
-            sbtcUsdcPool.identifier,
-            mockSbtcToken.identifier,
-            mockUsdcToken.identifier,
-            Number(activeBinId),
-            swapAmount
-          ), user);
-          actualSwappedIn = result.value.in;
-          actualSwappedOut = result.value.out;
+          // Use single-bin swap
+          if (direction === 'x-for-y') {
+            const result = txOk(dlmmCore.swapXForY(
+              sbtcUsdcPool.identifier,
+              mockSbtcToken.identifier,
+              mockUsdcToken.identifier,
+              Number(activeBinId),
+              swapAmount
+            ), user);
+            actualSwappedIn = result.value.in;
+            actualSwappedOut = result.value.out;
+          } else {
+            const result = txOk(dlmmCore.swapYForX(
+              sbtcUsdcPool.identifier,
+              mockSbtcToken.identifier,
+              mockUsdcToken.identifier,
+              Number(activeBinId),
+              swapAmount
+            ), user);
+            actualSwappedIn = result.value.in;
+            actualSwappedOut = result.value.out;
+          }
         }
         
         // Get fees from pool data
-        // Note: Fee exemption check would require reading from swap-fee-exemptions map,
-        // but for validation test we use pool fees directly (users typically not exempt)
         const protocolFeeBPS = direction === 'x-for-y' ? poolData.xProtocolFee || 0n : poolData.yProtocolFee || 0n;
         const providerFeeBPS = direction === 'x-for-y' ? poolData.xProviderFee || 0n : poolData.yProviderFee || 0n;
         const variableFeeBPS = direction === 'x-for-y' ? poolData.xVariableFee || 0n : poolData.yVariableFee || 0n;
         
         // Validate swap
-        const validation = validateSwap(
-          txNumber,
-          direction,
-          swapAmount,
-          actualSwappedIn,
-          actualSwappedOut,
-          beforeState,
-          activeBinId,
-          binPrice,
-          protocolFeeBPS,
-          providerFeeBPS,
-          variableFeeBPS
-        );
+        const validation = useMultiBin
+          ? await validateMultiBinSwap(
+              txNumber,
+              direction,
+              swapAmount,
+              actualSwappedIn,
+              actualSwappedOut,
+              beforeState,
+              poolData,
+              protocolFeeBPS,
+              providerFeeBPS,
+              variableFeeBPS
+            )
+          : validateSwap(
+              txNumber,
+              direction,
+              swapAmount,
+              actualSwappedIn,
+              actualSwappedOut,
+              beforeState,
+              activeBinId,
+              binPrice,
+              protocolFeeBPS,
+              providerFeeBPS,
+              variableFeeBPS
+            );
+        
+        // Add swap type to result
+        validation.swapType = useMultiBin ? 'multi-bin' : 'single-bin';
         
         logger.logResult(validation);
         
@@ -640,6 +904,6 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
       // If no swaps were successful, that's also a problem
       expect(logger.stats.totalSwaps).toBeGreaterThan(0);
     }
-  });
+  }, NUM_TRANSACTIONS > 100 ? 300000 : NUM_TRANSACTIONS > 50 ? 120000 : 60000); // Timeout: 5min for large, 2min for medium, 1min for small
 });
 
