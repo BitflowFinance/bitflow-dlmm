@@ -8,7 +8,7 @@
  * 
  * Key differences from comprehensive fuzz test:
  * - Uses helper functions matching pricing.py API exactly
- * - Focuses on active-bin swaps only (multi-bin to be added later)
+ * - Supports both single-bin and multi-bin swaps (use --multi-bin flag to enable)
  * - Fails immediately if contract returns more than quote engine allows
  * - Compares against both integer and float math from quote engine
  */
