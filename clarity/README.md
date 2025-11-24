@@ -18,14 +18,12 @@ cd .bitflow-dlmm/clarity
 # Install dependencies
 npm install
 
-# Run all fuzz targets
-npm run fuzz
-
-# Run unit tests
-npm run test:unit
-
-# Run everything
+# Run all tests (unit tests + fuzz tests)
 npm run test:all
+
+# Or run separately:
+npm run test:unit  # Run all unit tests
+npm run fuzz       # Run all fuzz targets
 ```
 
 ## Getting Started
@@ -118,6 +116,14 @@ MULTI_BIN_MODE=true npm run fuzz:quote-engine
 ./scripts/fuzz/run-all.sh      # Run all fuzz tests with monitoring
 ./scripts/fuzz/monitor.sh      # Monitor fuzz test progress
 ./scripts/fuzz/view-results.sh # View fuzz test results
+```
+
+### Running All Tests
+
+**Run everything (unit tests + fuzz tests)**:
+```bash
+cd .bitflow-dlmm/clarity  # If not already there
+npm run test:all         # Runs: clarigen && clarigen docs && test:unit && fuzz
 ```
 
 ### Running Unit Tests

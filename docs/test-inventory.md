@@ -2,17 +2,18 @@
 
 ## Summary
 
-- Total unit / integration tests: 243
-- Total fuzz / property-based tests: 5
-- Total runnable fuzz targets / property files: 5
+- Total unit / integration tests: 276+
+- Total fuzz / property-based tests: 6
+- Total runnable fuzz targets / property files: 6
 - Estimated combined coverage confidence: High
 
 ## 1. Regular Tests (Clarinet / unit / integration)
 
 | File | Type | What it tests | # of individual checks |
 |------|------|---------------|-------------------------|
-| tests/core/swap.test.ts | Unit | DLMM Core swap functions (X-for-Y, Y-for-X, edge cases, error handling) | 16 |
-| tests/core/liquidity.test.ts | Unit | DLMM Core liquidity functions (add, withdraw, move, edge cases) | 24 |
+| tests/core/swap.test.ts | Unit | DLMM Core swap functions (X-for-Y, Y-for-X, edge cases, error handling) | 17 |
+| tests/core/liquidity.test.ts | Unit | DLMM Core liquidity functions (add, withdraw, move, edge cases) | 26 |
+| tests/core/arithmetic-edge-cases.test.ts | Unit | Arithmetic edge cases (overflow, underflow, division by zero, boundary values) | 16 |
 | tests/core/fees.test.ts | Unit | Fee management (protocol fees, variable fees, fee claiming, fee bounds) | 30 |
 | tests/core/settings.test.ts | Unit | Core contract settings (admin management, bin steps, pool creation, getters) | 32 |
 | tests/core/migration.test.ts | Unit | Core migration functions (migration address, cooldown, execution) | 17 |
@@ -48,6 +49,7 @@
 | bin-traversal.test.ts | TypeScript | Bin traversal sequences (0 → -500 → 500 → 0) | Bin edge cases and traversal logic | 1 seed (default: 100 transactions) |
 | zero-fee-exploit.test.ts | TypeScript | Random swaps with zero fees | Rounding exploits in zero-fee scenarios | 1 seed (default: 100 transactions) |
 | basic.test.ts | TypeScript | Simple randomized operations | Basic fuzzing with simple operations | 1 seed (default: 100 transactions) |
+| arithmetic-edge-cases.test.ts | TypeScript | Biased random values (very small, very large, boundary bin IDs) | Overflow, underflow, division by zero edge cases | 1 seed (default: 100 transactions) |
 
 ## 3. Key Invariants Currently Enforced
 
@@ -67,7 +69,7 @@
 ## 4. Gaps / Missing Critical Invariants (your expert opinion)
 
 - [Missing] Reentrancy protection verification (no reentrancy guards explicitly tested)
-- [Missing] Integer overflow/underflow protection on u128 arithmetic (Clarity has built-in overflow protection, but edge cases not explicitly fuzzed)
+- [Covered] Integer overflow/underflow protection on u128 arithmetic - Now tested in arithmetic-edge-cases.test.ts (unit and fuzz tests)
 - [Missing] Access control invariants (admin-only functions, role-based permissions)
 - [Missing] Time-based invariants (cooldown periods, migration execution time windows)
 - [Missing] Pool state consistency across multiple pools (only single pool tested)
@@ -79,7 +81,21 @@
 
 ## 5. One-liner to run everything
 
+**Run all tests (unit tests + fuzz tests)**:
 ```bash
 cd clarity && npm run test:all
+```
+
+This command runs:
+1. `clarigen` (generates TypeScript types)
+2. `clarigen docs` (generates contract documentation)
+3. `npm run test:unit` (all unit tests in `tests/`)
+4. `npm run fuzz` (all fuzz tests in `fuzz/`)
+
+**Run separately**:
+```bash
+cd clarity
+npm run test:unit  # Run only unit tests
+npm run fuzz       # Run only fuzz tests
 ```
 

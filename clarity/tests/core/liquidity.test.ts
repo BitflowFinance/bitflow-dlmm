@@ -1186,5 +1186,51 @@ describe('DLMM Core Liquidity Functions', () => {
       
       expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_Y_TOKEN);
     });
+
+    it('should handle add-liquidity with very large amounts', async () => {
+      const binId = 0n;
+      const xAmount = 1000000000000000n; // Very large amount
+      const yAmount = 50000000000000000n;
+      const minDlp = 1n;
+      
+      // Should handle large amounts without overflow
+      const response = txOk(dlmmCore.addLiquidity(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        binId,
+        xAmount,
+        yAmount,
+        minDlp,
+        1000000n,
+        1000000n
+      ), alice);
+      
+      const liquidityReceived = cvToValue(response.result);
+      expect(liquidityReceived).toBeGreaterThan(0n);
+    });
+
+    it('should handle add-liquidity with very small amounts', async () => {
+      const binId = 0n;
+      const xAmount = 1n; // Very small
+      const yAmount = 1n;
+      const minDlp = 1n;
+      
+      // Very small amounts might not meet minimum requirements
+      const response = txErr(dlmmCore.addLiquidity(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        binId,
+        xAmount,
+        yAmount,
+        minDlp,
+        1000000n,
+        1000000n
+      ), alice);
+      
+      // Should return an error if amounts are too small
+      expect(response).toBeDefined();
+    });
   });
 });

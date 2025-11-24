@@ -15,11 +15,12 @@ cd clarity
 # Install dependencies
 npm install
 
-# Run all fuzz targets
-npm run fuzz
+# Run all tests (unit tests + fuzz tests)
+npm run test:all
 
-# Run unit tests
-npm run test:unit
+# Or run separately:
+npm run test:unit  # Run all unit tests
+npm run fuzz       # Run all fuzz targets
 ```
 
 **All commands must be run from the `clarity/` directory.**

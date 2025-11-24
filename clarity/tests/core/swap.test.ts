@@ -474,5 +474,41 @@ describe('DLMM Core Swap Functions', () => {
       
       expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_X_TOKEN);
     });
+
+    it('should handle very large swap amounts (contract should cap)', async () => {
+      const binId = 0n;
+      const xAmount = 2n ** 100n; // Very large amount
+      
+      // Contract should cap the amount to maximum allowed
+      const response = txOk(dlmmCore.swapXForY(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        binId,
+        xAmount
+      ), alice);
+      
+      const swapResult = cvToValue(response.result);
+      // Should succeed with capped amount
+      expect(swapResult.in).toBeGreaterThan(0n);
+      expect(swapResult.in).toBeLessThanOrEqual(xAmount);
+      expect(swapResult.out).toBeGreaterThan(0n);
+    });
+
+    it('should handle swap with amount = 1 (minimum)', async () => {
+      const binId = 0n;
+      const xAmount = 1n;
+      
+      // Amount of 1 is too small and should fail
+      const response = txErr(dlmmCore.swapXForY(
+        sbtcUsdcPool.identifier,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        binId,
+        xAmount
+      ), alice);
+      
+      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_AMOUNT);
+    });
   });
 });

@@ -1,4 +1,4 @@
-.PHONY: help fuzz test clean reproduce corpus install
+.PHONY: help fuzz test clean reproduce corpus install fuzz-comprehensive fuzz-quote-engine fuzz-bin-traversal fuzz-zero-fee fuzz-basic fuzz-arithmetic-edge-cases test-all test-edge-cases test-coverage build docs
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -27,8 +27,14 @@ fuzz-zero-fee: ## Run zero-fee exploit fuzz test
 fuzz-basic: ## Run basic fuzz test
 	npm run fuzz:basic
 
+fuzz-arithmetic-edge-cases: ## Run arithmetic edge cases fuzz test
+	npm run fuzz:arithmetic-edge-cases
+
 test: ## Run all unit tests
 	npm run test:unit
+
+test-edge-cases: ## Run arithmetic edge case unit tests
+	npm run test:edge-cases
 
 test-all: ## Run all tests (unit + fuzz)
 	npm run test:all
