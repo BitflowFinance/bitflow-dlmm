@@ -1,7 +1,7 @@
 
 # dlmm-staking-trait-v-1-1
 
-[`dlmm-staking-trait-v-1-1.clar`](../contracts/dlmm-staking-trait-v-1-1.clar)
+[`dlmm-staking-trait-v-1-1.clar`](../clarity/contracts/dlmm-staking-trait-v-1-1.clar)
 
 dlmm-staking-trait-v-1-1
 

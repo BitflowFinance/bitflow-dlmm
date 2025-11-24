@@ -1,7 +1,7 @@
 
 # dlmm-liquidity-router-v-1-1
 
-[`dlmm-liquidity-router-v-1-1.clar`](../contracts/dlmm-liquidity-router-v-1-1.clar)
+[`dlmm-liquidity-router-v-1-1.clar`](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar)
 
 dlmm-liquidity-router-v-1-1
 
@@ -60,7 +60,7 @@ dlmm-liquidity-router-v-1-1
 
 ### add-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L21)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L21)
 
 `(define-public (add-liquidity-multi ((positions (list 350 (tuple (bin-id int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference))))) (response (list 350 uint) uint))`
 
@@ -92,7 +92,7 @@ Add liquidity to multiple bins in multiple pools
 
 ### add-relative-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L33)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L33)
 
 `(define-public (add-relative-liquidity-multi ((positions (list 350 (tuple (active-bin-id-offset int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference))))) (response (list 350 uint) uint))`
 
@@ -124,7 +124,7 @@ Add liquidity to multiple bins in multiple pools relative to the active bin
 
 ### add-relative-liquidity-same-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L45)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L45)
 
 `(define-public (add-relative-liquidity-same-multi ((positions (list 350 (tuple (active-bin-id-offset int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (x-amount uint) (y-amount uint)))) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (active-bin-tolerance (optional (tuple (expected-bin-id int) (max-deviation uint))))) (response (tuple (active-bin-id int) (active-bin-id-delta uint) (results (list 350 uint))) uint))`
 
@@ -167,7 +167,7 @@ Add liquidity to multiple bins in a single pool relative to the active bin using
 
 ### withdraw-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L64)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L64)
 
 `(define-public (withdraw-liquidity-multi ((positions (list 350 (tuple (amount uint) (bin-id int) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference))))) (response (list 350 (tuple (x-amount uint) (y-amount uint))) uint))`
 
@@ -199,7 +199,7 @@ Withdraw liquidity from multiple bins in multiple pools
 
 ### withdraw-relative-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L76)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L76)
 
 `(define-public (withdraw-relative-liquidity-multi ((positions (list 350 (tuple (active-bin-id-offset int) (amount uint) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference))))) (response (list 350 (tuple (x-amount uint) (y-amount uint))) uint))`
 
@@ -231,7 +231,7 @@ Withdraw liquidity from multiple bins in multiple pools relative to the active b
 
 ### withdraw-liquidity-same-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L88)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L88)
 
 `(define-public (withdraw-liquidity-same-multi ((positions (list 350 (tuple (amount uint) (bin-id int) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference)))) (x-token-trait trait_reference) (y-token-trait trait_reference) (min-x-amount-total uint) (min-y-amount-total uint)) (response (tuple (results (list 350 (tuple (x-amount uint) (y-amount uint)))) (x-amount uint) (y-amount uint)) uint))`
 
@@ -273,7 +273,7 @@ Withdraw liquidity from multiple bins in multiple pools using the same token pai
 
 ### withdraw-relative-liquidity-same-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L106)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L106)
 
 `(define-public (withdraw-relative-liquidity-same-multi ((positions (list 350 (tuple (active-bin-id-offset int) (amount uint) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference)))) (x-token-trait trait_reference) (y-token-trait trait_reference) (min-x-amount-total uint) (min-y-amount-total uint)) (response (tuple (results (list 350 (tuple (x-amount uint) (y-amount uint)))) (x-amount uint) (y-amount uint)) uint))`
 
@@ -315,7 +315,7 @@ Withdraw liquidity from multiple bins in multiple pools relative to the active b
 
 ### move-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L124)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L124)
 
 `(define-public (move-liquidity-multi ((positions (list 350 (tuple (amount uint) (from-bin-id int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (to-bin-id int) (x-token-trait trait_reference) (y-token-trait trait_reference))))) (response (list 350 uint) uint))`
 
@@ -347,7 +347,7 @@ Move liquidity for multiple bins in multiple pools
 
 ### move-relative-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L136)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L136)
 
 `(define-public (move-relative-liquidity-multi ((positions (list 350 (tuple (active-bin-id-offset int) (amount uint) (from-bin-id int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference))))) (response (list 350 uint) uint))`
 
@@ -379,7 +379,7 @@ Move liquidity for multiple bins in multiple pools relative to the active bin
 
 ### fold-add-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L148)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L148)
 
 `(define-private (fold-add-liquidity-multi ((position (tuple (bin-id int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference))) (result (response (list 350 uint) uint))) (response (list 350 uint) uint))`
 
@@ -416,7 +416,7 @@ Fold function to add liquidity to multiple bins in multiple pools
 
 ### fold-add-relative-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L164)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L164)
 
 `(define-private (fold-add-relative-liquidity-multi ((position (tuple (active-bin-id-offset int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference))) (result (response (list 350 uint) uint))) (response (list 350 uint) uint))`
 
@@ -455,7 +455,7 @@ Fold function to add liquidity to multiple bins in multiple pools relative to th
 
 ### fold-add-relative-liquidity-same-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L182)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L182)
 
 `(define-private (fold-add-relative-liquidity-same-multi ((position (tuple (active-bin-id-offset int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (x-amount uint) (y-amount uint))) (result (response (tuple (active-bin-id int) (pool-trait trait_reference) (results (list 350 uint)) (x-token-trait trait_reference) (y-token-trait trait_reference)) uint))) (response (tuple (active-bin-id int) (pool-trait trait_reference) (results (list 350 uint)) (x-token-trait trait_reference) (y-token-trait trait_reference)) uint))`
 
@@ -496,7 +496,7 @@ Fold function to add liquidity to multiple bins in a single pool relative to the
 
 ### fold-withdraw-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L202)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L202)
 
 `(define-private (fold-withdraw-liquidity-multi ((position (tuple (amount uint) (bin-id int) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference))) (result (response (list 350 (tuple (x-amount uint) (y-amount uint))) uint))) (response (list 350 (tuple (x-amount uint) (y-amount uint))) uint))`
 
@@ -533,7 +533,7 @@ Fold function to withdraw liquidity from multiple bins in multiple pools
 
 ### fold-withdraw-relative-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L218)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L218)
 
 `(define-private (fold-withdraw-relative-liquidity-multi ((position (tuple (active-bin-id-offset int) (amount uint) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference))) (result (response (list 350 (tuple (x-amount uint) (y-amount uint))) uint))) (response (list 350 (tuple (x-amount uint) (y-amount uint))) uint))`
 
@@ -572,7 +572,7 @@ Fold function to withdraw liquidity from multiple bins in multiple pools relativ
 
 ### fold-withdraw-liquidity-same-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L236)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L236)
 
 `(define-private (fold-withdraw-liquidity-same-multi ((position (tuple (amount uint) (bin-id int) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference))) (result (response (tuple (results (list 350 (tuple (x-amount uint) (y-amount uint)))) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))) (response (tuple (results (list 350 (tuple (x-amount uint) (y-amount uint)))) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))`
 
@@ -613,7 +613,7 @@ Fold function to withdraw liquidity from multiple bins in multiple pools using t
 
 ### fold-withdraw-relative-liquidity-same-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L256)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L256)
 
 `(define-private (fold-withdraw-relative-liquidity-same-multi ((position (tuple (active-bin-id-offset int) (amount uint) (min-x-amount uint) (min-y-amount uint) (pool-trait trait_reference))) (result (response (tuple (results (list 350 (tuple (x-amount uint) (y-amount uint)))) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))) (response (tuple (results (list 350 (tuple (x-amount uint) (y-amount uint)))) (x-amount uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))`
 
@@ -656,7 +656,7 @@ Fold function to withdraw liquidity from multiple bins in multiple pools relativ
 
 ### fold-move-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L278)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L278)
 
 `(define-private (fold-move-liquidity-multi ((position (tuple (amount uint) (from-bin-id int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (to-bin-id int) (x-token-trait trait_reference) (y-token-trait trait_reference))) (result (response (list 350 uint) uint))) (response (list 350 uint) uint))`
 
@@ -695,7 +695,7 @@ Fold function to move liquidity for multiple bins in multiple pools
 
 ### fold-move-relative-liquidity-multi
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L296)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L296)
 
 `(define-private (fold-move-relative-liquidity-multi ((position (tuple (active-bin-id-offset int) (amount uint) (from-bin-id int) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint) (min-dlp uint) (pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference))) (result (response (list 350 uint) uint))) (response (list 350 uint) uint))`
 
@@ -736,7 +736,7 @@ Fold function to move liquidity for multiple bins in multiple pools relative to 
 
 ### abs-int
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L316)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L316)
 
 `(define-private (abs-int ((value int)) uint)`
 
@@ -779,7 +779,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_NO_RESULT_DATA (err u5001))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L7)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L7)
 
 ### ERR_MINIMUM_X_AMOUNT
 
@@ -791,7 +791,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_MINIMUM_X_AMOUNT (err u5002))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L8)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L8)
 
 ### ERR_MINIMUM_Y_AMOUNT
 
@@ -803,7 +803,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_MINIMUM_Y_AMOUNT (err u5003))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L9)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L9)
 
 ### ERR_NO_ACTIVE_BIN_DATA
 
@@ -815,7 +815,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_NO_ACTIVE_BIN_DATA (err u5004))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L10)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L10)
 
 ### ERR_EMPTY_POSITIONS_LIST
 
@@ -827,7 +827,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_EMPTY_POSITIONS_LIST (err u5005))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L11)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L11)
 
 ### ERR_RESULTS_LIST_OVERFLOW
 
@@ -839,7 +839,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_RESULTS_LIST_OVERFLOW (err u5006))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L12)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L12)
 
 ### ERR_INVALID_BIN_ID
 
@@ -851,7 +851,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_INVALID_BIN_ID (err u5007))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L13)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L13)
 
 ### ERR_ACTIVE_BIN_TOLERANCE
 
@@ -863,7 +863,7 @@ Get absolute value of a signed int as uint
 (define-constant ERR_ACTIVE_BIN_TOLERANCE (err u5008))
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L14)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L14)
 
 ### MIN_BIN_ID
 
@@ -875,7 +875,7 @@ Minimum and maximum bin IDs as signed ints
 (define-constant MIN_BIN_ID -500)
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L17)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L17)
 
 ### MAX_BIN_ID
 
@@ -887,5 +887,5 @@ Minimum and maximum bin IDs as signed ints
 (define-constant MAX_BIN_ID 500)
 ```
 
-[View in file](../contracts/dlmm-liquidity-router-v-1-1.clar#L18)
+[View in file](../clarity/contracts/dlmm-liquidity-router-v-1-1.clar#L18)
   

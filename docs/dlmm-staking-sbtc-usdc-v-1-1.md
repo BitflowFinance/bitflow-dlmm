@@ -1,7 +1,7 @@
 
 # dlmm-staking-sbtc-usdc-v-1-1
 
-[`dlmm-staking-sbtc-usdc-v-1-1.clar`](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar)
+[`dlmm-staking-sbtc-usdc-v-1-1.clar`](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar)
 
 dlmm-staking-sbtc-usdc-v-1-1
 
@@ -118,7 +118,7 @@ dlmm-staking-sbtc-usdc-v-1-1
 
 ### get-admins
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L97)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L97)
 
 `(define-read-only (get-admins () (response (list 5 principal) none))`
 
@@ -139,7 +139,7 @@ Get admins list
 
 ### get-admin-helper
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L102)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L102)
 
 `(define-read-only (get-admin-helper () (response principal none))`
 
@@ -160,7 +160,7 @@ Get admin helper var
 
 ### get-helper-value
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L107)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L107)
 
 `(define-read-only (get-helper-value () (response uint none))`
 
@@ -181,7 +181,7 @@ Get helper value var
 
 ### get-staking-status
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L112)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L112)
 
 `(define-read-only (get-staking-status () (response bool none))`
 
@@ -202,7 +202,7 @@ Get staking status
 
 ### get-early-unstake-status
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L117)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L117)
 
 `(define-read-only (get-early-unstake-status () (response bool none))`
 
@@ -223,7 +223,7 @@ Get early unstake status
 
 ### get-early-unstake-fee-address
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L122)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L122)
 
 `(define-read-only (get-early-unstake-fee-address () (response principal none))`
 
@@ -244,7 +244,7 @@ Get early unstake fee address
 
 ### get-early-unstake-fee
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L127)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L127)
 
 `(define-read-only (get-early-unstake-fee () (response uint none))`
 
@@ -265,7 +265,7 @@ Get early unstake fee
 
 ### get-minimum-staking-duration
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L132)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L132)
 
 `(define-read-only (get-minimum-staking-duration () (response uint none))`
 
@@ -286,7 +286,7 @@ Get minimum staking duration
 
 ### get-default-reward-period-duration
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L137)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L137)
 
 `(define-read-only (get-default-reward-period-duration () (response uint none))`
 
@@ -307,7 +307,7 @@ Get default reward period duration
 
 ### get-total-lp-staked
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L142)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L142)
 
 `(define-read-only (get-total-lp-staked () (response uint none))`
 
@@ -328,7 +328,7 @@ Get total LP staked
 
 ### get-total-rewards-claimed
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L147)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L147)
 
 `(define-read-only (get-total-rewards-claimed () (response uint none))`
 
@@ -349,7 +349,7 @@ Get total rewards claimed
 
 ### get-bin
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L152)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L152)
 
 `(define-read-only (get-bin ((bin-id uint)) (response (optional (tuple (last-reward-index-update uint) (lp-staked uint) (reward-index uint) (reward-per-block uint) (reward-period-duration uint) (reward-period-end-block uint))) none))`
 
@@ -374,7 +374,7 @@ Get bin data
 
 ### get-user
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L157)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L157)
 
 `(define-read-only (get-user ((user principal)) (response (optional (tuple (bins-staked (list 1001 uint)) (lp-staked uint))) none))`
 
@@ -399,7 +399,7 @@ Get user data
 
 ### get-user-data-at-bin
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L162)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L162)
 
 `(define-read-only (get-user-data-at-bin ((user principal) (bin-id uint)) (response (optional (tuple (accrued-rewards uint) (last-stake-height uint) (lp-staked uint) (reward-index uint))) none))`
 
@@ -425,7 +425,7 @@ Get user data at a bin
 
 ### get-updated-reward-index
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L167)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L167)
 
 `(define-read-only (get-updated-reward-index ((bin-id uint)) (response (tuple (reward-index uint) (reward-period-effective-block uint) (rewards-to-distribute uint)) uint))`
 
@@ -475,7 +475,7 @@ Get the updated reward index at a bin
 
 ### get-claimable-rewards
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L197)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L197)
 
 `(define-read-only (get-claimable-rewards ((user principal) (bin-id int)) (response (tuple (accrued-rewards uint) (claimable-rewards uint) (pending-rewards uint)) uint))`
 
@@ -510,7 +510,7 @@ Get claimable rewards for a user at a bin
 
 ### add-admin
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L211)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L211)
 
 `(define-public (add-admin ((admin principal)) (response bool uint))`
 
@@ -549,7 +549,7 @@ Add an admin to the admins list
 
 ### remove-admin
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L230)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L230)
 
 `(define-public (remove-admin ((admin principal)) (response bool uint))`
 
@@ -592,7 +592,7 @@ Remove an admin from the admins list
 
 ### set-staking-status
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L253)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L253)
 
 `(define-public (set-staking-status ((status bool)) (response bool uint))`
 
@@ -631,7 +631,7 @@ Enable or disable staking
 
 ### set-early-unstake-status
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L272)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L272)
 
 `(define-public (set-early-unstake-status ((status bool)) (response bool uint))`
 
@@ -670,7 +670,7 @@ Enable or disable early unstaking
 
 ### set-early-unstake-fee-address
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L291)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L291)
 
 `(define-public (set-early-unstake-fee-address ((address principal)) (response bool uint))`
 
@@ -710,7 +710,7 @@ Set early unstake fee address
 
 ### set-early-unstake-fee
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L311)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L311)
 
 `(define-public (set-early-unstake-fee ((fee uint)) (response bool uint))`
 
@@ -750,7 +750,7 @@ Set early unstake fee
 
 ### set-minimum-staking-duration
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L331)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L331)
 
 `(define-public (set-minimum-staking-duration ((duration uint)) (response bool uint))`
 
@@ -790,7 +790,7 @@ Set the minimum staking duration in blocks
 
 ### set-default-reward-period-duration
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L351)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L351)
 
 `(define-public (set-default-reward-period-duration ((duration uint)) (response bool uint))`
 
@@ -830,7 +830,7 @@ Set the default reward period duration in blocks
 
 ### set-reward-period-duration
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L371)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L371)
 
 `(define-public (set-reward-period-duration ((bin-id int) (duration uint)) (response bool uint))`
 
@@ -881,7 +881,7 @@ Set the reward period duration in blocks for a bin
 
 ### set-rewards-to-distribute
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L401)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L401)
 
 `(define-public (set-rewards-to-distribute ((bin-id int) (amount uint)) (response bool uint))`
 
@@ -970,7 +970,7 @@ Set rewards to distribute for a bin
 
 ### stake-lp-tokens
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L469)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L469)
 
 `(define-public (stake-lp-tokens ((bin-id int) (amount uint)) (response bool uint))`
 
@@ -1059,7 +1059,7 @@ Stake LP tokens for a bin
 
 ### unstake-lp-tokens
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L537)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L537)
 
 `(define-public (unstake-lp-tokens ((bin-id int)) (response bool uint))`
 
@@ -1143,7 +1143,7 @@ Unstake LP tokens for a bin
 
 ### early-unstake-lp-tokens
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L601)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L601)
 
 `(define-public (early-unstake-lp-tokens ((bin-id int)) (response bool uint))`
 
@@ -1237,7 +1237,7 @@ Early unstake LP tokens at a bin
 
 ### claim-rewards
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L675)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L675)
 
 `(define-public (claim-rewards ((bin-id int)) (response uint uint))`
 
@@ -1294,7 +1294,7 @@ Claim any claimable rewards at a bin
 
 ### withdraw-rewards
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L712)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L712)
 
 `(define-public (withdraw-rewards ((amount uint) (recipient principal)) (response bool uint))`
 
@@ -1341,7 +1341,7 @@ Withdraw reward token from contract
 
 ### update-reward-index
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L738)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L738)
 
 `(define-public (update-reward-index ((bin-id uint)) (response bool uint))`
 
@@ -1386,7 +1386,7 @@ Update reward index for a bin
 
 ### get-claimable-rewards-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L763)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L763)
 
 `(define-public (get-claimable-rewards-multi ((users (list 350 principal)) (bin-ids (list 350 int))) (response (list 350 (response (tuple (accrued-rewards uint) (claimable-rewards uint) (pending-rewards uint)) uint)) none))`
 
@@ -1415,7 +1415,7 @@ Get claimable rewards for multiple bins
 
 ### set-reward-period-duration-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L771)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L771)
 
 `(define-public (set-reward-period-duration-multi ((bin-ids (list 350 int)) (durations (list 350 uint))) (response (list 350 (response bool uint)) none))`
 
@@ -1444,7 +1444,7 @@ Set reward period duration for multiple bins
 
 ### set-rewards-to-distribute-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L779)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L779)
 
 `(define-public (set-rewards-to-distribute-multi ((bin-ids (list 350 int)) (amounts (list 350 uint))) (response (list 350 (response bool uint)) none))`
 
@@ -1473,7 +1473,7 @@ Set rewards to distribute for multiple bins
 
 ### stake-lp-tokens-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L787)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L787)
 
 `(define-public (stake-lp-tokens-multi ((bin-ids (list 350 int)) (amounts (list 350 uint))) (response (list 350 (response bool uint)) none))`
 
@@ -1502,7 +1502,7 @@ Stake LP tokens for multiple bins
 
 ### unstake-lp-tokens-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L795)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L795)
 
 `(define-public (unstake-lp-tokens-multi ((bin-ids (list 350 int))) (response (list 350 (response bool uint)) none))`
 
@@ -1529,7 +1529,7 @@ Unstake LP tokens for multiple bins
 
 ### early-unstake-lp-tokens-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L802)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L802)
 
 `(define-public (early-unstake-lp-tokens-multi ((bin-ids (list 350 int))) (response (list 350 (response bool uint)) none))`
 
@@ -1556,7 +1556,7 @@ Early unstake LP tokens for multiple bins
 
 ### claim-rewards-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L809)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L809)
 
 `(define-public (claim-rewards-multi ((bin-ids (list 350 int))) (response (list 350 (response uint uint)) none))`
 
@@ -1583,7 +1583,7 @@ Claim any claimable rewards for multiple bins
 
 ### update-reward-index-multi
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L816)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L816)
 
 `(define-public (update-reward-index-multi ((bin-ids (list 350 uint))) (response (list 350 (response bool uint)) none))`
 
@@ -1610,7 +1610,7 @@ Update reward index for multiple bins
 
 ### admin-not-removable
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L823)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L823)
 
 `(define-private (admin-not-removable ((admin principal)) bool)`
 
@@ -1635,7 +1635,7 @@ Helper function for removing an admin
 
 ### filter-values-eq-helper-value
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L828)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L828)
 
 `(define-private (filter-values-eq-helper-value ((value uint)) bool)`
 
@@ -1660,7 +1660,7 @@ Filter function for removing a bin-id from the bins-staked list
 
 ### get-reward-token-balance
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L833)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L833)
 
 `(define-private (get-reward-token-balance () (response uint uint))`
 
@@ -1682,7 +1682,7 @@ Get reward token balance for contract
 
 ### transfer-lp-token
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L839)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L839)
 
 `(define-private (transfer-lp-token ((bin-id uint) (amount uint) (sender principal) (recipient principal)) (response bool uint))`
 
@@ -1711,7 +1711,7 @@ Transfer LP token
 
 ### transfer-reward-token
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L845)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L845)
 
 `(define-private (transfer-reward-token ((amount uint) (sender principal) (recipient principal)) (response bool uint))`
 
@@ -1754,7 +1754,7 @@ Define bin-data map
 })
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L73)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L73)
 
 ### user-data
 
@@ -1767,7 +1767,7 @@ Define user-data map
 })
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L83)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L83)
 
 ### user-data-at-bin
 
@@ -1782,7 +1782,7 @@ Define user-data-at-bin map
 })
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L89)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L89)
 
 ## Variables
 
@@ -1796,7 +1796,7 @@ Admins list and helper var used to remove admins
 (define-data-var admins (list 5 principal) (list tx-sender))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L46)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L46)
 
 ### admin-helper
 
@@ -1808,7 +1808,7 @@ principal
 (define-data-var admin-helper principal tx-sender)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L47)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L47)
 
 ### helper-value
 
@@ -1820,7 +1820,7 @@ Helper value used for removing a bin-id from the bins-staked list
 (define-data-var helper-value uint u0)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L50)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L50)
 
 ### staking-status
 
@@ -1832,7 +1832,7 @@ Staking and early unstake statuses
 (define-data-var staking-status bool true)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L53)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L53)
 
 ### early-unstake-status
 
@@ -1844,7 +1844,7 @@ bool
 (define-data-var early-unstake-status bool true)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L54)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L54)
 
 ### early-unstake-fee-address
 
@@ -1856,7 +1856,7 @@ Fee address and fee for early unstake
 (define-data-var early-unstake-fee-address principal tx-sender)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L57)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L57)
 
 ### early-unstake-fee
 
@@ -1868,7 +1868,7 @@ uint
 (define-data-var early-unstake-fee uint u50)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L58)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L58)
 
 ### minimum-staking-duration
 
@@ -1880,7 +1880,7 @@ Minimum staking duration in blocks
 (define-data-var minimum-staking-duration uint u1)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L61)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L61)
 
 ### default-reward-period-duration
 
@@ -1892,7 +1892,7 @@ Default reward period duration in blocks
 (define-data-var default-reward-period-duration uint u10000)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L64)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L64)
 
 ### total-lp-staked
 
@@ -1904,7 +1904,7 @@ Total amount of LP tokens staked
 (define-data-var total-lp-staked uint u0)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L67)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L67)
 
 ### total-rewards-claimed
 
@@ -1916,7 +1916,7 @@ Total rewards claimed across all bins
 (define-data-var total-rewards-claimed uint u0)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L70)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L70)
 
 ## Constants
 
@@ -1930,7 +1930,7 @@ Error constants
 (define-constant ERR_NOT_AUTHORIZED (err u4001))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L7)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L7)
 
 ### ERR_INVALID_AMOUNT
 
@@ -1942,7 +1942,7 @@ Error constants
 (define-constant ERR_INVALID_AMOUNT (err u4002))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L8)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L8)
 
 ### ERR_INVALID_PRINCIPAL
 
@@ -1954,7 +1954,7 @@ Error constants
 (define-constant ERR_INVALID_PRINCIPAL (err u4003))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L9)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L9)
 
 ### ERR_ALREADY_ADMIN
 
@@ -1966,7 +1966,7 @@ Error constants
 (define-constant ERR_ALREADY_ADMIN (err u4004))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L10)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L10)
 
 ### ERR_ADMIN_LIMIT_REACHED
 
@@ -1978,7 +1978,7 @@ Error constants
 (define-constant ERR_ADMIN_LIMIT_REACHED (err u4005))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L11)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L11)
 
 ### ERR_ADMIN_NOT_IN_LIST
 
@@ -1990,7 +1990,7 @@ Error constants
 (define-constant ERR_ADMIN_NOT_IN_LIST (err u4006))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L12)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L12)
 
 ### ERR_CANNOT_REMOVE_CONTRACT_DEPLOYER
 
@@ -2002,7 +2002,7 @@ Error constants
 (define-constant ERR_CANNOT_REMOVE_CONTRACT_DEPLOYER (err u4007))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L13)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L13)
 
 ### ERR_STAKING_DISABLED
 
@@ -2014,7 +2014,7 @@ Error constants
 (define-constant ERR_STAKING_DISABLED (err u4008))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L14)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L14)
 
 ### ERR_EARLY_UNSTAKE_DISABLED
 
@@ -2026,7 +2026,7 @@ Error constants
 (define-constant ERR_EARLY_UNSTAKE_DISABLED (err u4009))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L15)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L15)
 
 ### ERR_TOKEN_TRANSFER_FAILED
 
@@ -2038,7 +2038,7 @@ Error constants
 (define-constant ERR_TOKEN_TRANSFER_FAILED (err u4010))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L16)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L16)
 
 ### ERR_CANNOT_GET_TOKEN_BALANCE
 
@@ -2050,7 +2050,7 @@ Error constants
 (define-constant ERR_CANNOT_GET_TOKEN_BALANCE (err u4011))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L17)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L17)
 
 ### ERR_INSUFFICIENT_TOKEN_BALANCE
 
@@ -2062,7 +2062,7 @@ Error constants
 (define-constant ERR_INSUFFICIENT_TOKEN_BALANCE (err u4012))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L18)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L18)
 
 ### ERR_INVALID_MIN_STAKING_DURATION
 
@@ -2074,7 +2074,7 @@ Error constants
 (define-constant ERR_INVALID_MIN_STAKING_DURATION (err u4013))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L19)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L19)
 
 ### ERR_MINIMUM_STAKING_DURATION_HAS_NOT_PASSED
 
@@ -2086,7 +2086,7 @@ Error constants
 (define-constant ERR_MINIMUM_STAKING_DURATION_HAS_NOT_PASSED (err u4014))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L20)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L20)
 
 ### ERR_MINIMUM_STAKING_DURATION_PASSED
 
@@ -2098,7 +2098,7 @@ Error constants
 (define-constant ERR_MINIMUM_STAKING_DURATION_PASSED (err u4015))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L21)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L21)
 
 ### ERR_INVALID_REWARD_PERIOD_DURATION
 
@@ -2110,7 +2110,7 @@ Error constants
 (define-constant ERR_INVALID_REWARD_PERIOD_DURATION (err u4016))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L22)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L22)
 
 ### ERR_REWARD_PERIOD_HAS_NOT_PASSED
 
@@ -2122,7 +2122,7 @@ Error constants
 (define-constant ERR_REWARD_PERIOD_HAS_NOT_PASSED (err u4017))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L23)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L23)
 
 ### ERR_BINS_STAKED_OVERFLOW
 
@@ -2134,7 +2134,7 @@ Error constants
 (define-constant ERR_BINS_STAKED_OVERFLOW (err u4018))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L24)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L24)
 
 ### ERR_INVALID_BIN_ID
 
@@ -2146,7 +2146,7 @@ Error constants
 (define-constant ERR_INVALID_BIN_ID (err u4019))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L25)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L25)
 
 ### ERR_NO_BIN_DATA
 
@@ -2158,7 +2158,7 @@ Error constants
 (define-constant ERR_NO_BIN_DATA (err u4020))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L26)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L26)
 
 ### ERR_NO_USER_DATA
 
@@ -2170,7 +2170,7 @@ Error constants
 (define-constant ERR_NO_USER_DATA (err u4021))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L27)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L27)
 
 ### ERR_NO_USER_DATA_AT_BIN
 
@@ -2182,7 +2182,7 @@ Error constants
 (define-constant ERR_NO_USER_DATA_AT_BIN (err u4022))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L28)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L28)
 
 ### ERR_NO_LP_TO_UNSTAKE
 
@@ -2194,7 +2194,7 @@ Error constants
 (define-constant ERR_NO_LP_TO_UNSTAKE (err u4023))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L29)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L29)
 
 ### ERR_NO_EARLY_LP_TO_UNSTAKE
 
@@ -2206,7 +2206,7 @@ Error constants
 (define-constant ERR_NO_EARLY_LP_TO_UNSTAKE (err u4024))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L30)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L30)
 
 ### ERR_NO_CLAIMABLE_REWARDS
 
@@ -2218,7 +2218,7 @@ Error constants
 (define-constant ERR_NO_CLAIMABLE_REWARDS (err u4025))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L31)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L31)
 
 ### ERR_INVALID_FEE
 
@@ -2230,7 +2230,7 @@ Error constants
 (define-constant ERR_INVALID_FEE (err u4026))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L32)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L32)
 
 ### CONTRACT_DEPLOYER
 
@@ -2242,7 +2242,7 @@ Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L35)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L35)
 
 ### NUM_OF_BINS
 
@@ -2254,7 +2254,7 @@ Number of bins per pool and center bin ID as unsigned ints
 (define-constant NUM_OF_BINS u1001)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L38)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L38)
 
 ### CENTER_BIN_ID
 
@@ -2266,7 +2266,7 @@ Number of bins per pool and center bin ID as unsigned ints
 (define-constant CENTER_BIN_ID (/ NUM_OF_BINS u2))
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L39)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L39)
 
 ### FEE_SCALE_BPS
 
@@ -2278,7 +2278,7 @@ Maximum BPS
 (define-constant FEE_SCALE_BPS u10000)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L42)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L42)
 
 ### REWARD_SCALE_BPS
 
@@ -2290,5 +2290,5 @@ Maximum BPS
 (define-constant REWARD_SCALE_BPS u1000000)
 ```
 
-[View in file](../contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L43)
+[View in file](../clarity/contracts/dlmm-staking-sbtc-usdc-v-1-1.clar#L43)
   

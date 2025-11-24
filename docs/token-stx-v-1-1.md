@@ -1,7 +1,7 @@
 
 # token-stx-v-1-1
 
-[`token-stx-v-1-1.clar`](../contracts/external/token-stx-v-1-1.clar)
+[`token-stx-v-1-1.clar`](../clarity/contracts/external/token-stx-v-1-1.clar)
 
 token-stx-v-1-1
 
@@ -48,7 +48,7 @@ token-stx-v-1-1
 
 ### get-name
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L21)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L21)
 
 `(define-read-only (get-name () (response (string-ascii 6) none))`
 
@@ -69,7 +69,7 @@ SIP 010 function to get token name
 
 ### get-symbol
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L26)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L26)
 
 `(define-read-only (get-symbol () (response (string-ascii 3) none))`
 
@@ -90,7 +90,7 @@ SIP 010 function to get token symbol
 
 ### get-decimals
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L31)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L31)
 
 `(define-read-only (get-decimals () (response uint none))`
 
@@ -111,7 +111,7 @@ SIP 010 function to get token decimals
 
 ### get-total-supply
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L36)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L36)
 
 `(define-read-only (get-total-supply () (response uint none))`
 
@@ -132,7 +132,7 @@ SIP 010 function to get total token supply
 
 ### get-balance
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L41)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L41)
 
 `(define-read-only (get-balance ((address principal)) (response uint none))`
 
@@ -157,7 +157,7 @@ SIP 010 function to get token balance for an address
 
 ### get-token-uri
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L46)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L46)
 
 `(define-read-only (get-token-uri () (response (optional (string-utf8 256)) none))`
 
@@ -178,7 +178,7 @@ Get current token uri
 
 ### get-contract-owner
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L51)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L51)
 
 `(define-read-only (get-contract-owner () (response principal none))`
 
@@ -199,7 +199,7 @@ Get current contract owner
 
 ### set-token-uri
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L56)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L56)
 
 `(define-public (set-token-uri ((uri (string-utf8 256))) (response bool uint))`
 
@@ -237,7 +237,7 @@ Set token uri
 
 ### set-contract-owner
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L74)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L74)
 
 `(define-public (set-contract-owner ((address principal)) (response bool uint))`
 
@@ -275,7 +275,7 @@ Set contract owner
 
 ### transfer
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L92)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L92)
 
 `(define-public (transfer ((amount uint) (sender principal) (recipient principal) (memo (optional (buff 34)))) (response bool uint))`
 
@@ -347,7 +347,7 @@ Uri for this token
 (define-data-var token-uri (string-utf8 256) u"")
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L15)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L15)
 
 ### contract-owner
 
@@ -359,7 +359,7 @@ Contract owner defined as a var
 (define-data-var contract-owner principal tx-sender)
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L18)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L18)
 
 ## Constants
 
@@ -373,7 +373,7 @@ Error constants
 (define-constant ERR_NOT_AUTHORIZED_SIP_010 (err u4))
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L7)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L7)
 
 ### ERR_INVALID_PRINCIPAL_SIP_010
 
@@ -385,7 +385,7 @@ Error constants
 (define-constant ERR_INVALID_PRINCIPAL_SIP_010 (err u5))
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L8)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L8)
 
 ### ERR_NOT_AUTHORIZED
 
@@ -397,7 +397,7 @@ Error constants
 (define-constant ERR_NOT_AUTHORIZED (err u5001))
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L9)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L9)
 
 ### ERR_INVALID_AMOUNT
 
@@ -409,7 +409,7 @@ Error constants
 (define-constant ERR_INVALID_AMOUNT (err u5002))
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L10)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L10)
 
 ### ERR_INVALID_PRINCIPAL
 
@@ -421,7 +421,7 @@ Error constants
 (define-constant ERR_INVALID_PRINCIPAL (err u5003))
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L11)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L11)
 
 ### ERR_INVALID_TOKEN_URI
 
@@ -433,5 +433,5 @@ Error constants
 (define-constant ERR_INVALID_TOKEN_URI (err u5004))
 ```
 
-[View in file](../contracts/external/token-stx-v-1-1.clar#L12)
+[View in file](../clarity/contracts/external/token-stx-v-1-1.clar#L12)
   

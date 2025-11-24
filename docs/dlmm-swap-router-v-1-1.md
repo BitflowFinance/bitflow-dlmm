@@ -1,7 +1,7 @@
 
 # dlmm-swap-router-v-1-1
 
-[`dlmm-swap-router-v-1-1.clar`](../contracts/dlmm-swap-router-v-1-1.clar)
+[`dlmm-swap-router-v-1-1.clar`](../clarity/contracts/dlmm-swap-router-v-1-1.clar)
 
 dlmm-swap-router-v-1-1
 
@@ -54,7 +54,7 @@ dlmm-swap-router-v-1-1
 
 ### swap-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L43)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L43)
 
 `(define-public (swap-multi ((swaps (list 350 (tuple (amount uint) (expected-bin-id int) (min-received uint) (pool-trait trait_reference) (x-for-y bool) (x-token-trait trait_reference) (y-token-trait trait_reference)))) (max-unfavorable-bins uint)) (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint)) uint))`
 
@@ -89,7 +89,7 @@ Swap through multiple bins in multiple pools
 
 ### swap-x-for-y-same-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L57)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L57)
 
 `(define-public (swap-x-for-y-same-multi ((swaps (list 350 (tuple (expected-bin-id int) (min-received uint) (pool-trait trait_reference)))) (x-token-trait trait_reference) (y-token-trait trait_reference) (amount uint) (min-y-amount-total uint) (max-unfavorable-bins uint)) (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint) (y-amount uint)) uint))`
 
@@ -132,7 +132,7 @@ Swap through multiple bins in multiple pools using the same token pair and X for
 
 ### swap-y-for-x-same-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L75)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L75)
 
 `(define-public (swap-y-for-x-same-multi ((swaps (list 350 (tuple (expected-bin-id int) (min-received uint) (pool-trait trait_reference)))) (x-token-trait trait_reference) (y-token-trait trait_reference) (amount uint) (min-x-amount-total uint) (max-unfavorable-bins uint)) (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint) (x-amount uint)) uint))`
 
@@ -175,7 +175,7 @@ Swap through multiple bins in multiple pools using the same token pair and Y for
 
 ### swap-x-for-y-simple-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L93)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L93)
 
 `(define-public (swap-x-for-y-simple-multi ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (x-amount uint) (min-dy uint)) (response (tuple (in uint) (out uint)) uint))`
 
@@ -214,7 +214,7 @@ Swap through up to 350 bins in a single pool using the same token pair and X for
 
 ### swap-y-for-x-simple-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L108)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L108)
 
 `(define-public (swap-y-for-x-simple-multi ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (y-amount uint) (min-dx uint)) (response (tuple (in uint) (out uint)) uint))`
 
@@ -253,7 +253,7 @@ Swap through up to 350 bins in a single pool using the same token pair and Y for
 
 ### fold-swap-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L123)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L123)
 
 `(define-private (fold-swap-multi ((swap (tuple (amount uint) (expected-bin-id int) (min-received uint) (pool-trait trait_reference) (x-for-y bool) (x-token-trait trait_reference) (y-token-trait trait_reference))) (result (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint)) uint))) (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint)) uint))`
 
@@ -304,7 +304,7 @@ Fold function to swap through multiple bins in multiple pools
 
 ### fold-swap-x-for-y-same-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L153)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L153)
 
 `(define-private (fold-swap-x-for-y-same-multi ((swap (tuple (expected-bin-id int) (min-received uint) (pool-trait trait_reference))) (result (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint) (x-amount-for-swap uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))) (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint) (x-amount-for-swap uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))`
 
@@ -364,7 +364,7 @@ Fold function to swap through multiple bins in multiple pools using the same tok
 
 ### fold-swap-y-for-x-same-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L192)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L192)
 
 `(define-private (fold-swap-y-for-x-same-multi ((swap (tuple (expected-bin-id int) (min-received uint) (pool-trait trait_reference))) (result (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint) (x-amount uint) (x-token-trait trait_reference) (y-amount-for-swap uint) (y-token-trait trait_reference)) uint))) (response (tuple (results (list 350 (tuple (in uint) (out uint)))) (unfavorable uint) (x-amount uint) (x-token-trait trait_reference) (y-amount-for-swap uint) (y-token-trait trait_reference)) uint))`
 
@@ -424,7 +424,7 @@ Fold function to swap through multiple bins in multiple pools using the same tok
 
 ### fold-swap-x-for-y-simple-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L231)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L231)
 
 `(define-private (fold-swap-x-for-y-simple-multi ((bin-id int) (result (response (tuple (pool-trait trait_reference) (x-amount-for-swap uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))) (response (tuple (pool-trait trait_reference) (x-amount-for-swap uint) (x-token-trait trait_reference) (y-amount uint) (y-token-trait trait_reference)) uint))`
 
@@ -477,7 +477,7 @@ Fold function to swap through up to 350 bins in a single pool using the same tok
 
 ### fold-swap-y-for-x-simple-multi
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L263)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L263)
 
 `(define-private (fold-swap-y-for-x-simple-multi ((bin-id int) (result (response (tuple (pool-trait trait_reference) (x-amount uint) (x-token-trait trait_reference) (y-amount-for-swap uint) (y-token-trait trait_reference)) uint))) (response (tuple (pool-trait trait_reference) (x-amount uint) (x-token-trait trait_reference) (y-amount-for-swap uint) (y-token-trait trait_reference)) uint))`
 
@@ -530,7 +530,7 @@ Fold function to swap through up to 350 bins in a single pool using the same tok
 
 ### abs-int
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L295)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L295)
 
 `(define-private (abs-int ((value int)) uint)`
 
@@ -573,7 +573,7 @@ Error constants
 (define-constant ERR_NO_RESULT_DATA (err u2001))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L8)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L8)
 
 ### ERR_BIN_SLIPPAGE
 
@@ -585,7 +585,7 @@ Error constants
 (define-constant ERR_BIN_SLIPPAGE (err u2002))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L9)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L9)
 
 ### ERR_MINIMUM_RECEIVED
 
@@ -597,7 +597,7 @@ Error constants
 (define-constant ERR_MINIMUM_RECEIVED (err u2003))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L10)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L10)
 
 ### ERR_MINIMUM_X_AMOUNT
 
@@ -609,7 +609,7 @@ Error constants
 (define-constant ERR_MINIMUM_X_AMOUNT (err u2004))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L11)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L11)
 
 ### ERR_MINIMUM_Y_AMOUNT
 
@@ -621,7 +621,7 @@ Error constants
 (define-constant ERR_MINIMUM_Y_AMOUNT (err u2005))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L12)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L12)
 
 ### ERR_NO_ACTIVE_BIN_DATA
 
@@ -633,7 +633,7 @@ Error constants
 (define-constant ERR_NO_ACTIVE_BIN_DATA (err u2006))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L13)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L13)
 
 ### ERR_EMPTY_SWAPS_LIST
 
@@ -645,7 +645,7 @@ Error constants
 (define-constant ERR_EMPTY_SWAPS_LIST (err u2007))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L14)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L14)
 
 ### ERR_RESULTS_LIST_OVERFLOW
 
@@ -657,7 +657,7 @@ Error constants
 (define-constant ERR_RESULTS_LIST_OVERFLOW (err u2008))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L15)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L15)
 
 ### ERR_INVALID_BIN_ID
 
@@ -669,7 +669,7 @@ Error constants
 (define-constant ERR_INVALID_BIN_ID (err u2009))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L16)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L16)
 
 ### MIN_BIN_ID
 
@@ -681,7 +681,7 @@ Minimum and maximum bin IDs as signed ints
 (define-constant MIN_BIN_ID -500)
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L19)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L19)
 
 ### MAX_BIN_ID
 
@@ -693,7 +693,7 @@ Minimum and maximum bin IDs as signed ints
 (define-constant MAX_BIN_ID 500)
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L20)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L20)
 
 ### BIN_INDEX_RANGE
 
@@ -721,5 +721,5 @@ List used to swap through up to 350 bins via swap-x-for-y-simple-multi and swap-
                                  345 346 347 348 349))
 ```
 
-[View in file](../contracts/dlmm-swap-router-v-1-1.clar#L23)
+[View in file](../clarity/contracts/dlmm-swap-router-v-1-1.clar#L23)
   

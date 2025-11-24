@@ -1,7 +1,7 @@
 
 # dlmm-core-v-1-1
 
-[`dlmm-core-v-1-1.clar`](../contracts/dlmm-core-v-1-1.clar)
+[`dlmm-core-v-1-1.clar`](../clarity/contracts/dlmm-core-v-1-1.clar)
 
 dlmm-core-v-1-1
 
@@ -170,7 +170,7 @@ dlmm-core-v-1-1
 
 ### get-core-migration-address
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L139)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L139)
 
 `(define-read-only (get-core-migration-address () (response principal none))`
 
@@ -191,7 +191,7 @@ Get core migration address
 
 ### get-core-migration-execution-time
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L144)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L144)
 
 `(define-read-only (get-core-migration-execution-time () (response uint none))`
 
@@ -212,7 +212,7 @@ Get timestamp of core migration execution time
 
 ### get-core-migration-cooldown
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L149)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L149)
 
 `(define-read-only (get-core-migration-cooldown () (response uint none))`
 
@@ -233,7 +233,7 @@ Get core migration cooldown in seconds
 
 ### get-admins
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L154)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L154)
 
 `(define-read-only (get-admins () (response (list 5 principal) none))`
 
@@ -254,7 +254,7 @@ Get admins list
 
 ### get-admin-helper
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L159)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L159)
 
 `(define-read-only (get-admin-helper () (response principal none))`
 
@@ -275,7 +275,7 @@ Get admin helper var
 
 ### get-last-pool-id
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L164)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L164)
 
 `(define-read-only (get-last-pool-id () (response uint none))`
 
@@ -296,7 +296,7 @@ Get ID of last created pool
 
 ### get-pool-by-id
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L169)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L169)
 
 `(define-read-only (get-pool-by-id ((id uint)) (response (optional (tuple (id uint) (name (string-ascii 32)) (pool-contract principal) (status bool) (symbol (string-ascii 32)))) none))`
 
@@ -321,7 +321,7 @@ Get a pool by pool ID
 
 ### get-allowed-token-direction
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L174)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L174)
 
 `(define-read-only (get-allowed-token-direction ((x-token principal) (y-token principal)) (response (optional bool) none))`
 
@@ -347,7 +347,7 @@ Get allowed-token-direction for pool creation
 
 ### get-unclaimed-protocol-fees-by-id
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L179)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L179)
 
 `(define-read-only (get-unclaimed-protocol-fees-by-id ((id uint)) (response (optional (tuple (x-fee uint) (y-fee uint))) none))`
 
@@ -372,7 +372,7 @@ Get unclaimed-protocol-fees for a pool
 
 ### get-swap-fee-exemption-by-id
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L184)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L184)
 
 `(define-read-only (get-swap-fee-exemption-by-id ((address principal) (id uint)) (response bool none))`
 
@@ -398,7 +398,7 @@ Get swap-fee-exemptions for an address for a pool
 
 ### get-bin-steps
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L189)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L189)
 
 `(define-read-only (get-bin-steps () (response (list 1000 uint) none))`
 
@@ -419,7 +419,7 @@ Get allowed bin steps
 
 ### get-bin-factors-by-step
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L194)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L194)
 
 `(define-read-only (get-bin-factors-by-step ((step uint)) (response (optional (list 1001 uint)) none))`
 
@@ -444,7 +444,7 @@ Get bin factors by bin step
 
 ### get-minimum-bin-shares
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L199)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L199)
 
 `(define-read-only (get-minimum-bin-shares () (response uint none))`
 
@@ -465,7 +465,7 @@ Get min shares required to mint for the active bin when creating a pool
 
 ### get-minimum-burnt-shares
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L204)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L204)
 
 `(define-read-only (get-minimum-burnt-shares () (response uint none))`
 
@@ -486,7 +486,7 @@ Get min shares required to burn for the active bin when creating a pool
 
 ### get-public-pool-creation
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L209)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L209)
 
 `(define-read-only (get-public-pool-creation () (response bool none))`
 
@@ -507,7 +507,7 @@ Get public pool creation status
 
 ### get-verified-pool-code-hashes
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L214)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L214)
 
 `(define-read-only (get-verified-pool-code-hashes () (response (list 10000 (buff 32)) none))`
 
@@ -528,7 +528,7 @@ Get verified pool code hashes list
 
 ### get-verified-pool-code-hashes-helper
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L219)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L219)
 
 `(define-read-only (get-verified-pool-code-hashes-helper () (response (buff 32) none))`
 
@@ -549,7 +549,7 @@ Get verified pool code hashes helper var
 
 ### get-unsigned-bin-id
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L224)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L224)
 
 `(define-read-only (get-unsigned-bin-id ((bin-id int)) (response uint none))`
 
@@ -574,7 +574,7 @@ Get bin ID as unsigned int
 
 ### get-signed-bin-id
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L229)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L229)
 
 `(define-read-only (get-signed-bin-id ((bin-id uint)) (response int none))`
 
@@ -599,7 +599,7 @@ Get bin ID as signed int
 
 ### get-bin-price
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L234)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L234)
 
 `(define-read-only (get-bin-price ((initial-price uint) (bin-step uint) (bin-id int)) (response uint uint))`
 
@@ -634,7 +634,7 @@ Get price for a specific bin
 
 ### get-liquidity-value
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L247)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L247)
 
 `(define-read-only (get-liquidity-value ((x-amount uint) (y-amount uint) (bin-price uint)) (response uint none))`
 
@@ -661,7 +661,7 @@ Get liquidity value when adding liquidity to a bin by rebasing x-amount to y-uni
 
 ### get-is-pool-verified
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L252)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L252)
 
 `(define-read-only (get-is-pool-verified ((pool-trait trait_reference)) (response bool uint))`
 
@@ -690,7 +690,7 @@ Get pool verification status
 
 ### set-core-migration-address
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L261)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L261)
 
 `(define-public (set-core-migration-address ((address principal)) (response bool uint))`
 
@@ -745,7 +745,7 @@ Set core migration address
 
 ### set-core-migration-cooldown
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L296)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L296)
 
 `(define-public (set-core-migration-cooldown ((cooldown uint)) (response bool uint))`
 
@@ -790,7 +790,7 @@ Set core migration cooldown in seconds
 
 ### migrate-core-address
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L321)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L321)
 
 `(define-public (migrate-core-address ((pool-trait trait_reference)) (response bool uint))`
 
@@ -855,7 +855,7 @@ Migrate core address for a pool
 
 ### add-bin-step
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L366)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L366)
 
 `(define-public (add-bin-step ((step uint) (factors (list 1001 uint))) (response bool uint))`
 
@@ -916,7 +916,7 @@ Add a new bin step and its factors
 
 ### set-minimum-shares
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L406)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L406)
 
 `(define-public (set-minimum-shares ((min-bin uint) (min-burnt uint)) (response bool uint))`
 
@@ -971,7 +971,7 @@ Set min shares required to mint and burn for the active bin when creating a pool
 
 ### set-public-pool-creation
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L440)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L440)
 
 `(define-public (set-public-pool-creation ((status bool)) (response bool uint))`
 
@@ -1013,7 +1013,7 @@ Enable or disable public pool creation
 
 ### add-verified-pool-code-hash
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L462)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L462)
 
 `(define-public (add-verified-pool-code-hash ((hash (buff 32))) (response bool uint))`
 
@@ -1058,7 +1058,7 @@ Add a new verified pool code hash
 
 ### remove-verified-pool-code-hash
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L487)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L487)
 
 `(define-public (remove-verified-pool-code-hash ((hash (buff 32))) (response bool uint))`
 
@@ -1101,7 +1101,7 @@ Remove a verified pool code hash
 
 ### set-swap-fee-exemption
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L510)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L510)
 
 `(define-public (set-swap-fee-exemption ((pool-trait trait_reference) (address principal) (exempt bool)) (response bool uint))`
 
@@ -1163,7 +1163,7 @@ Set swap fee exemption for an address for a pool
 
 ### claim-protocol-fees
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L550)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L550)
 
 `(define-public (claim-protocol-fees ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference)) (response bool uint))`
 
@@ -1246,7 +1246,7 @@ Claim protocol fees for a pool
 
 ### set-pool-uri
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L611)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L611)
 
 `(define-public (set-pool-uri ((pool-trait trait_reference) (uri (string-ascii 256))) (response bool uint))`
 
@@ -1305,7 +1305,7 @@ Set pool uri for a pool
 
 ### set-pool-status
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L649)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L649)
 
 `(define-public (set-pool-status ((pool-trait trait_reference) (status bool)) (response bool uint))`
 
@@ -1362,7 +1362,7 @@ Set pool status for a pool
 
 ### set-variable-fees-manager
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L685)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L685)
 
 `(define-public (set-variable-fees-manager ((pool-trait trait_reference) (manager principal)) (response bool uint))`
 
@@ -1425,7 +1425,7 @@ Set variable fees manager for a pool
 
 ### set-fee-address
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L727)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L727)
 
 `(define-public (set-fee-address ((pool-trait trait_reference) (address principal)) (response bool uint))`
 
@@ -1484,7 +1484,7 @@ Set fee address for a pool
 
 ### set-variable-fees
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L765)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L765)
 
 `(define-public (set-variable-fees ((pool-trait trait_reference) (x-fee uint) (y-fee uint)) (response bool uint))`
 
@@ -1561,7 +1561,7 @@ Set variable fees for a pool
 
 ### set-x-fees
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L820)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L820)
 
 `(define-public (set-x-fees ((pool-trait trait_reference) (protocol-fee uint) (provider-fee uint)) (response bool uint))`
 
@@ -1624,7 +1624,7 @@ Set x fees for a pool
 
 ### set-y-fees
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L861)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L861)
 
 `(define-public (set-y-fees ((pool-trait trait_reference) (protocol-fee uint) (provider-fee uint)) (response bool uint))`
 
@@ -1687,7 +1687,7 @@ Set y fees for a pool
 
 ### set-variable-fees-cooldown
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L902)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L902)
 
 `(define-public (set-variable-fees-cooldown ((pool-trait trait_reference) (cooldown uint)) (response bool uint))`
 
@@ -1743,7 +1743,7 @@ Set variable fees cooldown for a pool
 
 ### set-freeze-variable-fees-manager
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L937)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L937)
 
 `(define-public (set-freeze-variable-fees-manager ((pool-trait trait_reference)) (response bool uint))`
 
@@ -1801,7 +1801,7 @@ Make variable fees manager immutable for a pool
 
 ### set-dynamic-config
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L975)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L975)
 
 `(define-public (set-dynamic-config ((pool-trait trait_reference) (config (buff 4096))) (response bool uint))`
 
@@ -1865,7 +1865,7 @@ Set dynamic config for a pool
 
 ### reset-variable-fees
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1018)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1018)
 
 `(define-public (reset-variable-fees ((pool-trait trait_reference)) (response bool uint))`
 
@@ -1920,7 +1920,7 @@ Reset variable fees for a pool
 
 ### create-pool
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1053)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1053)
 
 `(define-public (create-pool ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (x-amount-active-bin uint) (y-amount-active-bin uint) (burn-amount-active-bin uint) (x-protocol-fee uint) (x-provider-fee uint) (y-protocol-fee uint) (y-provider-fee uint) (bin-step uint) (variable-fees-cooldown uint) (freeze-variable-fees-manager bool) (dynamic-config (optional (buff 4096))) (fee-address principal) (uri (string-ascii 256)) (status bool)) (response bool uint))`
 
@@ -2123,7 +2123,7 @@ Create a new pool
 
 ### swap-x-for-y
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1220)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1220)
 
 `(define-public (swap-x-for-y ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (x-amount uint)) (response (tuple (in uint) (out uint)) uint))`
 
@@ -2292,7 +2292,7 @@ Swap x token for y token via a bin in a pool
 
 ### swap-y-for-x
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1365)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1365)
 
 `(define-public (swap-y-for-x ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (y-amount uint)) (response (tuple (in uint) (out uint)) uint))`
 
@@ -2461,7 +2461,7 @@ Swap y token for x token via a bin in a pool
 
 ### add-liquidity
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1510)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1510)
 
 `(define-public (add-liquidity ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (x-amount uint) (y-amount uint) (min-dlp uint) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint)) (response uint uint))`
 
@@ -2672,7 +2672,7 @@ Add liquidity to a bin in a pool
 
 ### withdraw-liquidity
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1693)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1693)
 
 `(define-public (withdraw-liquidity ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (bin-id int) (amount uint) (min-x-amount uint) (min-y-amount uint)) (response (tuple (x-amount uint) (y-amount uint)) uint))`
 
@@ -2796,7 +2796,7 @@ Withdraw liquidity from a bin in a pool
 
 ### move-liquidity
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L1791)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L1791)
 
 `(define-public (move-liquidity ((pool-trait trait_reference) (x-token-trait trait_reference) (y-token-trait trait_reference) (from-bin-id int) (to-bin-id int) (amount uint) (min-dlp uint) (max-x-liquidity-fee uint) (max-y-liquidity-fee uint)) (response uint uint))`
 
@@ -3033,7 +3033,7 @@ Move liquidity from one bin to another in a pool
 
 ### add-admin
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2000)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2000)
 
 `(define-public (add-admin ((admin principal)) (response bool uint))`
 
@@ -3075,7 +3075,7 @@ Add an admin to the admins list
 
 ### remove-admin
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2022)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2022)
 
 `(define-public (remove-admin ((admin principal)) (response bool uint))`
 
@@ -3121,7 +3121,7 @@ Remove an admin from the admins list
 
 ### admin-not-removable
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2048)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2048)
 
 `(define-private (admin-not-removable ((admin principal)) bool)`
 
@@ -3146,7 +3146,7 @@ Helper function for removing an admin
 
 ### verified-pool-code-hashes-not-removable
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2053)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2053)
 
 `(define-private (verified-pool-code-hashes-not-removable ((hash (buff 32))) bool)`
 
@@ -3171,7 +3171,7 @@ Helper function for removing a verified pool code hash
 
 ### fold-are-bin-factors-ascending
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2058)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2058)
 
 `(define-private (fold-are-bin-factors-ascending ((factor uint) (result (response uint uint))) (response uint uint))`
 
@@ -3199,7 +3199,7 @@ Helper function to validate bin-factors list is in ascending order
 
 ### create-symbol
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2065)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2065)
 
 `(define-private (create-symbol ((x-token-trait trait_reference) (y-token-trait trait_reference)) (optional (string-ascii 29)))`
 
@@ -3242,7 +3242,7 @@ Create pool symbol using x token and y token symbols
 
 ### is-valid-pool
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2087)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2087)
 
 `(define-private (is-valid-pool ((id uint) (contract principal)) bool)`
 
@@ -3272,7 +3272,7 @@ Check if a pool is valid
 
 ### is-enabled-pool
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L2096)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L2096)
 
 `(define-private (is-enabled-pool ((id uint)) bool)`
 
@@ -3309,7 +3309,7 @@ Check if a pool is enabled
 (define-map bin-factors uint (list 1001 uint))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L105)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L105)
 
 ### pools
 
@@ -3325,7 +3325,7 @@ Define pools map
 })
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L121)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L121)
 
 ### allowed-token-direction
 
@@ -3335,7 +3335,7 @@ Define allowed-token-direction map
 (define-map allowed-token-direction {x-token: principal, y-token: principal} bool)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L130)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L130)
 
 ### unclaimed-protocol-fees
 
@@ -3345,7 +3345,7 @@ Define unclaimed-protocol-fees map
 (define-map unclaimed-protocol-fees uint {x-fee: uint, y-fee: uint})
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L133)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L133)
 
 ### swap-fee-exemptions
 
@@ -3355,7 +3355,7 @@ Define swap-fee-exemptions map
 (define-map swap-fee-exemptions {address: principal, id: uint} bool)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L136)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L136)
 
 ## Variables
 
@@ -3369,7 +3369,7 @@ Core migration address and execution time
 (define-data-var core-migration-address principal current-contract)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L90)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L90)
 
 ### core-migration-execution-time
 
@@ -3381,7 +3381,7 @@ uint
 (define-data-var core-migration-execution-time uint u0)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L91)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L91)
 
 ### core-migration-cooldown
 
@@ -3393,7 +3393,7 @@ Core migration cooldown in seconds (2 weeks by default)
 (define-data-var core-migration-cooldown uint u1209600)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L94)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L94)
 
 ### admins
 
@@ -3405,7 +3405,7 @@ Admins list and helper var used to remove admins
 (define-data-var admins (list 5 principal) (list tx-sender))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L97)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L97)
 
 ### admin-helper
 
@@ -3417,7 +3417,7 @@ principal
 (define-data-var admin-helper principal tx-sender)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L98)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L98)
 
 ### last-pool-id
 
@@ -3429,7 +3429,7 @@ ID of last created pool
 (define-data-var last-pool-id uint u0)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L101)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L101)
 
 ### bin-steps
 
@@ -3441,7 +3441,7 @@ Allowed bin steps and factors
 (define-data-var bin-steps (list 1000 uint) (list ))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L104)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L104)
 
 ### minimum-bin-shares
 
@@ -3453,7 +3453,7 @@ Min shares required to mint into the active bin when creating a pool
 (define-data-var minimum-bin-shares uint u10000)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L108)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L108)
 
 ### minimum-burnt-shares
 
@@ -3465,7 +3465,7 @@ Min shares required to burn from the active bin when creating a pool
 (define-data-var minimum-burnt-shares uint u1000)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L111)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L111)
 
 ### public-pool-creation
 
@@ -3477,7 +3477,7 @@ Data var used to enable or disable pool creation by anyone
 (define-data-var public-pool-creation bool false)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L114)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L114)
 
 ### verified-pool-code-hashes
 
@@ -3489,7 +3489,7 @@ List of verified pool code hashes and helper var used to remove hashes
 (define-data-var verified-pool-code-hashes (list 10000 (buff 32)) (list ))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L117)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L117)
 
 ### verified-pool-code-hashes-helper
 
@@ -3501,7 +3501,7 @@ List of verified pool code hashes and helper var used to remove hashes
 (define-data-var verified-pool-code-hashes-helper (buff 32) 0x)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L118)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L118)
 
 ## Constants
 
@@ -3515,7 +3515,7 @@ Error constants
 (define-constant ERR_NOT_AUTHORIZED (err u1001))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L8)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L8)
 
 ### ERR_INVALID_AMOUNT
 
@@ -3527,7 +3527,7 @@ Error constants
 (define-constant ERR_INVALID_AMOUNT (err u1002))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L9)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L9)
 
 ### ERR_INVALID_PRINCIPAL
 
@@ -3539,7 +3539,7 @@ Error constants
 (define-constant ERR_INVALID_PRINCIPAL (err u1003))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L10)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L10)
 
 ### ERR_ALREADY_ADMIN
 
@@ -3551,7 +3551,7 @@ Error constants
 (define-constant ERR_ALREADY_ADMIN (err u1004))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L11)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L11)
 
 ### ERR_ADMIN_LIMIT_REACHED
 
@@ -3563,7 +3563,7 @@ Error constants
 (define-constant ERR_ADMIN_LIMIT_REACHED (err u1005))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L12)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L12)
 
 ### ERR_ADMIN_NOT_IN_LIST
 
@@ -3575,7 +3575,7 @@ Error constants
 (define-constant ERR_ADMIN_NOT_IN_LIST (err u1006))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L13)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L13)
 
 ### ERR_CANNOT_REMOVE_CONTRACT_DEPLOYER
 
@@ -3587,7 +3587,7 @@ Error constants
 (define-constant ERR_CANNOT_REMOVE_CONTRACT_DEPLOYER (err u1007))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L14)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L14)
 
 ### ERR_NO_POOL_DATA
 
@@ -3599,7 +3599,7 @@ Error constants
 (define-constant ERR_NO_POOL_DATA (err u1008))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L15)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L15)
 
 ### ERR_POOL_NOT_CREATED
 
@@ -3611,7 +3611,7 @@ Error constants
 (define-constant ERR_POOL_NOT_CREATED (err u1009))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L16)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L16)
 
 ### ERR_POOL_DISABLED
 
@@ -3623,7 +3623,7 @@ Error constants
 (define-constant ERR_POOL_DISABLED (err u1010))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L17)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L17)
 
 ### ERR_POOL_ALREADY_CREATED
 
@@ -3635,7 +3635,7 @@ Error constants
 (define-constant ERR_POOL_ALREADY_CREATED (err u1011))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L18)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L18)
 
 ### ERR_INVALID_POOL
 
@@ -3647,7 +3647,7 @@ Error constants
 (define-constant ERR_INVALID_POOL (err u1012))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L19)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L19)
 
 ### ERR_INVALID_POOL_URI
 
@@ -3659,7 +3659,7 @@ Error constants
 (define-constant ERR_INVALID_POOL_URI (err u1013))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L20)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L20)
 
 ### ERR_INVALID_POOL_SYMBOL
 
@@ -3671,7 +3671,7 @@ Error constants
 (define-constant ERR_INVALID_POOL_SYMBOL (err u1014))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L21)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L21)
 
 ### ERR_INVALID_POOL_NAME
 
@@ -3683,7 +3683,7 @@ Error constants
 (define-constant ERR_INVALID_POOL_NAME (err u1015))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L22)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L22)
 
 ### ERR_INVALID_TOKEN_DIRECTION
 
@@ -3695,7 +3695,7 @@ Error constants
 (define-constant ERR_INVALID_TOKEN_DIRECTION (err u1016))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L23)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L23)
 
 ### ERR_MATCHING_TOKEN_CONTRACTS
 
@@ -3707,7 +3707,7 @@ Error constants
 (define-constant ERR_MATCHING_TOKEN_CONTRACTS (err u1017))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L24)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L24)
 
 ### ERR_INVALID_X_TOKEN
 
@@ -3719,7 +3719,7 @@ Error constants
 (define-constant ERR_INVALID_X_TOKEN (err u1018))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L25)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L25)
 
 ### ERR_INVALID_Y_TOKEN
 
@@ -3731,7 +3731,7 @@ Error constants
 (define-constant ERR_INVALID_Y_TOKEN (err u1019))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L26)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L26)
 
 ### ERR_INVALID_X_AMOUNT
 
@@ -3743,7 +3743,7 @@ Error constants
 (define-constant ERR_INVALID_X_AMOUNT (err u1020))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L27)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L27)
 
 ### ERR_INVALID_Y_AMOUNT
 
@@ -3755,7 +3755,7 @@ Error constants
 (define-constant ERR_INVALID_Y_AMOUNT (err u1021))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L28)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L28)
 
 ### ERR_MINIMUM_X_AMOUNT
 
@@ -3767,7 +3767,7 @@ Error constants
 (define-constant ERR_MINIMUM_X_AMOUNT (err u1022))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L29)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L29)
 
 ### ERR_MINIMUM_Y_AMOUNT
 
@@ -3779,7 +3779,7 @@ Error constants
 (define-constant ERR_MINIMUM_Y_AMOUNT (err u1023))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L30)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L30)
 
 ### ERR_MINIMUM_LP_AMOUNT
 
@@ -3791,7 +3791,7 @@ Error constants
 (define-constant ERR_MINIMUM_LP_AMOUNT (err u1024))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L31)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L31)
 
 ### ERR_MAXIMUM_X_AMOUNT
 
@@ -3803,7 +3803,7 @@ Error constants
 (define-constant ERR_MAXIMUM_X_AMOUNT (err u1025))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L32)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L32)
 
 ### ERR_MAXIMUM_Y_AMOUNT
 
@@ -3815,7 +3815,7 @@ Error constants
 (define-constant ERR_MAXIMUM_Y_AMOUNT (err u1026))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L33)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L33)
 
 ### ERR_INVALID_MIN_DLP_AMOUNT
 
@@ -3827,7 +3827,7 @@ Error constants
 (define-constant ERR_INVALID_MIN_DLP_AMOUNT (err u1027))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L34)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L34)
 
 ### ERR_INVALID_LIQUIDITY_VALUE
 
@@ -3839,7 +3839,7 @@ Error constants
 (define-constant ERR_INVALID_LIQUIDITY_VALUE (err u1028))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L35)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L35)
 
 ### ERR_INVALID_FEE
 
@@ -3851,7 +3851,7 @@ Error constants
 (define-constant ERR_INVALID_FEE (err u1029))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L36)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L36)
 
 ### ERR_MAXIMUM_X_LIQUIDITY_FEE
 
@@ -3863,7 +3863,7 @@ Error constants
 (define-constant ERR_MAXIMUM_X_LIQUIDITY_FEE (err u1030))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L37)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L37)
 
 ### ERR_MAXIMUM_Y_LIQUIDITY_FEE
 
@@ -3875,7 +3875,7 @@ Error constants
 (define-constant ERR_MAXIMUM_Y_LIQUIDITY_FEE (err u1031))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L38)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L38)
 
 ### ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA
 
@@ -3887,7 +3887,7 @@ Error constants
 (define-constant ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA (err u1032))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L39)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L39)
 
 ### ERR_MINIMUM_BURN_AMOUNT
 
@@ -3899,7 +3899,7 @@ Error constants
 (define-constant ERR_MINIMUM_BURN_AMOUNT (err u1033))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L40)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L40)
 
 ### ERR_INVALID_MIN_BURNT_SHARES
 
@@ -3911,7 +3911,7 @@ Error constants
 (define-constant ERR_INVALID_MIN_BURNT_SHARES (err u1034))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L41)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L41)
 
 ### ERR_INVALID_BIN_STEP
 
@@ -3923,7 +3923,7 @@ Error constants
 (define-constant ERR_INVALID_BIN_STEP (err u1035))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L42)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L42)
 
 ### ERR_ALREADY_BIN_STEP
 
@@ -3935,7 +3935,7 @@ Error constants
 (define-constant ERR_ALREADY_BIN_STEP (err u1036))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L43)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L43)
 
 ### ERR_BIN_STEP_LIMIT_REACHED
 
@@ -3947,7 +3947,7 @@ Error constants
 (define-constant ERR_BIN_STEP_LIMIT_REACHED (err u1037))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L44)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L44)
 
 ### ERR_NO_BIN_FACTORS
 
@@ -3959,7 +3959,7 @@ Error constants
 (define-constant ERR_NO_BIN_FACTORS (err u1038))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L45)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L45)
 
 ### ERR_INVALID_BIN_FACTOR
 
@@ -3971,7 +3971,7 @@ Error constants
 (define-constant ERR_INVALID_BIN_FACTOR (err u1039))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L46)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L46)
 
 ### ERR_INVALID_FIRST_BIN_FACTOR
 
@@ -3983,7 +3983,7 @@ Error constants
 (define-constant ERR_INVALID_FIRST_BIN_FACTOR (err u1040))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L47)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L47)
 
 ### ERR_INVALID_CENTER_BIN_FACTOR
 
@@ -3995,7 +3995,7 @@ Error constants
 (define-constant ERR_INVALID_CENTER_BIN_FACTOR (err u1041))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L48)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L48)
 
 ### ERR_UNSORTED_BIN_FACTORS_LIST
 
@@ -4007,7 +4007,7 @@ Error constants
 (define-constant ERR_UNSORTED_BIN_FACTORS_LIST (err u1042))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L49)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L49)
 
 ### ERR_INVALID_BIN_FACTORS_LENGTH
 
@@ -4019,7 +4019,7 @@ Error constants
 (define-constant ERR_INVALID_BIN_FACTORS_LENGTH (err u1043))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L50)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L50)
 
 ### ERR_INVALID_INITIAL_PRICE
 
@@ -4031,7 +4031,7 @@ Error constants
 (define-constant ERR_INVALID_INITIAL_PRICE (err u1044))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L51)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L51)
 
 ### ERR_INVALID_BIN_PRICE
 
@@ -4043,7 +4043,7 @@ Error constants
 (define-constant ERR_INVALID_BIN_PRICE (err u1045))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L52)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L52)
 
 ### ERR_MATCHING_BIN_ID
 
@@ -4055,7 +4055,7 @@ Error constants
 (define-constant ERR_MATCHING_BIN_ID (err u1046))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L53)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L53)
 
 ### ERR_NOT_ACTIVE_BIN
 
@@ -4067,7 +4067,7 @@ Error constants
 (define-constant ERR_NOT_ACTIVE_BIN (err u1047))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L54)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L54)
 
 ### ERR_NO_BIN_SHARES
 
@@ -4079,7 +4079,7 @@ Error constants
 (define-constant ERR_NO_BIN_SHARES (err u1048))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L55)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L55)
 
 ### ERR_INVALID_POOL_CODE_HASH
 
@@ -4091,7 +4091,7 @@ Error constants
 (define-constant ERR_INVALID_POOL_CODE_HASH (err u1049))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L56)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L56)
 
 ### ERR_INVALID_VERIFIED_POOL_CODE_HASH
 
@@ -4103,7 +4103,7 @@ Error constants
 (define-constant ERR_INVALID_VERIFIED_POOL_CODE_HASH (err u1050))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L57)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L57)
 
 ### ERR_ALREADY_VERIFIED_POOL_CODE_HASH
 
@@ -4115,7 +4115,7 @@ Error constants
 (define-constant ERR_ALREADY_VERIFIED_POOL_CODE_HASH (err u1051))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L58)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L58)
 
 ### ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED
 
@@ -4127,7 +4127,7 @@ Error constants
 (define-constant ERR_VERIFIED_POOL_CODE_HASH_LIMIT_REACHED (err u1052))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L59)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L59)
 
 ### ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST
 
@@ -4139,7 +4139,7 @@ Error constants
 (define-constant ERR_VERIFIED_POOL_CODE_HASH_NOT_IN_LIST (err u1053))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L60)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L60)
 
 ### ERR_VARIABLE_FEES_COOLDOWN
 
@@ -4151,7 +4151,7 @@ Error constants
 (define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1054))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L61)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L61)
 
 ### ERR_VARIABLE_FEES_MANAGER_FROZEN
 
@@ -4163,7 +4163,7 @@ Error constants
 (define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1055))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L62)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L62)
 
 ### ERR_INVALID_DYNAMIC_CONFIG
 
@@ -4175,7 +4175,7 @@ Error constants
 (define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1056))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L63)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L63)
 
 ### ERR_INVALID_CORE_MIGRATION_COOLDOWN
 
@@ -4187,7 +4187,7 @@ Error constants
 (define-constant ERR_INVALID_CORE_MIGRATION_COOLDOWN (err u1057))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L64)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L64)
 
 ### ERR_CORE_MIGRATION_COOLDOWN
 
@@ -4199,7 +4199,7 @@ Error constants
 (define-constant ERR_CORE_MIGRATION_COOLDOWN (err u1058))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L65)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L65)
 
 ### ERR_CORE_ADDRESS_ALREADY_MIGRATED
 
@@ -4211,7 +4211,7 @@ Error constants
 (define-constant ERR_CORE_ADDRESS_ALREADY_MIGRATED (err u1059))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L66)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L66)
 
 ### CONTRACT_DEPLOYER
 
@@ -4223,7 +4223,7 @@ Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L69)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L69)
 
 ### BURN_ADDRESS
 
@@ -4235,7 +4235,7 @@ Address used when burning LP tokens
 (define-constant BURN_ADDRESS (unwrap-panic (principal-construct? (if is-in-mainnet 0x16 0x1a) 0x0000000000000000000000000000000000000000)))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L72)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L72)
 
 ### NUM_OF_BINS
 
@@ -4247,7 +4247,7 @@ Number of bins per pool and center bin ID as unsigned ints
 (define-constant NUM_OF_BINS u1001)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L75)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L75)
 
 ### CENTER_BIN_ID
 
@@ -4259,7 +4259,7 @@ Number of bins per pool and center bin ID as unsigned ints
 (define-constant CENTER_BIN_ID (/ NUM_OF_BINS u2))
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L76)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L76)
 
 ### MIN_BIN_ID
 
@@ -4271,7 +4271,7 @@ Min and max bin IDs as signed ints
 (define-constant MIN_BIN_ID -500)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L79)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L79)
 
 ### MAX_BIN_ID
 
@@ -4283,7 +4283,7 @@ Min and max bin IDs as signed ints
 (define-constant MAX_BIN_ID 500)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L80)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L80)
 
 ### FEE_SCALE_BPS
 
@@ -4295,7 +4295,7 @@ Max BPS
 (define-constant FEE_SCALE_BPS u10000)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L83)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L83)
 
 ### PRICE_SCALE_BPS
 
@@ -4307,7 +4307,7 @@ Max BPS
 (define-constant PRICE_SCALE_BPS u100000000)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L84)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L84)
 
 ### MIN_CORE_MIGRATION_COOLDOWN
 
@@ -4319,5 +4319,5 @@ Min core migration cooldown in seconds (1 week min)
 (define-constant MIN_CORE_MIGRATION_COOLDOWN u604800)
 ```
 
-[View in file](../contracts/dlmm-core-v-1-1.clar#L87)
+[View in file](../clarity/contracts/dlmm-core-v-1-1.clar#L87)
   

@@ -116,6 +116,12 @@ describe('DLMM Core Swap Functions', () => {
     it('should cap x-amount to maximum allowed when amount exceeds maximum', async () => {
       const binId = 0n; // Active bin
       const xAmount = 999999999999n; // Very large amount that exceeds maximum
+      const poolId = 1n;
+      
+      // Capture state before swap
+      const beforeBin = captureBinState(binId);
+      const beforeUser = captureUserState(alice);
+      const beforeFees = captureProtocolFeesState(poolId);
       
       // The contract doesn't error on large amounts - it caps them to the maximum
       // This test verifies the swap succeeds with the capped amount
@@ -127,12 +133,33 @@ describe('DLMM Core Swap Functions', () => {
         xAmount
       ), alice);
       
+      // Capture state after swap
+      const afterBin = captureBinState(binId);
+      const afterUser = captureUserState(alice);
+      const afterFees = captureProtocolFeesState(poolId);
       const swapResult = cvToValue(response.result);
+      
       // Verify the swap succeeded (amount was capped, not errored)
       expect(swapResult.out).toBeGreaterThan(0n);
       expect(swapResult.in).toBeGreaterThan(0n);
       // The in amount should be less than or equal to the requested amount (capped)
       expect(swapResult.in).toBeLessThanOrEqual(xAmount);
+      
+      // Check invariants (use actual swapped amount, not requested amount)
+      const invariantCheck = checkSwapXForYInvariants(
+        beforeBin,
+        afterBin,
+        beforeUser,
+        afterUser,
+        beforeFees,
+        afterFees,
+        swapResult.in, // Use actual swapped amount, not requested xAmount
+        swapResult
+      );
+      
+      if (!invariantCheck.passed) {
+        throw new Error(`Invariant violations: ${invariantCheck.errors.join('; ')}`);
+      }
     });
 
     it('should handle zero x-amount', async () => {
@@ -153,6 +180,12 @@ describe('DLMM Core Swap Functions', () => {
     it('should handle edge case with minimum swap amount', async () => {
       const binId = 0n;
       const xAmount = 1n; // Minimum amount
+      const poolId = 1n;
+      
+      // Capture state before swap
+      const beforeBin = captureBinState(binId);
+      const beforeUser = captureUserState(alice);
+      const beforeFees = captureProtocolFeesState(poolId);
       
       const response = txOk(dlmmCore.swapXForY(
         sbtcUsdcPool.identifier,
@@ -162,7 +195,30 @@ describe('DLMM Core Swap Functions', () => {
         xAmount
       ), alice);
       
+      // Capture state after swap
+      const afterBin = captureBinState(binId);
+      const afterUser = captureUserState(alice);
+      const afterFees = captureProtocolFeesState(poolId);
+      const swapResult = cvToValue(response.result);
+      
       expect(response).toBeDefined();
+      expect(swapResult.out).toBeGreaterThan(0n);
+      
+      // Check invariants
+      const invariantCheck = checkSwapXForYInvariants(
+        beforeBin,
+        afterBin,
+        beforeUser,
+        afterUser,
+        beforeFees,
+        afterFees,
+        swapResult.in, // Use actual swapped amount
+        swapResult
+      );
+      
+      if (!invariantCheck.passed) {
+        throw new Error(`Invariant violations: ${invariantCheck.errors.join('; ')}`);
+      }
     });
 
     it('should handle swaps in bins with no liquidity', async () => {
@@ -251,6 +307,12 @@ describe('DLMM Core Swap Functions', () => {
     it('should cap y-amount to maximum allowed when amount exceeds maximum', async () => {
       const binId = 0n; // Active bin
       const yAmount = 999999999999n; // Very large amount that exceeds maximum
+      const poolId = 1n;
+      
+      // Capture state before swap
+      const beforeBin = captureBinState(binId);
+      const beforeUser = captureUserState(alice);
+      const beforeFees = captureProtocolFeesState(poolId);
       
       // The contract doesn't error on large amounts - it caps them to the maximum
       // This test verifies the swap succeeds with the capped amount
@@ -262,12 +324,33 @@ describe('DLMM Core Swap Functions', () => {
         yAmount
       ), alice);
       
+      // Capture state after swap
+      const afterBin = captureBinState(binId);
+      const afterUser = captureUserState(alice);
+      const afterFees = captureProtocolFeesState(poolId);
       const swapResult = cvToValue(response.result);
+      
       // Verify the swap succeeded (amount was capped, not errored)
       expect(swapResult.out).toBeGreaterThan(0n);
       expect(swapResult.in).toBeGreaterThan(0n);
       // The in amount should be less than or equal to the requested amount (capped)
       expect(swapResult.in).toBeLessThanOrEqual(yAmount);
+      
+      // Check invariants (use actual swapped amount, not requested amount)
+      const invariantCheck = checkSwapYForXInvariants(
+        beforeBin,
+        afterBin,
+        beforeUser,
+        afterUser,
+        beforeFees,
+        afterFees,
+        swapResult.in, // Use actual swapped amount, not requested yAmount
+        swapResult
+      );
+      
+      if (!invariantCheck.passed) {
+        throw new Error(`Invariant violations: ${invariantCheck.errors.join('; ')}`);
+      }
     });
 
     it('should handle swaps in bins with no liquidity', async () => {
