@@ -1,7 +1,3 @@
-# DLMM Smart Contract Testing Suite
-
-Professional fuzzing and property-based testing suite for DLMM (Dynamic Liquidity Market Maker) smart contracts on Stacks/Clarity.
-
 ## Overview
 
 DLMM is an orderbook style AMM for concentrated liquidity. This repository provides comprehensive fuzzing targets, invariant checks, and property-based tests to validate contract correctness through randomized transaction sequences, invariant verification, and quote engine validation.
