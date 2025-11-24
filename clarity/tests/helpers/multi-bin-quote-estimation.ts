@@ -8,7 +8,7 @@
  * Reference: pricing.py lines 800-902 (bin estimation), 337-486 (bin traversal)
  */
 
-import { calculateBinSwap, BinData, SwapCalculationResult } from './swap-calculations';
+import { calculateBinSwap, calculateBinSwapFloat, BinData, SwapCalculationResult } from './swap-calculations';
 
 export interface BinWithPrice {
   binId: bigint;
@@ -24,6 +24,17 @@ export interface MultiBinSwapResult {
     in: bigint;
     out: bigint;
     fees: bigint;
+  }>;
+}
+
+export interface MultiBinSwapResultFloat {
+  totalOut: number;
+  totalFees: number;
+  executionPath: Array<{
+    binId: bigint;
+    in: number;
+    out: number;
+    fees: number;
   }>;
 }
 
@@ -321,6 +332,69 @@ export function calculateMultiBinSwap(
     
     // Only process if we have some effective input and output
     if (result.in_effective > 0n && result.out_this > 0n) {
+      // Add to execution path
+      executionPath.push({
+        binId: bin.binId,
+        in: result.in_effective,
+        out: result.out_this,
+        fees: result.fee_amount,
+      });
+      
+      // Accumulate fees and amounts
+      totalFees += result.fee_amount;
+      totalOut += result.out_this;
+      remaining -= result.in_effective;
+    }
+  }
+  
+  return {
+    totalOut,
+    totalFees,
+    executionPath,
+  };
+}
+
+/**
+ * Calculate multi-bin swap by traversing bins sequentially using float math.
+ * 
+ * This is the float-based version for comparison with the quote engine.
+ * Mirrors calculateMultiBinSwap but uses float arithmetic.
+ * 
+ * @param bins - Array of bins with prices, sorted in correct order
+ * @param amountIn - Amount to swap (bigint, will be converted to number)
+ * @param feeRateBPS - Fee rate in basis points (bigint, will be converted to number)
+ * @param swapForY - True for X→Y swap, False for Y→X swap
+ * @returns Multi-bin swap result with total output, fees, and execution path (float)
+ */
+export function calculateMultiBinSwapFloat(
+  bins: BinWithPrice[],
+  amountIn: bigint,
+  feeRateBPS: bigint,
+  swapForY: boolean
+): MultiBinSwapResultFloat {
+  let remaining = Number(amountIn);
+  let totalOut = 0;
+  let totalFees = 0;
+  const executionPath: Array<{ binId: bigint; in: number; out: number; fees: number }> = [];
+  
+  // Traverse bins sequentially
+  for (const bin of bins) {
+    // Check if trade is complete
+    if (remaining <= 0) {
+      break;
+    }
+    
+    // Calculate swap for this bin using float math
+    const result = calculateBinSwapFloat(
+      bin.reserves,
+      Number(bin.price),
+      remaining,
+      Number(feeRateBPS),
+      swapForY
+    );
+    
+    // Only process if we have some effective input and output
+    if (result.in_effective > 0 && result.out_this > 0) {
       // Add to execution path
       executionPath.push({
         binId: bin.binId,

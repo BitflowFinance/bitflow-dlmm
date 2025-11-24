@@ -42,6 +42,7 @@ import {
   getSampleBins,
   discoverBinsForSwap,
   calculateMultiBinSwap,
+  calculateMultiBinSwapFloat,
   PoolState as MultiBinPoolState,
 } from './helpers/multi-bin-quote-estimation';
 
@@ -244,7 +245,8 @@ class ValidationLogger {
     
     fs.writeFileSync(mdPath, md);
     
-    console.log(`\n📊 Validation results written to: ${this.logDir}`);
+    // Don't print log location - it's in the file, user can check if needed
+    // console.log(`\n📊 Validation results written to: ${this.logDir}`);
   }
 }
 
@@ -435,7 +437,6 @@ async function executeMultiBinSwap(
   user: string
 ): Promise<{ swappedIn: bigint; swappedOut: bigint }> {
   if (direction === 'x-for-y') {
-    txOk(mockSbtcToken.transfer(amount, user, dlmmSwapRouter.identifier, null), user);
     const result = txOk(
       dlmmSwapRouter.swapXForYSimpleMulti(
         sbtcUsdcPool.identifier,
@@ -448,7 +449,6 @@ async function executeMultiBinSwap(
     );
     return { swappedIn: result.value.in, swappedOut: result.value.out };
   } else {
-    txOk(mockUsdcToken.transfer(amount, user, dlmmSwapRouter.identifier, null), user);
     const result = txOk(
       dlmmSwapRouter.swapYForXSimpleMulti(
         sbtcUsdcPool.identifier,
@@ -528,15 +528,24 @@ async function validateMultiBinSwap(
     getBinBalances
   );
 
-  const quoteResult = calculateMultiBinSwap(
+  // Calculate expected output using quote engine logic (integer math)
+  const integerResult = calculateMultiBinSwap(
     discoveredBins,
     actualSwappedIn > 0n ? actualSwappedIn : inputAmount,
     feeRateBPS,
     swapForY
   );
 
-  const expectedInteger = quoteResult.totalOut;
-  const expectedFloat = expectedInteger;
+  // Calculate expected output using quote engine logic (float math)
+  const floatResult = calculateMultiBinSwapFloat(
+    discoveredBins,
+    actualSwappedIn > 0n ? actualSwappedIn : inputAmount,
+    feeRateBPS,
+    swapForY
+  );
+
+  const expectedInteger = integerResult.totalOut;
+  const expectedFloat = BigInt(Math.floor(floatResult.totalOut));
   const integerMatch = expectedInteger === actualSwappedOut;
   const floatMatch = expectedFloat === actualSwappedOut;
   const exploitDetected = actualSwappedOut > expectedFloat;
@@ -660,69 +669,67 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
       ttyFd = null;
     }
 
-    let lastPrintedPercent = -1; // Track last printed percentage for 1% increments
     const startTime = Date.now();
+
+    // Helper function to write progress stats - use TTY if available, otherwise stderr
+    const writeProgress = () => {
+      const percent = ((txNumber / NUM_TRANSACTIONS) * 100).toFixed(1);
+      
+      // Build progress line with stats
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const elapsedSeconds = (Date.now() - startTime) / 1000;
+      const rate = txNumber > 1 && elapsedSeconds > 0 
+        ? ((txNumber - 1) / elapsedSeconds).toFixed(1)
+        : '0.0';
+      const successRate = logger.stats.totalSwaps > 0 
+        ? ((logger.stats.successfulSwaps / logger.stats.totalSwaps) * 100).toFixed(1)
+        : '0.0';
+      const integerMatchRate = logger.stats.totalSwaps > 0
+        ? ((logger.stats.integerMatches / logger.stats.totalSwaps) * 100).toFixed(1)
+        : '0.0';
+      const floatMatchRate = logger.stats.totalSwaps > 0
+        ? ((logger.stats.floatMatches / logger.stats.totalSwaps) * 100).toFixed(1)
+        : '0.0';
+      const exploitCount = logger.stats.exploitsDetected;
+      
+      let progressLine = `${percent}% (${txNumber}/${NUM_TRANSACTIONS}) | ✅ ${successRate}% | 🔢 ${integerMatchRate}% | 🔷 ${floatMatchRate}% | 🚨 ${exploitCount} | ⚡ ${rate} tx/s | ⏱️  ${elapsed}s`;
+      
+      // Calculate ETA
+      if (txNumber > 1 && parseFloat(rate) > 0) {
+        const remaining = NUM_TRANSACTIONS - txNumber;
+        const etaSeconds = remaining / parseFloat(rate);
+        const etaMin = Math.floor(etaSeconds / 60);
+        const etaSec = Math.floor(etaSeconds % 60);
+        progressLine += ` | ⏳ ETA: ~${etaMin}m ${etaSec}s`;
+      }
+      
+      // Write to TTY if available (bypasses Vitest output capture), otherwise stderr
+      const output = progressLine + '\n';
+      if (ttyFd !== null) {
+        try {
+          fs.writeSync(ttyFd, output);
+        } catch (e) {
+          // Fallback to stderr if TTY write fails
+          fs.writeSync(2, output);
+        }
+      } else {
+        // Write to stderr if /dev/tty not available
+        fs.writeSync(2, output);
+      }
+    };
 
     for (let i = 0; i < NUM_TRANSACTIONS; i++) {
       txNumber++;
       
-      // Progress indicator - update every 1% of total transactions
-      // CRITICAL: Update BEFORE async work to ensure real-time display
+      // Write progress - update every 1% or every 10 transactions, whichever is more frequent
       const currentPercent = Math.floor((txNumber / NUM_TRANSACTIONS) * 100);
       const shouldUpdate = txNumber === 1 || 
                            txNumber === NUM_TRANSACTIONS || 
-                           currentPercent !== lastPrintedPercent;
+                           txNumber % 10 === 0 || 
+                           currentPercent !== Math.floor(((txNumber - 1) / NUM_TRANSACTIONS) * 100);
       
       if (shouldUpdate) {
-        lastPrintedPercent = currentPercent;
-        const percent = ((txNumber / NUM_TRANSACTIONS) * 100).toFixed(1);
-        const barWidth = 40;
-        const filled = Math.floor((txNumber / NUM_TRANSACTIONS) * barWidth);
-        const empty = barWidth - filled;
-        const bar = '█'.repeat(filled) + '░'.repeat(empty);
-        
-        // Build progress line with stats
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        const elapsedSeconds = (Date.now() - startTime) / 1000;
-        const rate = txNumber > 1 && elapsedSeconds > 0 
-          ? ((txNumber - 1) / elapsedSeconds).toFixed(1)
-          : '0.0';
-        const successRate = logger.stats.totalSwaps > 0 
-          ? ((logger.stats.successfulSwaps / logger.stats.totalSwaps) * 100).toFixed(1)
-          : '0.0';
-        const integerMatchRate = logger.stats.totalSwaps > 0
-          ? ((logger.stats.integerMatches / logger.stats.totalSwaps) * 100).toFixed(1)
-          : '0.0';
-        const floatMatchRate = logger.stats.totalSwaps > 0
-          ? ((logger.stats.floatMatches / logger.stats.totalSwaps) * 100).toFixed(1)
-          : '0.0';
-        const exploitCount = logger.stats.exploitsDetected;
-        
-        let progressLine = `📊 [${bar}] ${percent}% (${txNumber}/${NUM_TRANSACTIONS}) | ✅ ${successRate}% | 🔢 ${integerMatchRate}% | 🔷 ${floatMatchRate}% | 🚨 ${exploitCount} | ⚡ ${rate} tx/s | ⏱️  ${elapsed}s`;
-        
-        // Calculate ETA
-        if (txNumber > 1 && parseFloat(rate) > 0) {
-          const remaining = NUM_TRANSACTIONS - txNumber;
-          const etaSeconds = remaining / parseFloat(rate);
-          const etaMin = Math.floor(etaSeconds / 60);
-          const etaSec = Math.floor(etaSeconds % 60);
-          progressLine += ` | ⏳ ETA: ~${etaMin}m ${etaSec}s`;
-        }
-        
-        // Write to TTY with \r to overwrite same line
-        // CRITICAL: Write BEFORE any async operations (await) to ensure immediate flush
-        const lineEnd = txNumber === NUM_TRANSACTIONS ? '\n' : '\r';
-        if (ttyFd !== null) {
-          try {
-            fs.writeSync(ttyFd, progressLine + lineEnd);
-          } catch (e) {
-            // Fallback to stderr if TTY write fails
-            fs.writeSync(2, progressLine + lineEnd);
-          }
-        } else {
-          // Fallback to stderr if /dev/tty not available
-          fs.writeSync(2, progressLine + lineEnd);
-        }
+        writeProgress();
       }
       
       // Determine if this should be a multi-bin swap
@@ -837,12 +844,20 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
         // Fail immediately on exploit detection
         if (validation.exploitDetected) {
           exploitCount++;
-          console.error(`\n🚨 EXPLOIT DETECTED at transaction ${txNumber}:`);
-          console.error(`   Direction: ${direction}`);
-          console.error(`   Input: ${swapAmount}`);
-          console.error(`   Contract returned: ${actualSwappedOut}`);
-          console.error(`   Quote engine max: ${validation.expectedFloat}`);
-          console.error(`   Excess: ${actualSwappedOut - validation.expectedFloat}`);
+          // Write exploit message, then immediately re-write progress bar to keep it visible
+          const exploitMsg = `\n🚨 EXPLOIT DETECTED at transaction ${txNumber}:\n   Direction: ${direction}\n   Input: ${swapAmount}\n   Contract returned: ${actualSwappedOut}\n   Quote engine max: ${validation.expectedFloat}\n   Excess: ${actualSwappedOut - validation.expectedFloat}\n`;
+          if (ttyFd !== null) {
+            try {
+              fs.writeSync(ttyFd, exploitMsg);
+            } catch (e) {
+              console.error(exploitMsg);
+            }
+          } else {
+            console.error(exploitMsg);
+          }
+          
+          // Re-write progress immediately after exploit message
+          writeProgress();
           
           // Don't fail the test immediately - collect all exploits first
           // expect(validation.exploitDetected).toBe(false);
@@ -878,15 +893,20 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
       }
     }
     
-    // Write results
+    // Write results (silently to file)
     logger.writeResults();
     
-    // Final assertions
-    console.log(`\n✅ Validation complete:`);
-    console.log(`   Total swaps: ${logger.stats.totalSwaps}`);
-    console.log(`   Integer matches: ${logger.stats.integerMatches}`);
-    console.log(`   Float matches: ${logger.stats.floatMatches}`);
-    console.log(`   Exploits detected: ${exploitCount}\n`);
+    // Final summary - write to TTY so it's visible
+    const summary = `\n✅ Validation complete:\n   Total swaps: ${logger.stats.totalSwaps}\n   Integer matches: ${logger.stats.integerMatches}\n   Float matches: ${logger.stats.floatMatches}\n   Exploits detected: ${exploitCount}\n`;
+    if (ttyFd !== null) {
+      try {
+        fs.writeSync(ttyFd, summary);
+      } catch (e) {
+        console.log(summary);
+      }
+    } else {
+      console.log(summary);
+    }
     
     // Fail if exploits were detected
     if (exploitCount > 0) {
