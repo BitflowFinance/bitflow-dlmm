@@ -1,7 +1,3 @@
-/**
- * Quote Engine Validation Fuzz Test
- */
-
 import {
   alice,
   bob,
@@ -35,13 +31,6 @@ import {
   calculateMultiBinSwapFloat,
   PoolState as MultiBinPoolState,
 } from './harnesses/multi-bin-quote-estimation';
-
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-type Direction = 'x-for-y' | 'y-for-x';
-type SwapType = 'single-bin' | 'multi-bin';
 
 interface PoolState {
   activeBinId: bigint;
@@ -100,10 +89,6 @@ interface PoolData {
   yVariableFee?: bigint;
 }
 
-// ============================================================================
-// Configuration & Constants
-// ============================================================================
-
 class TestConfig {
   static readonly PRICE_SCALE_BPS = 100000000n;
   static readonly MIN_SWAP_AMOUNT = 100n;
@@ -128,14 +113,9 @@ class TestConfig {
   static readonly MIN_INTEGER_MATCH_RATE = 90;
   static readonly MIN_FLOAT_MATCH_RATE = 80;
   
-  // Initial balances (CRITICAL: must match original values)
-  static readonly INITIAL_BTC_BALANCE = 10000000000n; // 100 BTC
-  static readonly INITIAL_USDC_BALANCE = 1000000000000n; // 10M USDC
+  static readonly INITIAL_BTC_BALANCE = 10000000000n; // 100
+  static readonly INITIAL_USDC_BALANCE = 1000000000000n; // 10M
 }
-
-// ============================================================================
-// Seeded Random Number Generator
-// ============================================================================
 
 class SeededRandom {
   private seed: number;
@@ -154,14 +134,7 @@ class SeededRandom {
   }
 }
 
-// ============================================================================
-// Pool State Manager
-// ============================================================================
-
 class PoolStateManager {
-  /**
-   * Capture pool state for a single bin (active bin only).
-   */
   static async captureSingleBin(): Promise<PoolState> {
     const activeBinId = rovOk(sbtcUsdcPool.getActiveBinId());
     const binBalances = new Map<bigint, { xBalance: bigint; yBalance: bigint }>();
@@ -206,10 +179,6 @@ class PoolStateManager {
     return { activeBinId, binBalances };
   }
 }
-
-// ============================================================================
-// Swap Amount Generator
-// ============================================================================
 
 class SwapAmountGenerator {
   /**
@@ -256,9 +225,6 @@ class SwapAmountGenerator {
     }
   }
 
-  /**
-   * Generate a random swap amount that will require multiple bins.
-   */
   static generateMultiBin(
     rng: SeededRandom,
     poolState: PoolState,
@@ -314,10 +280,6 @@ class SwapAmountGenerator {
     return amount < TestConfig.MIN_SWAP_AMOUNT ? null : amount;
   }
 }
-
-// ============================================================================
-// Swap Executor
-// ============================================================================
 
 class SwapExecutor {
   /**
@@ -386,10 +348,6 @@ class SwapExecutor {
   }
 }
 
-// ============================================================================
-// Swap Validator
-// ============================================================================
-
 class SwapValidator {
   /**
    * Validate a single-bin swap against the quote engine.
@@ -414,9 +372,6 @@ class SwapValidator {
       reserve_y: poolState.binBalances.get(binId)?.yBalance || 0n,
     };
 
-    // CRITICAL: Use actualSwappedIn (the capped input) not inputAmount, because the contract
-    // may cap the input at max_x_amount or max_y_amount. We need to compare what the contract
-    // actually swapped, not what was requested.
     const swapForY = direction === 'x-for-y';
     const effectiveInput = actualSwappedIn > 0n ? actualSwappedIn : inputAmount;
     
@@ -544,10 +499,6 @@ class SwapValidator {
   }
 }
 
-// ============================================================================
-// Progress Reporter
-// ============================================================================
-
 class ProgressReporter {
   private ttyFd: number | null = null;
   private startTime: number;
@@ -593,12 +544,12 @@ class ProgressReporter {
   }
 
   writebug(txNumber: number, direction: Direction, swapAmount: bigint, actualOut: bigint, expectedFloat: bigint): void {
-    const bugMsg = `\n🚨 bug DETECTED at transaction ${txNumber}:\n   Direction: ${direction}\n   Input: ${swapAmount}\n   Contract returned: ${actualOut}\n   Quote engine max: ${expectedFloat}\n   Excess: ${actualOut - expectedFloat}\n`;
+    const bugMsg = `\n bug DETECTED at transaction ${txNumber}:\n   Direction: ${direction}\n   Input: ${swapAmount}\n   Contract returned: ${actualOut}\n   Quote engine max: ${expectedFloat}\n   Excess: ${actualOut - expectedFloat}\n`;
     this.write(bugMsg);
   }
 
   writeSummary(stats: ValidationStats): void {
-    const summary = `\n✅ Validation complete:\n   Total swaps: ${stats.totalSwaps}\n   Integer matches: ${stats.integerMatches}\n   Float matches: ${stats.floatMatches}\n   bugs detected: ${stats.bugsDetected}\n`;
+    const summary = `\n Validation complete:\n   Total swaps: ${stats.totalSwaps}\n   Integer matches: ${stats.integerMatches}\n   Float matches: ${stats.floatMatches}\n   bugs detected: ${stats.bugsDetected}\n`;
     this.write(summary);
   }
 
@@ -624,10 +575,6 @@ class ProgressReporter {
     }
   }
 }
-
-// ============================================================================
-// Validation Logger
-// ============================================================================
 
 class ValidationLogger {
   private logDir: string;
@@ -768,10 +715,6 @@ class ValidationLogger {
   }
 }
 
-// ============================================================================
-// Test Orchestrator
-// ============================================================================
-
 class TestOrchestrator {
   private logger: ValidationLogger;
   private reporter: ProgressReporter;
@@ -890,10 +833,6 @@ class TestOrchestrator {
   }
 }
 
-// ============================================================================
-// Main Test
-// ============================================================================
-
 describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
   let logger: ValidationLogger;
   let rng: SeededRandom;
@@ -924,7 +863,7 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
     let txNumber = 0;
     let lastPercent = -1;
 
-    console.log(`\n🔍 Starting Quote Engine Validation Fuzz Test`);
+    console.log(`\n Starting Quote Engine Validation Fuzz Test`);
     console.log(`   Transactions: ${NUM_TRANSACTIONS}`);
     console.log(`   Random Seed: ${RANDOM_SEED}`);
     console.log(`   Multi-Bin Mode: ${MULTI_BIN_MODE ? 'ENABLED' : 'DISABLED'}\n`);

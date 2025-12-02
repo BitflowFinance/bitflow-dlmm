@@ -15,12 +15,6 @@ import { txOk, rovOk } from '@clarigen/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
-type Direction = 'x-for-y' | 'y-for-x';
-
 interface BinBalances {
   xBalance: bigint;
   yBalance: bigint;
@@ -37,10 +31,6 @@ interface ErrorRecord {
   error: string;
   params: any;
 }
-
-// ============================================================================
-// Configuration & Constants
-// ============================================================================
 
 class TestConfig {
   // Bin range
@@ -77,10 +67,6 @@ class TestConfig {
 
   static readonly TIMEOUT = 600000;
 }
-
-// ============================================================================
-// Pool State Manager
-// ============================================================================
 
 class PoolStateManager {
   /**
@@ -121,10 +107,6 @@ class PoolStateManager {
     }
   }
 }
-
-// ============================================================================
-// Amount Generator
-// ============================================================================
 
 class AmountGenerator {
   /**
@@ -197,10 +179,6 @@ class AmountGenerator {
     return amount < TestConfig.MIN_MOVE_AMOUNT ? null : amount;
   }
 }
-
-// ============================================================================
-// Operation Executor
-// ============================================================================
 
 class OperationExecutor {
   /**
@@ -276,10 +254,6 @@ class OperationExecutor {
   }
 }
 
-// ============================================================================
-// Traversal Logger
-// ============================================================================
-
 class TraversalLogger {
   private logFile: string;
   private logs: string[] = [];
@@ -329,10 +303,6 @@ class TraversalLogger {
     this.log(`\nLog saved to: ${this.logFile}`);
   }
 }
-
-// ============================================================================
-// Bin Operations Handler
-// ============================================================================
 
 class BinOperationsHandler {
   /**
@@ -456,10 +426,6 @@ class BinOperationsHandler {
   }
 }
 
-// ============================================================================
-// Bin Traversal Handler
-// ============================================================================
-
 class BinTraversalHandler {
   /**
    * Swap to cross bins and reach target bin
@@ -537,10 +503,6 @@ class BinTraversalHandler {
   }
 }
 
-// ============================================================================
-// Test Orchestrator
-// ============================================================================
-
 class TestOrchestrator {
   private logger: TraversalLogger;
 
@@ -607,10 +569,6 @@ class TestOrchestrator {
     }
   }
 }
-
-// ============================================================================
-// Test Suite
-// ============================================================================
 
 describe('DLMM Core Bin Traversal Fuzz Test', () => {
   let logger: TraversalLogger;

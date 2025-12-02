@@ -12,10 +12,6 @@ import {
 import { describe, it, expect, beforeEach } from 'vitest';
 import { rovOk, txOk } from '@clarigen/test';
 
-// ============================================================================
-// Type Definitions
-// ============================================================================
-
 interface PoolState {
   poolCreated: boolean;
   activeBinId: bigint;
@@ -26,10 +22,6 @@ interface OperationStats {
   successfulOps: number;
   failedOps: number;
 }
-
-// ============================================================================
-// Configuration & Constants
-// ============================================================================
 
 class TestConfig {
   // Test traversal parameters
@@ -80,10 +72,6 @@ class TestConfig {
   static readonly TIMEOUT = 600000;
 }
 
-// ============================================================================
-// Seeded Random Number Generator
-// ============================================================================
-
 class SeededRandom {
   private seed: number;
 
@@ -110,10 +98,6 @@ class SeededRandom {
     return this.next() > 0.5;
   }
 }
-
-// ============================================================================
-// Pool State Manager
-// ============================================================================
 
 class PoolStateManager {
   /**
@@ -158,10 +142,6 @@ class PoolStateManager {
     return rovOk(sbtcUsdcPool.getActiveBinId());
   }
 }
-
-// ============================================================================
-// Operation Executor
-// ============================================================================
 
 class OperationExecutor {
   /**
@@ -353,10 +333,6 @@ class OperationExecutor {
   }
 }
 
-// ============================================================================
-// Test Orchestrator
-// ============================================================================
-
 class TestOrchestrator {
   private rng: SeededRandom;
   private stats: OperationStats;
@@ -423,10 +399,6 @@ class TestOrchestrator {
   }
 }
 
-// ============================================================================
-// Invariant Validator
-// ============================================================================
-
 class InvariantValidator {
   /**
    * Validate final pool state and invariants
@@ -455,10 +427,6 @@ class InvariantValidator {
     expect(usdcBalance).toBeGreaterThanOrEqual(0n);
   }
 }
-
-// ============================================================================
-// Test Suite
-// ============================================================================
 
 describe('DLMM Core Comprehensive Fuzz Test', () => {
   

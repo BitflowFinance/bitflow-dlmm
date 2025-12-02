@@ -1,16 +1,3 @@
-/**
- * Arithmetic Edge Cases Fuzz Test
- * 
- * Fuzz tests that generate biased random values toward edge cases:
- * - Very small values (near 1)
- * - Very large values (near u128 max)
- * - Boundary bin IDs
- * - Values that might cause division by zero
- * 
- * Verifies that all operations either succeed or fail gracefully
- * with expected error codes (no unhandled panics).
- */
-
 import {
   alice,
   bob,
@@ -39,10 +26,6 @@ import {
 const MIN_BIN_ID = -500n;
 const MAX_BIN_ID = 500n;
 const U128_MAX = 2n ** 128n - 1n;
-
-// ============================================================================
-// Seeded Random Number Generator
-// ============================================================================
 
 class SeededRandom {
   private seed: number;
@@ -91,10 +74,6 @@ class SeededRandom {
   }
 }
 
-// ============================================================================
-// Logger
-// ============================================================================
-
 class EdgeCaseLogger {
   private errors: Array<{
     txNumber: number;
@@ -130,10 +109,6 @@ class EdgeCaseLogger {
   }
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
 function getActiveBinId(): bigint {
   return rovOk(sbtcUsdcPool.getActiveBinId());
 }
@@ -167,10 +142,6 @@ function generateBinId(rng: SeededRandom): bigint {
     return rng.nextBigInt(MIN_BIN_ID, MAX_BIN_ID);
   }
 }
-
-// ============================================================================
-// Test
-// ============================================================================
 
 describe('Arithmetic Edge Cases Fuzz Test', () => {
   

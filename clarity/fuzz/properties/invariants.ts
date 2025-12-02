@@ -1,13 +1,5 @@
-/**
- * Invariant checking functions for DLMM Core functions
- * 
- * These functions verify that critical properties are maintained before and after
- * each operation. Based on CA recommendations to ensure contract correctness.
- */
-
 import { dlmmCore, sbtcUsdcPool, mockSbtcToken, mockUsdcToken } from "../../tests/helpers/helpers";
 import { rovOk } from '@clarigen/test';
-import { cvToValue } from '@clarigen/core';
 
 export interface BinState {
   binId: bigint;
