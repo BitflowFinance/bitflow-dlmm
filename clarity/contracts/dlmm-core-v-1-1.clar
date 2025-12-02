@@ -246,7 +246,7 @@
 
 ;; Get liquidity value when adding liquidity to a bin by rebasing x-amount to y-units
 (define-read-only (get-liquidity-value (x-amount uint) (y-amount uint) (bin-price uint))
-  (ok (+ (* bin-price x-amount) y-amount))
+  (ok (+ (* bin-price x-amount) (* y-amount PRICE_SCALE_BPS)))
 )
 
 ;; Get pool verification status
@@ -1101,11 +1101,8 @@
     ;; Get initial price at active bin
     (initial-price (/ (* y-amount-active-bin PRICE_SCALE_BPS) x-amount-active-bin))
 
-    ;; Scale up y-amount-active-bin
-    (y-amount-active-bin-scaled (* y-amount-active-bin PRICE_SCALE_BPS))
-
     ;; Get liquidity value and calculate dlp
-    (add-liquidity-value (unwrap! (get-liquidity-value x-amount-active-bin y-amount-active-bin-scaled initial-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (add-liquidity-value (unwrap! (get-liquidity-value x-amount-active-bin y-amount-active-bin initial-price) ERR_INVALID_LIQUIDITY_VALUE))
     (dlp (sqrti add-liquidity-value))
     (caller tx-sender)
   )
@@ -1556,13 +1553,9 @@
     ;; Get price at bin
     (bin-price (unwrap! (get-bin-price initial-price bin-step bin-id) ERR_INVALID_BIN_PRICE))
 
-    ;; Scale up y-amount and y-balance
-    (y-amount-scaled (* y-amount PRICE_SCALE_BPS))
-    (y-balance-scaled (* y-balance PRICE_SCALE_BPS))
-
     ;; Get current liquidity values and calculate dlp without fees
-    (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (bin-liquidity-value (unwrap! (get-liquidity-value x-balance y-balance-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (bin-liquidity-value (unwrap! (get-liquidity-value x-balance y-balance bin-price) ERR_INVALID_LIQUIDITY_VALUE))
     (dlp (if (or (is-eq bin-shares u0) (is-eq bin-liquidity-value u0))
              (sqrti add-liquidity-value)
              (/ (* add-liquidity-value bin-shares) bin-liquidity-value)))
@@ -1606,15 +1599,14 @@
     ;; Calculate final x and y amounts post fees
     (x-amount-post-fees (- x-amount x-amount-fees-liquidity))
     (y-amount-post-fees (- y-amount y-amount-fees-liquidity))
-    (y-amount-post-fees-scaled (* y-amount-post-fees PRICE_SCALE_BPS))
 
     ;; Calculate bin balances post fees
     (x-balance-post-fees (+ x-balance x-amount-fees-liquidity))
-    (y-balance-post-fees-scaled (* (+ y-balance y-amount-fees-liquidity) PRICE_SCALE_BPS))
+    (y-balance-post-fees (+ y-balance y-amount-fees-liquidity))
 
     ;; Get final liquidity value and calculate dlp post fees
-    (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (bin-liquidity-value-post-fees (unwrap! (get-liquidity-value x-balance-post-fees y-balance-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (bin-liquidity-value-post-fees (unwrap! (get-liquidity-value x-balance-post-fees y-balance-post-fees bin-price) ERR_INVALID_LIQUIDITY_VALUE))
     (burn-amount (if (is-eq bin-shares u0) (var-get minimum-burnt-shares) u0))
     (dlp-post-fees (if (is-eq bin-shares u0)
       (let (
@@ -1857,13 +1849,9 @@
     ;; Get price at to-bin-id
     (bin-price (unwrap! (get-bin-price initial-price bin-step to-bin-id) ERR_INVALID_BIN_PRICE))
 
-    ;; Scale up y-amount and y-balance-b
-    (y-amount-scaled (* y-amount PRICE_SCALE_BPS))
-    (y-balance-b-scaled (* y-balance-b PRICE_SCALE_BPS))
-
     ;; Get current liquidity values for to-bin-id and calculate dlp without fees
-    (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (bin-liquidity-value (unwrap! (get-liquidity-value x-balance-b y-balance-b-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (add-liquidity-value (unwrap! (get-liquidity-value x-amount y-amount bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (bin-liquidity-value (unwrap! (get-liquidity-value x-balance-b y-balance-b bin-price) ERR_INVALID_LIQUIDITY_VALUE))
     (dlp (if (or (is-eq bin-shares-b u0) (is-eq bin-liquidity-value u0))
              (sqrti add-liquidity-value)
              (/ (* add-liquidity-value bin-shares-b) bin-liquidity-value)))
@@ -1907,15 +1895,14 @@
     ;; Calculate final x and y amounts post fees for to-bin-id
     (x-amount-post-fees (- x-amount x-amount-fees-liquidity))
     (y-amount-post-fees (- y-amount y-amount-fees-liquidity))
-    (y-amount-post-fees-scaled (* y-amount-post-fees PRICE_SCALE_BPS))
 
     ;; Calculate bin balances post fees for to-bin-id
     (x-balance-post-fees (+ x-balance-b x-amount-fees-liquidity))
-    (y-balance-post-fees-scaled (* (+ y-balance-b y-amount-fees-liquidity) PRICE_SCALE_BPS))
+    (y-balance-post-fees (+ y-balance-b y-amount-fees-liquidity))
 
     ;; Get final liquidity value for to-bin-id and calculate dlp post fees
-    (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
-    (bin-liquidity-value-post-fees (unwrap! (get-liquidity-value x-balance-post-fees y-balance-post-fees-scaled bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (add-liquidity-value-post-fees (unwrap! (get-liquidity-value x-amount-post-fees y-amount-post-fees bin-price) ERR_INVALID_LIQUIDITY_VALUE))
+    (bin-liquidity-value-post-fees (unwrap! (get-liquidity-value x-balance-post-fees y-balance-post-fees bin-price) ERR_INVALID_LIQUIDITY_VALUE))
     (burn-amount (if (is-eq bin-shares-b u0) (var-get minimum-burnt-shares) u0))
     (dlp-post-fees (if (is-eq bin-shares-b u0)
       (let (
