@@ -45,6 +45,7 @@
     (get-pool-for-swap (bool) (response {
       pool-id: uint,
       pool-name: (string-ascii 32),
+      core-address: principal,
       fee-address: principal,
       x-token: principal,
       y-token: principal,
@@ -58,6 +59,7 @@
     (get-pool-for-add () (response {
       pool-id: uint,
       pool-name: (string-ascii 32),
+      core-address: principal,
       x-token: principal,
       y-token: principal,
       bin-step: uint,
@@ -73,6 +75,7 @@
     (get-pool-for-withdraw () (response {
       pool-id: uint,
       pool-name: (string-ascii 32),
+      core-address: principal,
       x-token: principal,
       y-token: principal
     } uint))

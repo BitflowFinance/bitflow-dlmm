@@ -64,6 +64,7 @@
 (define-constant ERR_INVALID_CORE_MIGRATION_COOLDOWN (err u1057))
 (define-constant ERR_CORE_MIGRATION_COOLDOWN (err u1058))
 (define-constant ERR_CORE_ADDRESS_ALREADY_MIGRATED (err u1059))
+(define-constant ERR_NOT_MANAGED_POOL (err u1060))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -327,10 +328,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert core migration cooldown has passed
       (asserts! (>= stacks-block-time current-core-migration-execution-time) ERR_CORE_MIGRATION_COOLDOWN)
@@ -515,10 +517,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool pool-id (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
@@ -567,9 +570,10 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert pool is created and valid
+      ;; Assert pool is created, valid, and managed by this core contract
       (asserts! (is-valid-pool pool-id (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert correct token traits are used
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
@@ -615,10 +619,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert uri length is greater than 0
       (asserts! (> (len uri) u0) ERR_INVALID_POOL_URI)
@@ -654,10 +659,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
       (try! (stx-transfer? u1 caller BURN_ADDRESS))
@@ -690,10 +696,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert variable fees manager is not frozen
       (asserts! (not freeze-variable-fees-manager) ERR_VARIABLE_FEES_MANAGER_FROZEN)
@@ -731,10 +738,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert address is standard principal
       (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
@@ -775,10 +783,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin or variable fees manager and pool is created and valid
+      ;; Assert caller is an admin or variable fees manager and pool is created, valid, and managed by this core contract
       (asserts! (or (is-some (index-of (var-get admins) caller)) (is-eq variable-fees-manager caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert caller is variable fees manager if variable fees manager is frozen
       (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
@@ -825,10 +834,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert protocol-fee + provider-fee + x-variable-fee is less than max FEE_SCALE_BPS
       (asserts! (< (+ protocol-fee provider-fee x-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
@@ -866,10 +876,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert protocol-fee + provider-fee + y-variable-fee is less than max FEE_SCALE_BPS
       (asserts! (< (+ protocol-fee provider-fee y-variable-fee) FEE_SCALE_BPS) ERR_INVALID_FEE)
@@ -906,10 +917,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
       (try! (stx-transfer? u1 caller BURN_ADDRESS))
@@ -942,10 +954,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin and pool is created and valid
+      ;; Assert caller is an admin and pool is created, valid, and managed by this core contract
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert variable fees manager is not frozen
       (asserts! (not freeze-variable-fees-manager) ERR_VARIABLE_FEES_MANAGER_FROZEN)
@@ -981,10 +994,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert caller is an admin or variable fees manager and pool is created and valid
+      ;; Assert caller is an admin or variable fees manager and pool is created, valid, and managed by this core contract
       (asserts! (or (is-some (index-of (var-get admins) caller)) (is-eq variable-fees-manager caller)) ERR_NOT_AUTHORIZED)
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert caller is variable fees manager if variable fees manager is frozen
       (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
@@ -1024,9 +1038,10 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert pool is created and valid
+      ;; Assert pool is created, valid, and managed by this core contract
       (asserts! (is-valid-pool (get pool-id pool-data) (contract-of pool-trait)) ERR_INVALID_POOL)
       (asserts! (get pool-created pool-data) ERR_POOL_NOT_CREATED)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert variable fees cooldown period has passed
       (asserts! (>= stacks-block-height (+ last-variable-fees-update variable-fees-cooldown)) ERR_VARIABLE_FEES_COOLDOWN)
@@ -1095,6 +1110,9 @@
     (caller tx-sender)
   )
     (begin
+      ;; Assert pool is managed by this core contract
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
+
       ;; Assert caller is an admin or public-pool-creation is true
       (asserts! (or (is-some (index-of (var-get admins) caller)) (var-get public-pool-creation)) ERR_NOT_AUTHORIZED)
 
@@ -1287,10 +1305,11 @@
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
   )
     (begin
-      ;; Assert pool-status is true and correct token traits are used
+      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
       (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert x-amount is greater than 0
       (asserts! (> x-amount u0) ERR_INVALID_AMOUNT)
@@ -1432,10 +1451,11 @@
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
   )
     (begin
-      ;; Assert pool-status is true and correct token traits are used
+      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
       (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert y-amount is greater than 0
       (asserts! (> y-amount u0) ERR_INVALID_AMOUNT)
@@ -1614,10 +1634,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert pool-status is true and correct token traits are used
+      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
       (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert x-amount + y-amount is greater than 0
       (asserts! (> (+ x-amount y-amount) u0) ERR_INVALID_AMOUNT)
@@ -1725,9 +1746,10 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert correct token traits are used
+      ;; Assert correct token traits are used and pool is managed by this core contract
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert amount is greater than 0
       (asserts! (> amount u0) ERR_INVALID_AMOUNT)
@@ -1913,10 +1935,11 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert pool-status is true and correct token traits are used
+      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
       (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
+      (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
 
       ;; Assert amount is greater than 0
       (asserts! (> amount u0) ERR_INVALID_AMOUNT)
