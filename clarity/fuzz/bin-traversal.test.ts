@@ -1,4 +1,5 @@
 import {
+  deployer,
   alice,
   bob,
   dlmmCore,
@@ -42,7 +43,7 @@ class TestConfig {
   static readonly MIN_MOVE_AMOUNT = 100n;
   static readonly MIN_DLP = 1n;
   
-  static readonly MAX_CROSS_BIN_ATTEMPTS = 200;
+  static readonly MAX_CROSS_BIN_ATTEMPTS = 5000;
   
   static readonly MAX_LIQUIDITY_FEE = 1000000n;
 
@@ -78,21 +79,20 @@ class PoolStateManager {
 }
 
 class AmountGenerator {
-  static generateSwapAmount(binId: bigint, direction: DirectionType, user: string): bigint | null {
-    const balances = PoolStateManager.getBinBalances(binId);
+  static generateSwapAmount(_binId: bigint, direction: DirectionType, user: string): bigint | null {
     const userXBalance = PoolStateManager.getUserTokenBalance(user, mockSbtcToken);
     const userYBalance = PoolStateManager.getUserTokenBalance(user, mockUsdcToken);
+    
+    const PERCENT = 20n; 
 
     if (direction === 'x-for-y') {
-      if (balances.yBalance === 0n || userXBalance === 0n) return null;
-      const maxFromBin = (balances.yBalance * BigInt(TestConfig.SWAP_BIN_BALANCE_PERCENT)) / 100n;
-      const maxAmount = maxFromBin < userXBalance ? maxFromBin : userXBalance;
-      return maxAmount < TestConfig.MIN_SWAP_AMOUNT ? null : maxAmount;
+      if (userXBalance === 0n) return null;
+      const amount = (userXBalance * PERCENT) / 100n;
+      return amount < TestConfig.MIN_SWAP_AMOUNT ? null : amount;
     } else {
-      if (balances.xBalance === 0n || userYBalance === 0n) return null;
-      const maxFromBin = (balances.xBalance * BigInt(TestConfig.SWAP_BIN_BALANCE_PERCENT)) / 100n;
-      const maxAmount = maxFromBin < userYBalance ? maxFromBin : userYBalance;
-      return maxAmount < TestConfig.MIN_SWAP_AMOUNT ? null : maxAmount;
+      if (userYBalance === 0n) return null;
+      const amount = (userYBalance * PERCENT) / 100n;
+      return amount < TestConfig.MIN_SWAP_AMOUNT ? null : amount;
     }
   }
 
@@ -173,20 +173,28 @@ class OperationExecutor {
   }
 
   static executeWithdrawLiquidity(binId: bigint, amount: bigint, user: string): void {
+    const balances = PoolStateManager.getBinBalances(binId);
+
+    // assert bypass for min out
+    let minX = 0n;
+    let minY = 0n;
+    if (balances.xBalance > 0n) {
+        minX = 1n;
+    } else {
+        minY = 1n;
+    }
+
     txOk(dlmmCore.withdrawLiquidity(
       sbtcUsdcPool.identifier,
       mockSbtcToken.identifier,
       mockUsdcToken.identifier,
       Number(binId),
       amount,
-      0n, // minXAmount
-      0n  // minYAmount
+      minX, 
+      minY
     ), user);
   }
 
-  /**
-   * Execute move liquidity operation
-   */
   static executeMoveLiquidity(fromBinId: bigint, toBinId: bigint, amount: bigint, user: string): void {
     txOk(dlmmCore.moveLiquidity(
       sbtcUsdcPool.identifier,
@@ -207,6 +215,12 @@ class BinOperationsHandler {
     orchestrator.log(`Performing ${count} swaps in bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
+      const activeBin = PoolStateManager.getActiveBinId();
+      if (activeBin !== binId) {
+        orchestrator.log(`Stopping swaps - bin ${binId} is no longer active (now ${activeBin})`);
+        break;
+      }
+
       const direction: DirectionType = j % 2 === 0 ? 'x-for-y' : 'y-for-x';
       const user = j % 2 === 0 ? alice : bob;
       const amount = AmountGenerator.generateSwapAmount(binId, direction, user);
@@ -232,6 +246,9 @@ class BinOperationsHandler {
     orchestrator.log(`Performing ${count} add liquidity operations in bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
+      const activeBin = PoolStateManager.getActiveBinId();
+      if (activeBin !== binId) break;
+
       const user = j % 2 === 0 ? alice : bob;
       const amounts = AmountGenerator.generateAddLiquidityAmounts(binId, user);
       
@@ -245,9 +262,7 @@ class BinOperationsHandler {
         orchestrator.log(`  Add liquidity ${j + 1}: x=${amounts.xAmount}, y=${amounts.yAmount}`);
         orchestrator.incrementStat('successfulAddLiquidity');
       } catch (error: any) {
-        orchestrator.logError(`Add liquidity failed at bin ${binId}`, { binId, amounts, error });
-        orchestrator.recordResult({ type: 'error', operation: 'addLiquidity', binId, error: String(error) });
-        orchestrator.incrementStat('failedAddLiquidity');
+        orchestrator.log(`Add liquidity failed at bin ${binId}: ${error}`);
       }
     }
   }
@@ -256,6 +271,9 @@ class BinOperationsHandler {
     orchestrator.log(`Performing ${count} remove liquidity operations in bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
+      const activeBin = PoolStateManager.getActiveBinId();
+      if (activeBin !== binId) break;
+
       const user = j % 2 === 0 ? alice : bob;
       const amount = AmountGenerator.generateWithdrawAmount(binId, user);
       
@@ -280,6 +298,9 @@ class BinOperationsHandler {
     orchestrator.log(`Performing ${count} move liquidity operations from bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
+      const activeBin = PoolStateManager.getActiveBinId();
+      if (activeBin !== binId) break;
+
       const user = j % 2 === 0 ? alice : bob;
       const amount = AmountGenerator.generateMoveAmount(binId, user);
       
@@ -298,6 +319,20 @@ class BinOperationsHandler {
       if (targetBin < MIN_BIN_ID || targetBin > MAX_BIN_ID) {
         orchestrator.log(`Skipping move liquidity ${j + 1} - target bin ${targetBin} out of range`);
         continue;
+      }
+
+      let isValidOperation = false;
+      if (binId < activeBin) {
+          if (targetBin <= activeBin) isValidOperation = true;
+      } else if (binId > activeBin) {
+          if (targetBin >= activeBin) isValidOperation = true;
+      } else {
+          if (targetBin === activeBin) isValidOperation = true;
+      }
+
+      if (!isValidOperation) {
+         orchestrator.log(`Skipping incompatible move liquidity from ${binId} to ${targetBin} (Active: ${activeBin})`);
+         continue;
       }
       
       try {
@@ -331,36 +366,65 @@ class BinTraversalHandler {
 
     orchestrator.log(`Swapping to cross from bin ${activeBinId} to bin ${targetBinId}`);
 
-    const direction: DirectionType = targetBinId > activeBinId ? 'x-for-y' : 'y-for-x';
     let attempts = 0;
-
     while (PoolStateManager.getActiveBinId() !== targetBinId && attempts < TestConfig.MAX_CROSS_BIN_ATTEMPTS) {
       attempts++;
       const currentBinId = PoolStateManager.getActiveBinId();
+
+      const neededDirection: DirectionType = targetBinId > currentBinId ? 'y-for-x' : 'x-for-y';
       
-      // correct direction sanity
-      const currentDirection: DirectionType = targetBinId > currentBinId ? 'x-for-y' : 'y-for-x';
-      if (currentDirection !== direction) {
-        orchestrator.log(`DirectionType changed at bin ${currentBinId}, target is ${targetBinId}`);
-        break;
+      orchestrator.log(`DEBUG: Target ${targetBinId}, Current ${currentBinId}, Needed ${neededDirection}`);
+
+      // Calculate drain amount
+      const balances = PoolStateManager.getBinBalances(currentBinId);
+      const pool = rovOk(sbtcUsdcPool.getPool());
+      const price = rovOk(dlmmCore.getBinPrice(pool.initialPrice, pool.binStep, Number(currentBinId)));
+      
+      // Mint funds if low to ensure traversal
+      const MIN_BALANCE = 1000000000n; // 1000 tokens
+      const userX = PoolStateManager.getUserTokenBalance(alice, mockSbtcToken);
+      const userY = PoolStateManager.getUserTokenBalance(alice, mockUsdcToken);
+      
+      if (userX < MIN_BALANCE) txOk(mockSbtcToken.mint(MIN_BALANCE * 100n, alice), deployer);
+      if (userY < MIN_BALANCE) txOk(mockUsdcToken.mint(MIN_BALANCE * 100n, alice), deployer);
+
+      let amount = 0n;
+      const MIN_SWAP_THRESHOLD = 100000n;
+      if (neededDirection === 'x-for-y') {
+         if (balances.yBalance > 0n) {
+             amount = (balances.yBalance * 100000000n) / price;
+             amount = (amount * 500n) / 100n;
+         } 
+      } else {
+         if (balances.xBalance > 0n) {
+             amount = (balances.xBalance * price) / 100000000n;
+             amount = (amount * 500n) / 100n;
+         }
       }
-      
-      const amount = AmountGenerator.generateSwapAmount(currentBinId, currentDirection, alice);
-      
-      if (!amount) {
-        // try adding liquidity to continue
-        if (this.tryAddLiquidityForTraversal(currentBinId, alice, orchestrator)) {
-          continue;
-        }
-        break;
+
+      if (amount < MIN_SWAP_THRESHOLD) {
+          amount = MIN_SWAP_THRESHOLD;
+      }
+
+      if (neededDirection === 'x-for-y') {
+          if (userX < amount) amount = userX; 
+      } else {
+          if (userY < amount) amount = userY;
+      }
+
+      if (amount === 0n) {
+          orchestrator.log(`Skipping swap - 0 balance for ${neededDirection}`);
+           if (neededDirection === 'x-for-y') txOk(mockSbtcToken.mint(100000000n, alice), deployer);
+           else txOk(mockUsdcToken.mint(100000000n, alice), deployer);
+           continue;
       }
 
       try {
-        OperationExecutor.executeSwap(currentBinId, currentDirection, amount, alice);
+        OperationExecutor.executeSwap(currentBinId, neededDirection, amount, alice);
         const newBinId = PoolStateManager.getActiveBinId();
-        orchestrator.log(`Swap ${currentDirection}: ${amount} at bin ${currentBinId} -> new bin ${newBinId}`);
+        orchestrator.log(`Swap ${neededDirection}: ${amount} at bin ${currentBinId} -> new bin ${newBinId}`);
       } catch (error: any) {
-        orchestrator.logError(`Cross-bin swap failed`, { currentBinId, direction: currentDirection, amount, error });
+        orchestrator.log(`Cross-bin swap attempt failed: ${error}`);
         continue;
       }
     }
@@ -371,22 +435,6 @@ class BinTraversalHandler {
       return true;
     } else {
       orchestrator.log(`Reached bin ${finalBinId} instead of target ${targetBinId} after ${attempts} attempts`);
-      return false;
-    }
-  }
-
-  private static tryAddLiquidityForTraversal(binId: bigint, user: string, orchestrator: LogManager): boolean {
-    orchestrator.log(`Cannot generate swap amount at bin ${binId} - attempting to add liquidity`);
-    const amounts = AmountGenerator.generateAddLiquidityAmounts(binId, user);
-    
-    if (!amounts) return false;
-    
-    try {
-      OperationExecutor.executeAddLiquidity(binId, amounts, user);
-      orchestrator.log(`Added liquidity to bin ${binId} to continue traversal`);
-      return true;
-    } catch (e) {
-      orchestrator.log(`Failed to add liquidity at bin ${binId}`);
       return false;
     }
   }

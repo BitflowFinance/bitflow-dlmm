@@ -233,6 +233,6 @@ describe('Arithmetic Edge Cases Fuzz Test', () => {
     
     orchestrator.finish();
     
-    expect(orchestrator.stats.panics).toBe(0);
+    expect(orchestrator.stats.failed).toBe(0);
   });
 });
