@@ -30,9 +30,7 @@ import {
   generateAmountThatRoundsToZero,
   generateDivisionByZeroCandidate,
 } from "../helpers/edge-case-generators";
-
-const MIN_BIN_ID = -500n;
-const MAX_BIN_ID = 500n;
+import { MAX_BIN_ID, MIN_BIN_ID } from "../../fuzz/utils";
 
 describe('Arithmetic Edge Cases', () => {
   

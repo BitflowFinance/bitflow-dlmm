@@ -14,8 +14,6 @@ import {
 import { describe, it, expect, beforeEach } from 'vitest';
 import { cvToValue } from '@clarigen/core';
 import { txOk, rovOk } from '@clarigen/test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { getFuzzConfig } from './harnesses/config';
 import {
   checkSwapXForYInvariants,
@@ -26,8 +24,7 @@ import {
   BinState,
   UserState,
 } from "./properties/invariants";
-
-type OperationType = 'swap-x-for-y' | 'swap-y-for-x' | 'add-liquidity' | 'withdraw-liquidity' | 'move-liquidity';
+import { LogManager, SeededRandom, MIN_BIN_ID, MAX_BIN_ID, OperationType } from './utils';
 
 interface PoolState {
   activeBinId: bigint;
@@ -50,8 +47,6 @@ class TestConfig {
   // Bin range for sampling
   static readonly MIN_BIN_SAMPLE = -10;
   static readonly MAX_BIN_SAMPLE = 10;
-  static readonly MIN_BIN_ID = -500n;
-  static readonly MAX_BIN_ID = 500n;
   
   // Liquidity parameters
   static readonly MAX_LIQUIDITY_FEE = 1000000n;
@@ -75,31 +70,6 @@ class TestConfig {
   static readonly PROGRESS_UPDATE_INTERVAL = 10;
 }
 
-class SeededRandom {
-  private seed: number;
-
-  constructor(seed: number) {
-    this.seed = seed;
-  }
-
-  next(): number {
-    this.seed = (this.seed * 9301 + 49297) % 233280;
-    return this.seed / 233280;
-  }
-
-  nextInt(min: number, max: number): number {
-    return Math.floor(this.next() * (max - min + 1)) + min;
-  }
-
-  choice<T>(array: T[]): T {
-    return array[this.nextInt(0, array.length - 1)];
-  }
-  
-  nextBoolean(): boolean {
-    return this.next() > 0.5;
-  }
-}
-
 class PoolStateManager {
   static async captureState(): Promise<PoolState> {
     const activeBinId = rovOk(sbtcUsdcPool.getActiveBinId());
@@ -115,7 +85,7 @@ class PoolStateManager {
     // Sample bins around active bin
     for (let offset = TestConfig.MIN_BIN_SAMPLE; offset <= TestConfig.MAX_BIN_SAMPLE; offset++) {
       const binId = activeBinId + BigInt(offset);
-      if (binId >= TestConfig.MIN_BIN_ID && binId <= TestConfig.MAX_BIN_ID) {
+      if (binId >= MIN_BIN_ID && binId <= MAX_BIN_ID) {
         const unsignedBin = rovOk(dlmmCore.getUnsignedBinId(binId));
         try {
           const balances = rovOk(sbtcUsdcPool.getBinBalances(unsignedBin));
@@ -348,7 +318,7 @@ class InvariantChecker {
     }
 
     // Global invariants
-    if (afterState.activeBinId < TestConfig.MIN_BIN_ID || afterState.activeBinId > TestConfig.MAX_BIN_ID) {
+    if (afterState.activeBinId < MIN_BIN_ID || afterState.activeBinId > MAX_BIN_ID) {
       issues.push(`Active bin out of range: ${afterState.activeBinId}`);
     }
 
@@ -356,67 +326,25 @@ class InvariantChecker {
   }
 }
 
-class FuzzLogger {
-  private logs: string[] = [];
-  private logFile: string;
-  public stats = {
-    totalTransactions: 0,
-    successfulTransactions: 0,
-    failedTransactions: 0,
-    invariantViolations: 0,
-  };
-
-  constructor(seed: number) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const baseDir = path.join(process.cwd(), 'logs', 'fuzz-test-results');
-    if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
-    this.logFile = path.join(baseDir, `fuzz-test-log-${timestamp}-${seed}.txt`);
-  }
-
-  log(message: string) {
-    const line = `[${new Date().toISOString()}] ${message}`;
-    this.logs.push(line);
-    console.log(line);
-  }
-
-  logTransaction(log: TransactionLog) {
-    this.stats.totalTransactions++;
-    if (log.result === 'success') this.stats.successfulTransactions++;
-    else this.stats.failedTransactions++;
-    
-    if (log.invariantChecks && log.invariantChecks.length > 0) {
-      this.stats.invariantViolations += log.invariantChecks.length;
-      this.log(`INVARIANT VIOLATION in tx ${log.txNumber}: ${log.invariantChecks.join(', ')}`);
-    }
-  }
-
-  save() {
-    fs.writeFileSync(this.logFile, this.logs.join('\n'), 'utf-8');
-    this.log(`Log saved to: ${this.logFile}`);
-  }
-}
-
 class TestOrchestrator {
-  private logger: FuzzLogger;
+  private orchestrator: LogManager;
   private rng: SeededRandom;
   private amountGen: AmountGenerator;
   private users = [deployer, alice, bob, charlie];
   private functions: OperationType[] = ['swap-x-for-y', 'swap-y-for-x', 'add-liquidity', 'withdraw-liquidity', 'move-liquidity'];
 
-  constructor(seed: number) {
-    this.logger = new FuzzLogger(seed);
+  constructor(seed: number, orchestrator: LogManager) {
+    this.orchestrator = orchestrator;
     this.rng = new SeededRandom(seed);
     this.amountGen = new AmountGenerator(this.rng);
   }
 
   async run(totalTransactions: number) {
-    this.logger.log(`Starting fuzz test with ${totalTransactions} transactions...`);
+    this.orchestrator.log(`Starting fuzz test with ${totalTransactions} transactions...`);
     let consecutiveFailures = 0;
 
     for (let i = 1; i <= totalTransactions; i++) {
-      if ((i % TestConfig.PROGRESS_UPDATE_INTERVAL === 0) || i === 1) {
-        this.reportProgress(i, totalTransactions);
-      }
+     this.orchestrator.updateProgress(i, totalTransactions);
 
       let beforeState: PoolState;
       try {
@@ -435,15 +363,24 @@ class TestOrchestrator {
           this.regenerateState(beforeState);
           consecutiveFailures = 0;
         }
+        this.orchestrator.incrementStat('failedTransactions');
       } else {
         consecutiveFailures = 0;
+        this.orchestrator.incrementStat('successfulTransactions');
       }
-
-      this.logger.logTransaction({ ...txResult, txNumber: i });
+      
+      this.orchestrator.incrementStat('totalTransactions');
+      this.orchestrator.recordResult({ ...txResult, txNumber: i });
+      
+      if (txResult.invariantChecks && txResult.invariantChecks.length > 0) {
+        this.orchestrator.incrementStat('invariantViolations', txResult.invariantChecks.length);
+        this.orchestrator.logError(`INVARIANT VIOLATION in tx ${i}`, txResult.invariantChecks);
+      }
     }
 
-    this.logger.save();
-    this.printSummary(totalTransactions);
+    this.orchestrator.finish();
+    
+    expect(this.orchestrator.stats.invariantViolations || 0).toBe(0);
   }
 
   private async executeTransaction(functionName: OperationType, caller: string, beforeState: PoolState): Promise<Omit<TransactionLog, 'txNumber'>> {
@@ -475,7 +412,7 @@ class TestOrchestrator {
         // Add Liquidity implementation
         const binOffset = this.rng.nextInt(TestConfig.MIN_BIN_SAMPLE, TestConfig.MAX_BIN_SAMPLE);
         const binId = beforeState.activeBinId + BigInt(binOffset);
-        const clampedBinId = binId < TestConfig.MIN_BIN_ID ? TestConfig.MIN_BIN_ID : (binId > TestConfig.MAX_BIN_ID ? TestConfig.MAX_BIN_ID : binId);
+        const clampedBinId = binId < MIN_BIN_ID ? MIN_BIN_ID : (binId > MAX_BIN_ID ? MAX_BIN_ID : binId);
         
         const amounts = this.amountGen.generateAddLiquidityAmount(beforeState, clampedBinId, caller);
         if (!amounts) throw new Error("Could not generate liquidity amounts");
@@ -566,16 +503,6 @@ class TestOrchestrator {
     return { functionName, caller, params, result: success ? 'success' : 'failure', error, invariantChecks: invariantIssues };
   }
 
-  private reportProgress(current: number, total: number) {
-    const percent = ((current / total) * 100).toFixed(1);
-    const filled = Math.floor((current / total) * TestConfig.PROGRESS_BAR_WIDTH);
-    const bar = '█'.repeat(filled) + '░'.repeat(TestConfig.PROGRESS_BAR_WIDTH - filled);
-    
-    try {
-      process.stdout.write(`\r📊 [${bar}] ${percent}% (${current}/${total}) | ✅ ${this.logger.stats.successfulTransactions} | ❌ ${this.logger.stats.failedTransactions}`);
-    } catch(e) {} // Ignore TTY errors
-  }
-
   private regenerateState(state: PoolState) {
     // Add liquidity to random bins to fix stuck state
     try {
@@ -590,15 +517,6 @@ class TestOrchestrator {
         }
       }
     } catch {}
-  }
-
-  private printSummary(total: number) {
-    console.log(`\n\n=== TEST COMPLETE ===`);
-    console.log(`Total Transactions: ${this.logger.stats.totalTransactions}`);
-    console.log(`Successful: ${this.logger.stats.successfulTransactions}`);
-    console.log(`Invariant Violations: ${this.logger.stats.invariantViolations}`);
-    
-    expect(this.logger.stats.invariantViolations).toBe(0);
   }
 }
 
@@ -619,7 +537,8 @@ describe('DLMM Core Comprehensive Fuzz Test', () => {
   });
 
   it(`should execute ${NUM_TRANSACTIONS} random transactions and maintain invariants`, async () => {
-    const orchestrator = new TestOrchestrator(RANDOM_SEED);
-    await orchestrator.run(NUM_TRANSACTIONS);
+    const orchestrator = new LogManager('comprehensive-fuzz');
+    const testOrchestrator = new TestOrchestrator(RANDOM_SEED, orchestrator);
+    await testOrchestrator.run(NUM_TRANSACTIONS);
   }, 21600000); // 6 hour timeout
 });

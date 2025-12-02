@@ -1,7 +1,6 @@
 import {
   alice,
   bob,
-  deployer,
   dlmmCore,
   sbtcUsdcPool,
   mockSbtcToken,
@@ -12,8 +11,7 @@ import {
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { txOk, rovOk } from '@clarigen/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { LogManager, DirectionType, MIN_BIN_ID, MAX_BIN_ID, CENTER_BIN_ID } from './utils';
 
 interface BinBalances {
   xBalance: bigint;
@@ -25,42 +23,25 @@ interface LiquidityAmounts {
   yAmount: bigint;
 }
 
-interface ErrorRecord {
-  bin: bigint;
-  operation: string;
-  error: string;
-  params: any;
-}
-
 class TestConfig {
-  // Bin range
-  static readonly MIN_BIN_ID = -500n;
-  static readonly MAX_BIN_ID = 500n;
-  static readonly CENTER_BIN_ID = 0n;
-  
-  // Traversal path
   static readonly TRAVERSAL_PATH = [0n, -500n, 500n, 0n];
   
-  // Operations per bin
   static readonly SWAPS_PER_BIN = 5;
   static readonly ADD_LIQUIDITY_PER_BIN = 3;
   static readonly WITHDRAW_LIQUIDITY_PER_BIN = 3;
   static readonly MOVE_LIQUIDITY_PER_BIN = 3;
   
-  // Amount generation percentages
-  static readonly SWAP_BIN_BALANCE_PERCENT = 15; // 5-15% of bin balance
-  static readonly ADD_LIQUIDITY_USER_BALANCE_PERCENT = 10; // 10% of user balance
-  static readonly WITHDRAW_LP_PERCENT = 40; // 30-50% of LP tokens
-  static readonly MOVE_LP_PERCENT = 30; // 20-40% of LP tokens
+  static readonly SWAP_BIN_BALANCE_PERCENT = 15; // 15%
+  static readonly ADD_LIQUIDITY_USER_BALANCE_PERCENT = 10; // 10%
+  static readonly WITHDRAW_LP_PERCENT = 40; // 30-50%
+  static readonly MOVE_LP_PERCENT = 30; // 20-40%
   
-  // Minimum amounts
   static readonly MIN_SWAP_AMOUNT = 10000n;
   static readonly MIN_ADD_LIQUIDITY_AMOUNT = 1000n;
   static readonly MIN_WITHDRAW_AMOUNT = 100n;
   static readonly MIN_MOVE_AMOUNT = 100n;
   static readonly MIN_DLP = 1n;
   
-  // Cross-bin swap parameters
   static readonly MAX_CROSS_BIN_ATTEMPTS = 200;
   
   static readonly MAX_LIQUIDITY_FEE = 1000000n;
@@ -69,16 +50,10 @@ class TestConfig {
 }
 
 class PoolStateManager {
-  /**
-   * Get active bin ID
-   */
   static getActiveBinId(): bigint {
     return rovOk(sbtcUsdcPool.getActiveBinId());
   }
 
-  /**
-   * Get bin balances
-   */
   static getBinBalances(binId: bigint): BinBalances {
     const unsignedBinId = rovOk(dlmmCore.getUnsignedBinId(binId));
     try {
@@ -89,16 +64,10 @@ class PoolStateManager {
     }
   }
 
-  /**
-   * Get user token balance
-   */
   static getUserTokenBalance(user: string, tokenContract: any): bigint {
     return rovOk(tokenContract.getBalance(user)) as bigint;
   }
 
-  /**
-   * Get user LP balance for a bin
-   */
   static getUserLpBalance(user: string, binId: bigint): bigint {
     try {
       return getSbtcUsdcPoolLpBalance(binId, user);
@@ -109,10 +78,7 @@ class PoolStateManager {
 }
 
 class AmountGenerator {
-  /**
-   * Generate swap amount based on bin and user balances
-   */
-  static generateSwapAmount(binId: bigint, direction: Direction, user: string): bigint | null {
+  static generateSwapAmount(binId: bigint, direction: DirectionType, user: string): bigint | null {
     const balances = PoolStateManager.getBinBalances(binId);
     const userXBalance = PoolStateManager.getUserTokenBalance(user, mockSbtcToken);
     const userYBalance = PoolStateManager.getUserTokenBalance(user, mockUsdcToken);
@@ -130,9 +96,6 @@ class AmountGenerator {
     }
   }
 
-  /**
-   * Generate add liquidity amounts based on bin position
-   */
   static generateAddLiquidityAmounts(binId: bigint, user: string): LiquidityAmounts | null {
     const activeBinId = PoolStateManager.getActiveBinId();
     const userXBalance = PoolStateManager.getUserTokenBalance(user, mockSbtcToken);
@@ -159,9 +122,6 @@ class AmountGenerator {
     }
   }
 
-  /**
-   * Generate withdraw amount from LP balance
-   */
   static generateWithdrawAmount(binId: bigint, user: string): bigint | null {
     const lpBalance = PoolStateManager.getUserLpBalance(user, binId);
     if (lpBalance === 0n) return null;
@@ -169,9 +129,6 @@ class AmountGenerator {
     return amount < TestConfig.MIN_WITHDRAW_AMOUNT ? null : amount;
   }
 
-  /**
-   * Generate move amount from LP balance
-   */
   static generateMoveAmount(sourceBinId: bigint, user: string): bigint | null {
     const lpBalance = PoolStateManager.getUserLpBalance(user, sourceBinId);
     if (lpBalance === 0n) return null;
@@ -181,10 +138,7 @@ class AmountGenerator {
 }
 
 class OperationExecutor {
-  /**
-   * Execute a swap operation
-   */
-  static executeSwap(binId: bigint, direction: Direction, amount: bigint, user: string): void {
+  static executeSwap(binId: bigint, direction: DirectionType, amount: bigint, user: string): void {
     if (direction === 'x-for-y') {
       txOk(dlmmCore.swapXForY(
         sbtcUsdcPool.identifier,
@@ -204,9 +158,6 @@ class OperationExecutor {
     }
   }
 
-  /**
-   * Execute add liquidity operation
-   */
   static executeAddLiquidity(binId: bigint, amounts: LiquidityAmounts, user: string): void {
     txOk(dlmmCore.addLiquidity(
       sbtcUsdcPool.identifier,
@@ -221,9 +172,6 @@ class OperationExecutor {
     ), user);
   }
 
-  /**
-   * Execute withdraw liquidity operation
-   */
   static executeWithdrawLiquidity(binId: bigint, amount: bigint, user: string): void {
     txOk(dlmmCore.withdrawLiquidity(
       sbtcUsdcPool.identifier,
@@ -254,192 +202,136 @@ class OperationExecutor {
   }
 }
 
-class TraversalLogger {
-  private logFile: string;
-  private logs: string[] = [];
-  public errors: ErrorRecord[] = [];
-
-  constructor() {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const baseDir = path.join(process.cwd(), 'logs', 'bin-traversal');
-    if (!fs.existsSync(baseDir)) {
-      fs.mkdirSync(baseDir, { recursive: true });
-    }
-    this.logFile = path.join(baseDir, `bin-traversal-${timestamp}.log`);
-  }
-
-  log(message: string): void {
-    const timestamp = new Date().toISOString();
-    const logLine = `[${timestamp}] ${message}`;
-    this.logs.push(logLine);
-    console.log(logLine);
-  }
-
-  logError(bin: bigint, operation: string, error: string, params: any): void {
-    this.errors.push({ bin, operation, error, params });
-    this.log(`ERROR at bin ${bin}: ${operation} failed - ${error}`);
-  }
-
-  save(): void {
-    let content = `# Bin Traversal Fuzz Test Log\n\n`;
-    content += `**Test Date:** ${new Date().toISOString()}\n\n`;
-    content += `## Test Summary\n\n`;
-    content += `- Total Errors: ${this.errors.length}\n\n`;
-    
-    if (this.errors.length > 0) {
-      content += `## Errors\n\n`;
-      for (const err of this.errors) {
-        content += `### Bin ${err.bin} - ${err.operation}\n`;
-        content += `- Error: ${err.error}\n`;
-        content += `- Params: ${JSON.stringify(err.params, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2)}\n\n`;
-      }
-    }
-    
-    content += `## Full Log\n\n\`\`\`\n`;
-    content += this.logs.join('\n');
-    content += `\n\`\`\`\n`;
-    
-    fs.writeFileSync(this.logFile, content, 'utf-8');
-    this.log(`\nLog saved to: ${this.logFile}`);
-  }
-}
-
 class BinOperationsHandler {
-  /**
-   * Perform swap operations in a bin
-   */
-  static performSwaps(binId: bigint, count: number, logger: TraversalLogger): void {
-    logger.log(`Performing ${count} swaps in bin ${binId}`);
+  static performSwaps(binId: bigint, count: number, orchestrator: LogManager): void {
+    orchestrator.log(`Performing ${count} swaps in bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
-      const direction: Direction = j % 2 === 0 ? 'x-for-y' : 'y-for-x';
+      const direction: DirectionType = j % 2 === 0 ? 'x-for-y' : 'y-for-x';
       const user = j % 2 === 0 ? alice : bob;
       const amount = AmountGenerator.generateSwapAmount(binId, direction, user);
       
       if (!amount) {
-        logger.log(`Skipping swap ${j + 1} - insufficient balance`);
+        orchestrator.log(`Skipping swap ${j + 1} - insufficient balance`);
         continue;
       }
       
       try {
         OperationExecutor.executeSwap(binId, direction, amount, user);
-        logger.log(` Swap ${j + 1}: ${direction} with amount ${amount}`);
+        orchestrator.log(` Swap ${j + 1}: ${direction} with amount ${amount}`);
+        orchestrator.incrementStat('successfulSwap');
       } catch (error: any) {
-        logger.logError(binId, `swap-${direction}`, error.message || String(error), { amount });
+        orchestrator.logError(`Swap failed at bin ${binId}`, { binId, direction, amount, error });
+        orchestrator.recordResult({ type: 'error', operation: 'swap', binId, error: String(error) });
+        orchestrator.incrementStat('failedSwap');
       }
     }
   }
 
-  /**
-   * Perform add liquidity operations in a bin
-   */
-  static performAddLiquidity(binId: bigint, count: number, logger: TraversalLogger): void {
-    logger.log(`Performing ${count} add liquidity operations in bin ${binId}`);
+  static performAddLiquidity(binId: bigint, count: number, orchestrator: LogManager): void {
+    orchestrator.log(`Performing ${count} add liquidity operations in bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
       const user = j % 2 === 0 ? alice : bob;
       const amounts = AmountGenerator.generateAddLiquidityAmounts(binId, user);
       
       if (!amounts) {
-        logger.log(`Skipping add liquidity ${j + 1} - insufficient balance`);
+        orchestrator.log(`Skipping add liquidity ${j + 1} - insufficient balance`);
         continue;
       }
       
       try {
         OperationExecutor.executeAddLiquidity(binId, amounts, user);
-        logger.log(`  Add liquidity ${j + 1}: x=${amounts.xAmount}, y=${amounts.yAmount}`);
+        orchestrator.log(`  Add liquidity ${j + 1}: x=${amounts.xAmount}, y=${amounts.yAmount}`);
+        orchestrator.incrementStat('successfulAddLiquidity');
       } catch (error: any) {
-        logger.logError(binId, 'add-liquidity', error.message || String(error), amounts);
+        orchestrator.logError(`Add liquidity failed at bin ${binId}`, { binId, amounts, error });
+        orchestrator.recordResult({ type: 'error', operation: 'addLiquidity', binId, error: String(error) });
+        orchestrator.incrementStat('failedAddLiquidity');
       }
     }
   }
 
-  /**
-   * Perform withdraw liquidity operations in a bin
-   */
-  static performWithdrawLiquidity(binId: bigint, count: number, logger: TraversalLogger): void {
-    logger.log(`Performing ${count} remove liquidity operations in bin ${binId}`);
+  static performWithdrawLiquidity(binId: bigint, count: number, orchestrator: LogManager): void {
+    orchestrator.log(`Performing ${count} remove liquidity operations in bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
       const user = j % 2 === 0 ? alice : bob;
       const amount = AmountGenerator.generateWithdrawAmount(binId, user);
       
       if (!amount) {
-        logger.log(`Skipping remove liquidity ${j + 1} - no LP tokens`);
+        orchestrator.log(`Skipping remove liquidity ${j + 1} - no LP tokens`);
         continue;
       }
       
       try {
         OperationExecutor.executeWithdrawLiquidity(binId, amount, user);
-        logger.log(`  Remove liquidity ${j + 1}: ${amount} LP tokens`);
+        orchestrator.log(`  Remove liquidity ${j + 1}: ${amount} LP tokens`);
+        orchestrator.incrementStat('successfulWithdrawLiquidity');
       } catch (error: any) {
-        logger.logError(binId, 'withdraw-liquidity', error.message || String(error), { amount });
+        orchestrator.logError(`Withdraw liquidity failed at bin ${binId}`, { binId, amount, error });
+        orchestrator.recordResult({ type: 'error', operation: 'withdrawLiquidity', binId, error: String(error) });
+        orchestrator.incrementStat('failedWithdrawLiquidity');
       }
     }
   }
 
-  /**
-   * Perform move liquidity operations from a bin
-   */
-  static performMoveLiquidity(binId: bigint, count: number, logger: TraversalLogger): void {
-    logger.log(`Performing ${count} move liquidity operations from bin ${binId}`);
+  static performMoveLiquidity(binId: bigint, count: number, orchestrator: LogManager): void {
+    orchestrator.log(`Performing ${count} move liquidity operations from bin ${binId}`);
     
     for (let j = 0; j < count; j++) {
       const user = j % 2 === 0 ? alice : bob;
       const amount = AmountGenerator.generateMoveAmount(binId, user);
       
       if (!amount) {
-        logger.log(`Skipping move liquidity ${j + 1} - no LP tokens`);
+        orchestrator.log(`Skipping move liquidity ${j + 1} - no LP tokens`);
         continue;
       }
       
       // Determine target bin
-      const targetBin = binId === TestConfig.MIN_BIN_ID 
+      const targetBin = binId === MIN_BIN_ID 
         ? binId + 1n 
-        : binId === TestConfig.MAX_BIN_ID
+        : binId === MAX_BIN_ID
         ? binId - 1n
         : binId + (j % 2 === 0 ? 1n : -1n);
       
-      if (targetBin < TestConfig.MIN_BIN_ID || targetBin > TestConfig.MAX_BIN_ID) {
-        logger.log(`Skipping move liquidity ${j + 1} - target bin ${targetBin} out of range`);
+      if (targetBin < MIN_BIN_ID || targetBin > MAX_BIN_ID) {
+        orchestrator.log(`Skipping move liquidity ${j + 1} - target bin ${targetBin} out of range`);
         continue;
       }
       
       try {
         OperationExecutor.executeMoveLiquidity(binId, targetBin, amount, user);
-        logger.log(`  Move liquidity ${j + 1}: ${amount} LP tokens from ${binId} to ${targetBin}`);
+        orchestrator.log(`  Move liquidity ${j + 1}: ${amount} LP tokens from ${binId} to ${targetBin}`);
+        orchestrator.incrementStat('successfulMoveLiquidity');
       } catch (error: any) {
-        logger.logError(binId, 'move-liquidity', error.message || String(error), { from: binId, to: targetBin, amount });
+        orchestrator.logError(`Move liquidity failed from bin ${binId} to ${targetBin}`, { binId, targetBin, amount, error });
+        orchestrator.recordResult({ type: 'error', operation: 'moveLiquidity', binId, error: String(error) });
+        orchestrator.incrementStat('failedMoveLiquidity');
       }
     }
   }
 
-  /**
-   * Process all operations for a bin
-   */
-  static processAllOperations(binId: bigint, logger: TraversalLogger): void {
-    this.performSwaps(binId, TestConfig.SWAPS_PER_BIN, logger);
-    this.performAddLiquidity(binId, TestConfig.ADD_LIQUIDITY_PER_BIN, logger);
-    this.performWithdrawLiquidity(binId, TestConfig.WITHDRAW_LIQUIDITY_PER_BIN, logger);
-    this.performMoveLiquidity(binId, TestConfig.MOVE_LIQUIDITY_PER_BIN, logger);
-    logger.log(`Completed operations in bin ${binId}`);
+  static processAllOperations(binId: bigint, orchestrator: LogManager): void {
+    this.performSwaps(binId, TestConfig.SWAPS_PER_BIN, orchestrator);
+    this.performAddLiquidity(binId, TestConfig.ADD_LIQUIDITY_PER_BIN, orchestrator);
+    this.performWithdrawLiquidity(binId, TestConfig.WITHDRAW_LIQUIDITY_PER_BIN, orchestrator);
+    this.performMoveLiquidity(binId, TestConfig.MOVE_LIQUIDITY_PER_BIN, orchestrator);
+    orchestrator.log(`Completed operations in bin ${binId}`);
   }
 }
 
 class BinTraversalHandler {
-  /**
-   * Swap to cross bins and reach target bin
-   */
-  static swapToCrossBin(targetBinId: bigint, logger: TraversalLogger): boolean {
+  static swapToCrossBin(targetBinId: bigint, orchestrator: LogManager): boolean {
     const activeBinId = PoolStateManager.getActiveBinId();
     
     if (activeBinId === targetBinId) {
-      return true; // Already at target
+      return true; // at target
     }
 
-    logger.log(`Swapping to cross from bin ${activeBinId} to bin ${targetBinId}`);
+    orchestrator.log(`Swapping to cross from bin ${activeBinId} to bin ${targetBinId}`);
 
-    const direction: Direction = targetBinId > activeBinId ? 'x-for-y' : 'y-for-x';
+    const direction: DirectionType = targetBinId > activeBinId ? 'x-for-y' : 'y-for-x';
     let attempts = 0;
 
     while (PoolStateManager.getActiveBinId() !== targetBinId && attempts < TestConfig.MAX_CROSS_BIN_ATTEMPTS) {
@@ -447,9 +339,9 @@ class BinTraversalHandler {
       const currentBinId = PoolStateManager.getActiveBinId();
       
       // correct direction sanity
-      const currentDirection: Direction = targetBinId > currentBinId ? 'x-for-y' : 'y-for-x';
+      const currentDirection: DirectionType = targetBinId > currentBinId ? 'x-for-y' : 'y-for-x';
       if (currentDirection !== direction) {
-        logger.log(`Direction changed at bin ${currentBinId}, target is ${targetBinId}`);
+        orchestrator.log(`DirectionType changed at bin ${currentBinId}, target is ${targetBinId}`);
         break;
       }
       
@@ -457,7 +349,7 @@ class BinTraversalHandler {
       
       if (!amount) {
         // try adding liquidity to continue
-        if (this.tryAddLiquidityForTraversal(currentBinId, alice, logger)) {
+        if (this.tryAddLiquidityForTraversal(currentBinId, alice, orchestrator)) {
           continue;
         }
         break;
@@ -466,61 +358,55 @@ class BinTraversalHandler {
       try {
         OperationExecutor.executeSwap(currentBinId, currentDirection, amount, alice);
         const newBinId = PoolStateManager.getActiveBinId();
-        logger.log(`Swap ${currentDirection}: ${amount} at bin ${currentBinId} -> new bin ${newBinId}`);
+        orchestrator.log(`Swap ${currentDirection}: ${amount} at bin ${currentBinId} -> new bin ${newBinId}`);
       } catch (error: any) {
-        logger.logError(currentBinId, `swap-${currentDirection}`, error.message || String(error), { amount });
+        orchestrator.logError(`Cross-bin swap failed`, { currentBinId, direction: currentDirection, amount, error });
         continue;
       }
     }
 
     const finalBinId = PoolStateManager.getActiveBinId();
     if (finalBinId === targetBinId) {
-      logger.log(`Successfully reached target bin ${targetBinId}`);
+      orchestrator.log(`Successfully reached target bin ${targetBinId}`);
       return true;
     } else {
-      logger.log(`Reached bin ${finalBinId} instead of target ${targetBinId} after ${attempts} attempts`);
+      orchestrator.log(`Reached bin ${finalBinId} instead of target ${targetBinId} after ${attempts} attempts`);
       return false;
     }
   }
 
-  /**
-   * Try adding liquidity to enable continued traversal
-   */
-  private static tryAddLiquidityForTraversal(binId: bigint, user: string, logger: TraversalLogger): boolean {
-    logger.log(`Cannot generate swap amount at bin ${binId} - attempting to add liquidity`);
+  private static tryAddLiquidityForTraversal(binId: bigint, user: string, orchestrator: LogManager): boolean {
+    orchestrator.log(`Cannot generate swap amount at bin ${binId} - attempting to add liquidity`);
     const amounts = AmountGenerator.generateAddLiquidityAmounts(binId, user);
     
     if (!amounts) return false;
     
     try {
       OperationExecutor.executeAddLiquidity(binId, amounts, user);
-      logger.log(`Added liquidity to bin ${binId} to continue traversal`);
+      orchestrator.log(`Added liquidity to bin ${binId} to continue traversal`);
       return true;
     } catch (e) {
-      logger.log(`Failed to add liquidity at bin ${binId}`);
+      orchestrator.log(`Failed to add liquidity at bin ${binId}`);
       return false;
     }
   }
 }
 
 class TestOrchestrator {
-  private logger: TraversalLogger;
+  private orchestrator: LogManager;
 
-  constructor(logger: TraversalLogger) {
-    this.logger = logger;
+  constructor(orchestrator: LogManager) {
+    this.orchestrator = orchestrator;
   }
 
-  /**
-   * Process a single bin in the traversal path
-   */
   processBin(targetBinId: bigint, isFirstBin: boolean): void {
-    this.logger.log(`\n=== Processing bin ${targetBinId} ===`);
+    this.orchestrator.log(`\n=== Processing bin ${targetBinId} ===`);
     
     // Traverse to target bin
     if (!isFirstBin) {
-      const success = BinTraversalHandler.swapToCrossBin(targetBinId, this.logger);
+      const success = BinTraversalHandler.swapToCrossBin(targetBinId, this.orchestrator);
       if (!success) {
-        this.logger.log(`Failed to reach bin ${targetBinId}`);
+        this.orchestrator.log(`Failed to reach bin ${targetBinId}`);
         return;
       }
     }
@@ -529,69 +415,57 @@ class TestOrchestrator {
     expect(currentBinId).toBe(targetBinId);
     
     // Perform all operations in this bin
-    BinOperationsHandler.processAllOperations(currentBinId, this.logger);
+    BinOperationsHandler.processAllOperations(currentBinId, this.orchestrator);
   }
 
-  /**
-   * Execute complete traversal path
-   */
   executeTraversalPath(traversalPath: bigint[]): void {
     for (let i = 0; i < traversalPath.length; i++) {
       this.processBin(traversalPath[i], i === 0);
     }
   }
 
-  /**
-   * Attempt to return to center bin
-   */
-  returnToCenterIfNeeded(): bigint {
+  recenterPool(): bigint {
     let finalBinId = PoolStateManager.getActiveBinId();
     
-    if (finalBinId !== TestConfig.CENTER_BIN_ID) {
-      this.logger.log(`\nAttempting to return to bin 0 from bin ${finalBinId}`);
-      BinTraversalHandler.swapToCrossBin(TestConfig.CENTER_BIN_ID, this.logger);
+    if (finalBinId !== CENTER_BIN_ID) {
+      this.orchestrator.log(`\nAttempting to return to bin 0 from bin ${finalBinId}`);
+      const success = BinTraversalHandler.swapToCrossBin(CENTER_BIN_ID, this.orchestrator);
+      if (!success) {
+        this.orchestrator.incrementStat('failedReturnToCenter');
+      }
       finalBinId = PoolStateManager.getActiveBinId();
     }
     
     return finalBinId;
   }
 
-  /**
-   * Log final summary
-   */
-  logFinalSummary(finalBinId: bigint): void {
-    this.logger.log(`\nFinal bin ID: ${finalBinId}`);
-    
-    if (this.logger.errors.length > 0) {
-      this.logger.log(`\nTest completed with ${this.logger.errors.length} errors. Check log file for details.`);
-    } else {
-      this.logger.log(`\nTest completed successfully with no errors.`);
-    }
+  finish(finalBinId: bigint): void {
+    this.orchestrator.log(`\nFinal bin ID: ${finalBinId}`);
+    this.orchestrator.finish();
+
+    expect(this.orchestrator.stats.failed).toBe(0);
   }
 }
 
 describe('DLMM Core Bin Traversal Fuzz Test', () => {
-  let logger: TraversalLogger;
 
   beforeEach(() => {
     setupTestEnvironment();
-    logger = new TraversalLogger();
   });
 
-  it('should traverse bins: 0 > -500 > 500 > 0 with operations in each bin', async () => {
-    logger.log('Starting bin traversal fuzz test');
+  it('should traverse bins: 0 => -500 => 500 => 0 with operations in each bin', async () => {
+    const orchestrator = new LogManager('bin-traversal');
+    orchestrator.log('Starting bin traversal fuzz test');
     
-    const orchestrator = new TestOrchestrator(logger);
+    const testOrchestrator = new TestOrchestrator(orchestrator);
     
     // execute traversal path
-    orchestrator.executeTraversalPath(TestConfig.TRAVERSAL_PATH);
+    testOrchestrator.executeTraversalPath(TestConfig.TRAVERSAL_PATH);
     
     // attempt to return to center
-    const finalBinId = orchestrator.returnToCenterIfNeeded();
+    const finalBinId = testOrchestrator.recenterPool();
     
     // log final summary
-    orchestrator.logFinalSummary(finalBinId);
-    
-    logger.save();
+    testOrchestrator.finish(finalBinId);    
   }, TestConfig.TIMEOUT);
 });

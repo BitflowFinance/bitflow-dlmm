@@ -13,8 +13,6 @@ import {
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { txOk, rovOk } from '@clarigen/test';
-import * as fs from 'fs';
-import * as path from 'path';
 import { getFuzzConfig } from './harnesses/config';
 
 import {
@@ -31,6 +29,7 @@ import {
   calculateMultiBinSwapFloat,
   PoolState as MultiBinPoolState,
 } from './harnesses/multi-bin-quote-estimation';
+import { LogManager, SeededRandom, DirectionType, SwapType } from './utils';
 
 interface PoolState {
   activeBinId: bigint;
@@ -39,7 +38,7 @@ interface PoolState {
 
 interface SwapValidationResult {
   txNumber: number;
-  direction: Direction;
+  direction: DirectionType;
   inputAmount: bigint;
   actualSwappedIn: bigint;
   actualSwappedOut: bigint;
@@ -52,25 +51,6 @@ interface SwapValidationResult {
   binPrice: bigint;
   feeRateBPS: bigint;
   swapType?: SwapType;
-}
-
-interface ValidationStats {
-  totalSwaps: number;
-  successfulSwaps: number;
-  failedSwaps: number;
-  integerMatches: number;
-  floatMatches: number;
-  bugsDetected: number;
-  singleBinSwaps: number;
-  multiBinSwaps: number;
-  roundingDifferences: Array<{
-    txNumber: number;
-    direction: string;
-    actualOut: bigint;
-    expectedFloat: bigint;
-    difference: bigint;
-    percentDiff: number;
-  }>;
 }
 
 interface SwapResult {
@@ -94,7 +74,6 @@ class TestConfig {
   static readonly MIN_SWAP_AMOUNT = 100n;
   static readonly PERCENTAGE_PRECISION = 10000n;
   
-  // Swap amount generation ranges
   static readonly SINGLE_BIN_MIN_PERCENT = 0.01; // 1%
   static readonly SINGLE_BIN_MAX_PERCENT = 0.30; // 30%
   
@@ -103,35 +82,13 @@ class TestConfig {
   static readonly MULTI_BIN_FALLBACK_MIN = 0.50; // 50%
   static readonly MULTI_BIN_FALLBACK_MAX = 1.00; // 100%
   
-  // Pool state capture
   static readonly MULTI_BIN_CAPTURE_RADIUS = 20;
   
-  // Progress reporting
-  static readonly PROGRESS_UPDATE_INTERVAL = 10;
-  
-  // Validation thresholds
   static readonly MIN_INTEGER_MATCH_RATE = 90;
   static readonly MIN_FLOAT_MATCH_RATE = 80;
   
   static readonly INITIAL_BTC_BALANCE = 10000000000n; // 100
   static readonly INITIAL_USDC_BALANCE = 1000000000000n; // 10M
-}
-
-class SeededRandom {
-  private seed: number;
-
-  constructor(seed: number) {
-    this.seed = seed;
-  }
-
-  next(): number {
-    this.seed = (this.seed * 9301 + 49297) % 233280;
-    return this.seed / 233280;
-  }
-
-  nextInt(min: number, max: number): number {
-    return Math.floor(this.next() * (max - min + 1)) + min;
-  }
 }
 
 class PoolStateManager {
@@ -181,15 +138,11 @@ class PoolStateManager {
 }
 
 class SwapAmountGenerator {
-  /**
-   * Generate a random swap amount for single-bin swaps.
-   * Uses 1-30% of available balance to ensure single-bin execution.
-   */
   static generateSingleBin(
     rng: SeededRandom,
     poolState: PoolState,
     binId: bigint,
-    direction: Direction,
+    direction: DirectionType,
     userBalance: bigint,
     binPrice: bigint
   ): bigint | null {
@@ -273,7 +226,7 @@ class SwapAmountGenerator {
       return null;
     }
     
-    // Generate random amount in range [minAmount, effectiveMax]
+    // in range [minAmount, effectiveMax]
     const range = effectiveMax - minAmount;
     const amount = minAmount + (range * BigInt(Math.floor(rng.next() * Number(TestConfig.PERCENTAGE_PRECISION)))) / TestConfig.PERCENTAGE_PRECISION;
     
@@ -286,7 +239,7 @@ class SwapExecutor {
    * Execute a single-bin swap.
    */
   static executeSingleBin(
-    direction: Direction,
+    direction: DirectionType,
     amount: bigint,
     activeBinId: bigint,
     user: string
@@ -316,7 +269,7 @@ class SwapExecutor {
    * Execute a multi-bin swap using the swap router.
    */
   static executeMultiBin(
-    direction: Direction,
+    direction: DirectionType,
     amount: bigint,
     user: string
   ): SwapResult {
@@ -354,7 +307,7 @@ class SwapValidator {
    */
   static validateSingleBin(
     txNumber: number,
-    direction: Direction,
+    direction: DirectionType,
     inputAmount: bigint,
     actualSwappedIn: bigint,
     actualSwappedOut: bigint,
@@ -412,7 +365,7 @@ class SwapValidator {
    */
   static async validateMultiBin(
     txNumber: number,
-    direction: Direction,
+    direction: DirectionType,
     inputAmount: bigint,
     actualSwappedIn: bigint,
     actualSwappedOut: bigint,
@@ -499,238 +452,20 @@ class SwapValidator {
   }
 }
 
-class ProgressReporter {
-  private ttyFd: number | null = null;
-  private startTime: number;
-
-  constructor() {
-    this.startTime = Date.now();
-    try {
-      this.ttyFd = fs.openSync('/dev/tty', 'w');
-    } catch (e) {
-      // /dev/tty not available, will use stderr fallback
-      this.ttyFd = null;
-    }
-  }
-
-  writeProgress(txNumber: number, totalTransactions: number, stats: ValidationStats): void {
-    const percent = ((txNumber / totalTransactions) * 100).toFixed(1);
-    const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
-    const elapsedSeconds = (Date.now() - this.startTime) / 1000;
-    const rate = txNumber > 1 && elapsedSeconds > 0 
-      ? ((txNumber - 1) / elapsedSeconds).toFixed(1)
-      : '0.0';
-    const successRate = stats.totalSwaps > 0 
-      ? ((stats.successfulSwaps / stats.totalSwaps) * 100).toFixed(1)
-      : '0.0';
-    const integerMatchRate = stats.totalSwaps > 0
-      ? ((stats.integerMatches / stats.totalSwaps) * 100).toFixed(1)
-      : '0.0';
-    const floatMatchRate = stats.totalSwaps > 0
-      ? ((stats.floatMatches / stats.totalSwaps) * 100).toFixed(1)
-      : '0.0';
-    
-    let progressLine = `${percent}% (${txNumber}/${totalTransactions}) | ✅ ${successRate}% | 🔢 ${integerMatchRate}% | 🔷 ${floatMatchRate}% | 🚨 ${stats.bugsDetected} | ⚡ ${rate} tx/s | ⏱️  ${elapsed}s`;
-    
-    if (txNumber > 1 && parseFloat(rate) > 0) {
-      const remaining = totalTransactions - txNumber;
-      const etaSeconds = remaining / parseFloat(rate);
-      const etaMin = Math.floor(etaSeconds / 60);
-      const etaSec = Math.floor(etaSeconds % 60);
-      progressLine += ` | ⏳ ETA: ~${etaMin}m ${etaSec}s`;
-    }
-    
-    this.write(progressLine + '\n');
-  }
-
-  writebug(txNumber: number, direction: Direction, swapAmount: bigint, actualOut: bigint, expectedFloat: bigint): void {
-    const bugMsg = `\n bug DETECTED at transaction ${txNumber}:\n   Direction: ${direction}\n   Input: ${swapAmount}\n   Contract returned: ${actualOut}\n   Quote engine max: ${expectedFloat}\n   Excess: ${actualOut - expectedFloat}\n`;
-    this.write(bugMsg);
-  }
-
-  writeSummary(stats: ValidationStats): void {
-    const summary = `\n Validation complete:\n   Total swaps: ${stats.totalSwaps}\n   Integer matches: ${stats.integerMatches}\n   Float matches: ${stats.floatMatches}\n   bugs detected: ${stats.bugsDetected}\n`;
-    this.write(summary);
-  }
-
-  private write(message: string): void {
-    if (this.ttyFd !== null) {
-      try {
-        fs.writeSync(this.ttyFd, message);
-        return;
-      } catch (e) {
-        // Fallback to stderr
-      }
-    }
-    fs.writeSync(2, message);
-  }
-
-  close(): void {
-    if (this.ttyFd !== null) {
-      try {
-        fs.closeSync(this.ttyFd);
-      } catch (e) {
-        // Ignore errors on close
-      }
-    }
-  }
-}
-
-class ValidationLogger {
-  private logDir: string;
-  private results: SwapValidationResult[] = [];
-  public stats: ValidationStats;
-
-  constructor() {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    this.logDir = path.join(process.cwd(), 'logs', 'quote-engine-validation', timestamp);
-    fs.mkdirSync(this.logDir, { recursive: true });
-    
-    this.stats = {
-      totalSwaps: 0,
-      successfulSwaps: 0,
-      failedSwaps: 0,
-      integerMatches: 0,
-      floatMatches: 0,
-      bugsDetected: 0,
-      singleBinSwaps: 0,
-      multiBinSwaps: 0,
-      roundingDifferences: [],
-    };
-  }
-
-  logResult(result: SwapValidationResult): void {
-    this.results.push(result);
-    this.updateStats(result);
-  }
-
-  private updateStats(result: SwapValidationResult): void {
-    this.stats.totalSwaps++;
-    
-    if (result.actualSwappedOut > 0n) {
-      this.stats.successfulSwaps++;
-    } else {
-      this.stats.failedSwaps++;
-    }
-    
-    if (result.integerMatch) this.stats.integerMatches++;
-    if (result.floatMatch) this.stats.floatMatches++;
-    if (result.bugDetected) this.stats.bugsDetected++;
-    
-    if (result.swapType === 'multi-bin') {
-      this.stats.multiBinSwaps++;
-    } else {
-      this.stats.singleBinSwaps++;
-    }
-    
-    if (!result.floatMatch && result.actualSwappedOut > 0n) {
-      const diff = result.expectedFloat > result.actualSwappedOut
-        ? result.expectedFloat - result.actualSwappedOut
-        : result.actualSwappedOut - result.expectedFloat;
-      const percentDiff = result.actualSwappedOut > 0n
-        ? (Number(diff) / Number(result.actualSwappedOut)) * 100
-        : 0;
-      
-      this.stats.roundingDifferences.push({
-        txNumber: result.txNumber,
-        direction: result.direction,
-        actualOut: result.actualSwappedOut,
-        expectedFloat: result.expectedFloat,
-        difference: diff,
-        percentDiff,
-      });
-    }
-  }
-
-  writeResults(): void {
-    this.writeJSON();
-    this.writeMarkdown();
-  }
-
-  private writeJSON(): void {
-    const jsonPath = path.join(this.logDir, 'validation-results.json');
-    fs.writeFileSync(jsonPath, JSON.stringify({
-      stats: this.stats,
-      results: this.results,
-    }, null, 2));
-  }
-
-  private writeMarkdown(): void {
-    const mdPath = path.join(this.logDir, 'summary.md');
-    const md = this.generateMarkdownSummary();
-    fs.writeFileSync(mdPath, md);
-  }
-
-  private generateMarkdownSummary(): string {
-    let md = `# Quote Engine Validation Results\n\n`;
-    md += `Generated: ${new Date().toISOString()}\n\n`;
-    md += `## Summary\n\n`;
-    md += `- Total Swaps: ${this.stats.totalSwaps}\n`;
-    md += `- Single-Bin Swaps: ${this.stats.singleBinSwaps}\n`;
-    md += `- Multi-Bin Swaps: ${this.stats.multiBinSwaps}\n`;
-    md += `- Successful Swaps: ${this.stats.successfulSwaps}\n`;
-    md += `- Failed Swaps: ${this.stats.failedSwaps}\n`;
-    md += `- Integer Math Matches: ${this.stats.integerMatches} (${((this.stats.integerMatches / this.stats.totalSwaps) * 100).toFixed(2)}%)\n`;
-    md += `- Float Math Matches: ${this.stats.floatMatches} (${((this.stats.floatMatches / this.stats.totalSwaps) * 100).toFixed(2)}%)\n`;
-    md += `- **bugS DETECTED**: ${this.stats.bugsDetected}\n\n`;
-    
-    if (this.stats.bugsDetected > 0) {
-      md += this.generatebugSection();
-    }
-    
-    if (this.stats.roundingDifferences.length > 0) {
-      md += this.generateRoundingSection();
-    }
-    
-    return md;
-  }
-
-  private generatebugSection(): string {
-    let md = `## 🚨 CRITICAL: bugs Detected\n\n`;
-    md += `The contract returned MORE tokens than the quote engine allows in ${this.stats.bugsDetected} cases.\n\n`;
-    const bugs = this.results.filter(r => r.bugDetected);
-    for (const bug of bugs) {
-      md += `- Transaction ${bug.txNumber}: ${bug.direction}, `;
-      md += `Input: ${bug.inputAmount}, `;
-      md += `Contract returned: ${bug.actualSwappedOut}, `;
-      md += `Quote engine max: ${bug.expectedFloat}, `;
-      md += `Excess: ${bug.actualSwappedOut - bug.expectedFloat}\n`;
-    }
-    md += `\n`;
-    return md;
-  }
-
-  private generateRoundingSection(): string {
-    let md = `## Rounding Differences\n\n`;
-    md += `Total rounding differences: ${this.stats.roundingDifferences.length}\n\n`;
-    md += `| TX | Direction | Actual Out | Expected Float | Difference | % Diff |\n`;
-    md += `|----|-----------|------------|----------------|------------|--------|\n`;
-    for (const diff of this.stats.roundingDifferences.slice(0, 50)) {
-      md += `| ${diff.txNumber} | ${diff.direction} | ${diff.actualOut} | ${diff.expectedFloat} | ${diff.difference} | ${diff.percentDiff.toFixed(6)}% |\n`;
-    }
-    if (this.stats.roundingDifferences.length > 50) {
-      md += `\n(Showing first 50 of ${this.stats.roundingDifferences.length} differences)\n`;
-    }
-    return md;
-  }
-}
-
 class TestOrchestrator {
-  private logger: ValidationLogger;
-  private reporter: ProgressReporter;
+  private orchestrator: LogManager;
   private rng: SeededRandom;
   private users: string[];
 
-  constructor(logger: ValidationLogger, reporter: ProgressReporter, rng: SeededRandom) {
-    this.logger = logger;
-    this.reporter = reporter;
+  constructor(orchestrator: LogManager, rng: SeededRandom) {
+    this.orchestrator = orchestrator;
     this.rng = rng;
     this.users = [alice, bob, charlie];
   }
 
   async runSwapIteration(
     txNumber: number,
-    totalTransactions: number,
+    _totalTransactions: number,
     multiBinMode: boolean
   ): Promise<{ success: boolean; bugDetected: boolean }> {
     const useMultiBin = multiBinMode && this.rng.next() < 0.5;
@@ -744,7 +479,7 @@ class TestOrchestrator {
     const binPrice = rovOk(dlmmCore.getBinPrice(poolData.initialPrice, poolData.binStep, activeBinId));
     
     const user = this.users[this.rng.nextInt(0, this.users.length - 1)];
-    const direction: Direction = this.rng.next() < 0.5 ? 'x-for-y' : 'y-for-x';
+    const direction: DirectionType = this.rng.next() < 0.5 ? 'x-for-y' : 'y-for-x';
     
     const userXBalance = rovOk(mockSbtcToken.getBalance(user));
     const userYBalance = rovOk(mockUsdcToken.getBalance(user));
@@ -795,46 +530,35 @@ class TestOrchestrator {
           );
       
       validation.swapType = useMultiBin ? 'multi-bin' : 'single-bin';
-      this.logger.logResult(validation);
+      
+      this.orchestrator.recordResult(validation);
+      this.updateStats(validation);
       
       if (validation.bugDetected) {
-        this.reporter.writebug(txNumber, direction, swapAmount, swapResult.swappedOut, validation.expectedFloat);
-        this.reporter.writeProgress(txNumber, totalTransactions, this.logger.stats);
+        this.orchestrator.logError(`BUG DETECTED at tx ${txNumber}`, validation);
         return { success: true, bugDetected: true };
       }
       
       return { success: true, bugDetected: false };
     } catch (e: any) {
-      this.logger.logResult({
-        txNumber,
-        direction,
-        inputAmount: swapAmount,
-        actualSwappedIn: 0n,
-        actualSwappedOut: 0n,
-        expectedInteger: 0n,
-        expectedFloat: 0n,
-        integerMatch: true,
-        floatMatch: true,
-        bugDetected: false,
-        binId: activeBinId,
-        binPrice,
-        feeRateBPS: 0n,
-      });
-      return { success: false, bugDetected: false };
+        // swap fail
+        this.orchestrator.incrementStat('failedSwaps');
+        return { success: false, bugDetected: false };
     }
   }
 
-  shouldUpdateProgress(txNumber: number, totalTransactions: number, lastPercent: number): boolean {
-    const currentPercent = Math.floor((txNumber / totalTransactions) * 100);
-    return txNumber === 1 || 
-           txNumber === totalTransactions || 
-           txNumber % TestConfig.PROGRESS_UPDATE_INTERVAL === 0 || 
-           currentPercent !== lastPercent;
+  private updateStats(result: SwapValidationResult) {
+      this.orchestrator.incrementStat('totalSwaps');
+      if (result.actualSwappedOut > 0n) this.orchestrator.incrementStat('successfulSwaps');
+      else this.orchestrator.incrementStat('failedSwaps');
+      
+      if (result.integerMatch) this.orchestrator.incrementStat('integerMatches');
+      if (result.floatMatch) this.orchestrator.incrementStat('floatMatches');
+      if (result.bugDetected) this.orchestrator.incrementStat('bugsDetected');
   }
 }
 
 describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
-  let logger: ValidationLogger;
   let rng: SeededRandom;
   
   const config = getFuzzConfig();
@@ -852,31 +576,26 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
     txOk(mockSbtcToken.mint(TestConfig.INITIAL_BTC_BALANCE, charlie), deployer);
     txOk(mockUsdcToken.mint(TestConfig.INITIAL_USDC_BALANCE, charlie), deployer);
     
-    logger = new ValidationLogger();
     rng = new SeededRandom(RANDOM_SEED);
   });
 
   it(`should validate swap calculations against quote engine (${NUM_TRANSACTIONS} transactions)`, async () => {
-    const reporter = new ProgressReporter();
-    const orchestrator = new TestOrchestrator(logger, reporter, rng);
+    const orchestrator = new LogManager('quote-engine-validation');
+    const testOrchestrator = new TestOrchestrator(orchestrator, rng);
     
     let txNumber = 0;
-    let lastPercent = -1;
 
-    console.log(`\n Starting Quote Engine Validation Fuzz Test`);
-    console.log(`   Transactions: ${NUM_TRANSACTIONS}`);
-    console.log(`   Random Seed: ${RANDOM_SEED}`);
-    console.log(`   Multi-Bin Mode: ${MULTI_BIN_MODE ? 'ENABLED' : 'DISABLED'}\n`);
+    orchestrator.log(`\n Starting Quote Engine Validation Fuzz Test`);
+    orchestrator.log(`   Transactions: ${NUM_TRANSACTIONS}`);
+    orchestrator.log(`   Random Seed: ${RANDOM_SEED}`);
+    orchestrator.log(`   Multi-Bin Mode: ${MULTI_BIN_MODE ? 'ENABLED' : 'DISABLED'}\n`);
 
     for (let i = 0; i < NUM_TRANSACTIONS; i++) {
       txNumber++;
       
-      if (orchestrator.shouldUpdateProgress(txNumber, NUM_TRANSACTIONS, lastPercent)) {
-        reporter.writeProgress(txNumber, NUM_TRANSACTIONS, logger.stats);
-        lastPercent = Math.floor((txNumber / NUM_TRANSACTIONS) * 100);
-      }
+      orchestrator.updateProgress(txNumber, NUM_TRANSACTIONS);
       
-      const result = await orchestrator.runSwapIteration(txNumber, NUM_TRANSACTIONS, MULTI_BIN_MODE);
+      const result = await testOrchestrator.runSwapIteration(txNumber, NUM_TRANSACTIONS, MULTI_BIN_MODE);
       
       if (!result.success) {
         txNumber--;
@@ -884,22 +603,19 @@ describe('DLMM Core Quote Engine Validation Fuzz Test', () => {
       }
     }
     
-    reporter.close();
-    logger.writeResults();
-    reporter.writeSummary(logger.stats);
+    orchestrator.finish();
     
-    // Verify no bugs were detected
-    expect(logger.stats.bugsDetected).toBe(0);
+    expect(orchestrator.stats.bugsDetected || 0).toBe(0);
     
-    // Verify high match rates
-    if (logger.stats.totalSwaps > 0) {
-      const integerMatchRate = (logger.stats.integerMatches / logger.stats.totalSwaps) * 100;
-      const floatMatchRate = (logger.stats.floatMatches / logger.stats.totalSwaps) * 100;
+    const totalSwaps = orchestrator.stats.totalSwaps || 0;
+    if (totalSwaps > 0) {
+      const integerMatchRate = ((orchestrator.stats.integerMatches || 0) / totalSwaps) * 100;
+      const floatMatchRate = ((orchestrator.stats.floatMatches || 0) / totalSwaps) * 100;
       
       expect(integerMatchRate).toBeGreaterThanOrEqual(TestConfig.MIN_INTEGER_MATCH_RATE);
       expect(floatMatchRate).toBeGreaterThanOrEqual(TestConfig.MIN_FLOAT_MATCH_RATE);
     } else {
-      expect(logger.stats.totalSwaps).toBeGreaterThan(0);
+      expect(totalSwaps).toBeGreaterThan(0);
     }
   }, NUM_TRANSACTIONS > 100 ? 300000 : NUM_TRANSACTIONS > 50 ? 120000 : 60000);
 });
