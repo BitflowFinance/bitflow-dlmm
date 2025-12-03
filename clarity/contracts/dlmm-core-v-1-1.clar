@@ -1248,7 +1248,7 @@
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap true) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
     (pool-contract (contract-of pool-trait))
-    (pool-validity-check (asserts! (is-valid-pool pool-id pool-contract) ERR_INVALID_POOL))
+    (pool-validity-check (try! (check-pool-validity pool-id pool-contract)))
     (x-token (get x-token pool-data))
     (y-token (get y-token pool-data))
     (bin-step (get bin-step pool-data))
@@ -1307,8 +1307,7 @@
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
   )
     (begin
-      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
-      (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
+      ;; Assert correct token traits are used and pool is managed by this core contract
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
       (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
@@ -1394,7 +1393,7 @@
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-swap false) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
     (pool-contract (contract-of pool-trait))
-    (pool-validity-check (asserts! (is-valid-pool pool-id pool-contract) ERR_INVALID_POOL))
+    (pool-validity-check (try! (check-pool-validity pool-id pool-contract)))
     (x-token (get x-token pool-data))
     (y-token (get y-token pool-data))
     (bin-step (get bin-step pool-data))
@@ -1453,8 +1452,7 @@
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
   )
     (begin
-      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
-      (asserts! (is-enabled-pool pool-id) ERR_POOL_DISABLED)
+      ;; Assert correct token traits are used and pool is managed by this core contract
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
       (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
@@ -1539,7 +1537,7 @@
     ;; Get pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-add) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
-    (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
+    (pool-validity-check (try! (check-pool-validity pool-id pool-contract)))
     (x-token (get x-token pool-data))
     (y-token (get y-token pool-data))
     (bin-step (get bin-step pool-data))
@@ -1631,8 +1629,7 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
-      (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
+      ;; Assert correct token traits are used and pool is managed by this core contract
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
       (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
@@ -1817,7 +1814,7 @@
     ;; Get pool data and check if pool is valid
     (pool-data (unwrap! (contract-call? pool-trait get-pool-for-add) ERR_NO_POOL_DATA))
     (pool-contract (contract-of pool-trait))
-    (pool-validity-check (asserts! (is-valid-pool (get pool-id pool-data) pool-contract) ERR_INVALID_POOL))
+    (pool-validity-check (try! (check-pool-validity pool-id pool-contract)))
     (x-token (get x-token pool-data))
     (y-token (get y-token pool-data))
     (bin-step (get bin-step pool-data))
@@ -1927,8 +1924,7 @@
     (caller tx-sender)
   )
     (begin
-      ;; Assert pool-status is true, correct token traits are used, and pool is managed by this core contract
-      (asserts! (is-enabled-pool (get pool-id pool-data)) ERR_POOL_DISABLED)
+      ;; Assert correct token traits are used and pool is managed by this core contract
       (asserts! (is-eq (contract-of x-token-trait) x-token) ERR_INVALID_X_TOKEN)
       (asserts! (is-eq (contract-of y-token-trait) y-token) ERR_INVALID_Y_TOKEN)
       (asserts! (is-eq (get core-address pool-data) current-contract) ERR_NOT_MANAGED_POOL)
@@ -2107,11 +2103,13 @@
   )
 )
 
-;; Check if a pool is enabled
-(define-private (is-enabled-pool (id uint))
+;; Check if a pool is valid and enabled
+(define-private (check-pool-validity (id uint) (contract principal))
   (let (
-    (pool-data (unwrap! (map-get? pools id) false))
+    (pool-data (unwrap! (map-get? pools id) (ok false)))
   )
-    (is-eq (get status pool-data) true)
+    (asserts! (is-eq contract (get pool-contract pool-data)) ERR_INVALID_POOL)
+    (asserts! (is-eq (get status pool-data) true) ERR_POOL_DISABLED)
+    (ok true)
   )
 )
