@@ -1,6 +1,7 @@
 ;; dlmm-core-v-1-1
 
-;; Use DLMM pool trait and SIP 010 trait
+;; Use DLMM core trait, DLMM pool trait, and SIP 010 trait
+(use-trait dlmm-core-trait .dlmm-core-trait-v-1-1.dlmm-core-trait)
 (use-trait dlmm-pool-trait .dlmm-pool-trait-v-1-1.dlmm-pool-trait)
 (use-trait sip-010-trait .sip-010-trait-ft-standard-v-1-1.sip-010-trait)
 
@@ -61,11 +62,13 @@
 (define-constant ERR_VARIABLE_FEES_COOLDOWN (err u1054))
 (define-constant ERR_VARIABLE_FEES_MANAGER_FROZEN (err u1055))
 (define-constant ERR_INVALID_DYNAMIC_CONFIG (err u1056))
-(define-constant ERR_INVALID_CORE_MIGRATION_COOLDOWN (err u1057))
-(define-constant ERR_CORE_MIGRATION_COOLDOWN (err u1058))
-(define-constant ERR_CORE_ADDRESS_ALREADY_MIGRATED (err u1059))
-(define-constant ERR_NOT_MANAGED_POOL (err u1060))
-(define-constant ERR_PROTOCOL_FEES_PRESENT (err u1061))
+(define-constant ERR_INVALID_CORE (err u1057))
+(define-constant ERR_INVALID_CORE_MIGRATION_COOLDOWN (err u1058))
+(define-constant ERR_CORE_MIGRATION_COOLDOWN (err u1059))
+(define-constant ERR_CORE_ADDRESS_ALREADY_MIGRATED (err u1060))
+(define-constant ERR_NOT_MANAGED_POOL (err u1061))
+(define-constant ERR_PROTOCOL_FEES_PRESENT (err u1062))
+(define-constant ERR_PUBLIC_POOL_CREATION_ENABLED (err u1063))
 
 ;; Contract deployer address
 (define-constant CONTRACT_DEPLOYER tx-sender)
@@ -88,8 +91,11 @@
 ;; Min core migration cooldown in seconds (1 week min)
 (define-constant MIN_CORE_MIGRATION_COOLDOWN u604800)
 
-;; Core migration address and execution time
-(define-data-var core-migration-address principal current-contract)
+;; Core migration source and target addresses
+(define-data-var core-migration-source principal current-contract)
+(define-data-var core-migration-target principal current-contract)
+
+;; Core migration execution time
 (define-data-var core-migration-execution-time uint u0)
 
 ;; Core migration cooldown in seconds (2 weeks by default)
@@ -137,9 +143,14 @@
 ;; Define swap-fee-exemptions map
 (define-map swap-fee-exemptions {address: principal, id: uint} bool)
 
-;; Get core migration address
-(define-read-only (get-core-migration-address)
-  (ok (var-get core-migration-address))
+;; Get core migration source address
+(define-read-only (get-core-migration-source)
+  (ok (var-get core-migration-source))
+)
+
+;; Get core migration target address
+(define-read-only (get-core-migration-target)
+  (ok (var-get core-migration-target))
 )
 
 ;; Get timestamp of core migration execution time
@@ -264,9 +275,33 @@
   )
 )
 
-;; Set core migration address
-(define-public (set-core-migration-address (address principal))
+;; Set core migration source address
+(define-public (set-core-migration-source (core-trait <dlmm-core-trait>))
   (let (
+    (core-contract (contract-of core-trait))
+    (caller tx-sender)
+  )
+    (begin
+      ;; Assert caller is an admin
+      (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
+
+      ;; Transfer 1 uSTX from caller to BURN_ADDRESS
+      (try! (stx-transfer? u1 caller BURN_ADDRESS))
+
+      ;; Set core-migration-source to core-contract
+      (var-set core-migration-source core-contract)
+
+      ;; Print function data and return true
+      (print {action: "set-core-migration-source", caller: caller, data: {core-contract: core-contract}})
+      (ok true)
+    )
+  )
+)
+
+;; Set core migration target address
+(define-public (set-core-migration-target (core-trait <dlmm-core-trait>))
+  (let (
+    (core-contract (contract-of core-trait))
     (migration-execution-time (+ stacks-block-time (var-get core-migration-cooldown)))
     (caller tx-sender)
   )
@@ -274,22 +309,19 @@
       ;; Assert caller is an admin
       (asserts! (is-some (index-of (var-get admins) caller)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert address is standard principal
-      (asserts! (is-standard address) ERR_INVALID_PRINCIPAL)
-
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
       (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
-      ;; Set core-migration-address and core-migration-execution-time
-      (var-set core-migration-address address)
+      ;; Set core-migration-target and core-migration-execution-time
+      (var-set core-migration-target core-contract)
       (var-set core-migration-execution-time migration-execution-time)
 
       ;; Print function data and return true
       (print {
-        action: "set-core-migration-address",
+        action: "set-core-migration-target",
         caller: caller,
         data: {
-          address: address,
+          core-contract: core-contract,
           migration-execution-time: migration-execution-time,
           current-block-time: stacks-block-time
         }
@@ -324,16 +356,19 @@
   )
 )
 
-;; Migrate core address for a pool
-(define-public (migrate-core-address (pool-trait <dlmm-pool-trait>))
+;; Migrate a pool to the target core contract
+(define-public (migrate-pool (pool-trait <dlmm-pool-trait>) (core-trait <dlmm-core-trait>))
   (let (
-    ;; Get pool data
+    ;; Get pool data and core migration data
     (pool-data (unwrap! (contract-call? pool-trait get-pool) ERR_NO_POOL_DATA))
     (pool-id (get pool-id pool-data))
+    (pool-status (get status (unwrap! (map-get? pools pool-id) ERR_NO_POOL_DATA)))
+    (pool-contract (contract-of pool-trait))
     (current-unclaimed-protocol-fees (unwrap! (map-get? unclaimed-protocol-fees pool-id) ERR_NO_UNCLAIMED_PROTOCOL_FEES_DATA))
     (unclaimed-x-fees (get x-fee current-unclaimed-protocol-fees))
     (unclaimed-y-fees (get y-fee current-unclaimed-protocol-fees))
-    (current-core-migration-address (var-get core-migration-address))
+    (core-contract (contract-of core-trait))
+    (current-core-migration-target (var-get core-migration-target))
     (current-core-migration-execution-time (var-get core-migration-execution-time))
     (caller tx-sender)
   )
@@ -350,26 +385,93 @@
       ;; Assert core migration cooldown has passed
       (asserts! (>= stacks-block-time current-core-migration-execution-time) ERR_CORE_MIGRATION_COOLDOWN)
 
-      ;; Assert current-core-migration-address is not equal to the pool's current core address
-      (asserts! (not (is-eq current-core-migration-address (get core-address pool-data))) ERR_CORE_ADDRESS_ALREADY_MIGRATED)
+      ;; Assert current-core-migration-target is not equal to the pool's current core address
+      (asserts! (not (is-eq current-core-migration-target (get core-address pool-data))) ERR_CORE_ADDRESS_ALREADY_MIGRATED)
+
+      ;; Assert core-contract is equal to current-core-migration-target
+      (asserts! (is-eq core-contract current-core-migration-target) ERR_INVALID_CORE)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS
       (try! (stx-transfer? u1 caller BURN_ADDRESS))
 
+      ;; Call accept-migrated-pool via the target core contract
+      (try! (contract-call? core-trait accept-migrated-pool pool-contract (get x-token pool-data) (get y-token pool-data) (get bin-step pool-data) pool-id (get pool-name pool-data) (get pool-symbol pool-data) pool-status))
+
       ;; Set core address for pool
-      (try! (contract-call? pool-trait set-core-address current-core-migration-address))
+      (try! (contract-call? pool-trait set-core-address current-core-migration-target))
 
       ;; Print function data and return true
       (print {
-        action: "migrate-core-address",
+        action: "migrate-pool",
         caller: caller,
         data: {
           pool-id: (get pool-id pool-data),
           pool-name: (get pool-name pool-data),
-          pool-contract: (contract-of pool-trait),
-          current-core-migration-address: current-core-migration-address,
+          pool-contract: pool-contract,
+          core-contract: core-contract,
+          current-core-migration-target: current-core-migration-target,
           current-core-migration-execution-time: current-core-migration-execution-time,
           current-block-time: stacks-block-time
+        }
+      })
+      (ok true)
+    )
+  )
+)
+
+;; Accept a migrated pool from another core contract
+(define-public (accept-migrated-pool
+    (pool-contract principal)
+    (x-token-contract principal) (y-token-contract principal)
+    (bin-step uint)
+    (pool-id uint) (pool-name (string-ascii 32)) (pool-symbol (string-ascii 32)) (pool-status bool)
+  )
+  (let (
+    ;; Check if pool code hash is verified
+    (pool-code-hash (unwrap! (contract-hash? pool-contract) ERR_INVALID_POOL_CODE_HASH))
+    (pool-verified-check (is-some (index-of (var-get verified-pool-code-hashes) pool-code-hash)))
+
+    ;; Get current and updated last pool ID
+    (current-last-pool-id (var-get last-pool-id))
+    (updated-last-pool-id (if (> pool-id current-last-pool-id) pool-id current-last-pool-id))
+    (caller contract-caller)
+  )
+    (begin
+      ;; Assert caller is the core-migration-source contract
+      (asserts! (is-eq caller (var-get core-migration-source)) ERR_NOT_AUTHORIZED)
+
+      ;; Assert public pool creation is disabled
+      (asserts! (not (var-get public-pool-creation)) ERR_PUBLIC_POOL_CREATION_ENABLED)
+
+      ;; Assert reverse token direction is not registered
+      (asserts! (is-none (map-get? allowed-token-direction {x-token: y-token-contract, y-token: x-token-contract})) ERR_INVALID_TOKEN_DIRECTION)
+
+      ;; Assert bin step is valid
+      (asserts! (is-some (index-of (var-get bin-steps) bin-step)) ERR_INVALID_BIN_STEP)
+
+      ;; Update last-pool-id, add pool to pools map, and add pool to unclaimed-protocol-fees map
+      (var-set last-pool-id updated-last-pool-id)
+      (map-set pools pool-id {id: pool-id, name: pool-name, symbol: pool-symbol, pool-contract: pool-contract, status: pool-status})
+      (map-set unclaimed-protocol-fees pool-id {x-fee: u0, y-fee: u0})
+
+      ;; Update allowed-token-direction map if needed
+      (if (is-none (map-get? allowed-token-direction {x-token: x-token-contract, y-token: y-token-contract}))
+          (map-set allowed-token-direction {x-token: x-token-contract, y-token: y-token-contract} true)
+          false)
+      
+      ;; Print function data and return true
+      (print {
+        action: "accept-migrated-pool",
+        caller: caller,
+        data: {
+          pool-id: pool-id,
+          pool-name: pool-name,
+          pool-symbol: pool-symbol,
+          pool-contract: pool-contract,
+          pool-status: pool-status,
+          pool-verified: pool-verified-check,
+          current-last-pool-id: current-last-pool-id,
+          updated-last-pool-id: updated-last-pool-id
         }
       })
       (ok true)
@@ -1016,7 +1118,7 @@
       ;; Assert caller is variable fees manager if variable fees manager is frozen
       (asserts! (or (is-eq variable-fees-manager caller) (not freeze-variable-fees-manager)) ERR_NOT_AUTHORIZED)
 
-      ;; Assert config is greater than 0
+      ;; Assert config length is greater than 0
       (asserts! (> (len config) u0) ERR_INVALID_DYNAMIC_CONFIG)
 
       ;; Transfer 1 uSTX from caller to BURN_ADDRESS

@@ -1,12 +1,13 @@
 ;; dlmm-core-multi-helper-v-1-1
 
-;; Use DLMM pool trait and SIP 010 trait
+;; Use DLMM core trait, DLMM pool trait, and SIP 010 trait
+(use-trait dlmm-core-trait .dlmm-core-trait-v-1-1.dlmm-core-trait)
 (use-trait dlmm-pool-trait .dlmm-pool-trait-v-1-1.dlmm-pool-trait)
 (use-trait sip-010-trait .sip-010-trait-ft-standard-v-1-1.sip-010-trait)
 
-;; Migrate core address for multiple pools
-(define-public (migrate-core-address-multi (pool-traits (list 120 <dlmm-pool-trait>)))
-  (ok (map migrate-core-address pool-traits))
+;; Migrate multiple pools to the target core contract
+(define-public (migrate-pool-multi (pool-traits (list 120 <dlmm-pool-trait>)) (core-traits (list 120 <dlmm-core-trait>)))
+  (ok (map migrate-pool pool-traits core-traits))
 )
 
 ;; Set swap fee exemption for multiple addresses across multiple pools
@@ -112,9 +113,9 @@
   (ok (map set-dynamic-config pool-traits configs))
 )
 
-;; Private function to call migrate-core-address via DLMM Core
-(define-private (migrate-core-address (pool-trait <dlmm-pool-trait>))
-  (contract-call? .dlmm-core-v-1-1 migrate-core-address pool-trait)
+;; Private function to call migrate-pool via DLMM Core
+(define-private (migrate-pool (pool-trait <dlmm-pool-trait>) (core-trait <dlmm-core-trait>))
+  (contract-call? .dlmm-core-v-1-1 migrate-pool pool-trait core-trait)
 )
 
 ;; Private function to call set-swap-fee-exemption via DLMM Core
