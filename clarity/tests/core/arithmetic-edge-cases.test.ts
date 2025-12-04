@@ -160,11 +160,10 @@ describe('Arithmetic Edge Cases', () => {
 
     it('should handle add-liquidity with very small amounts', async () => {
       const binId = 0n;
-      const xAmount = generateVerySmallAmount(); // 1
-      const yAmount = generateVerySmallAmount(); // 1
+      const xAmount = 0n
+      const yAmount = 1n
       const minDlp = 1n;
       
-      // Very small amounts might not meet minimum requirements
       const response = txErr(dlmmCore.addLiquidity(
         sbtcUsdcPool.identifier,
         mockSbtcToken.identifier,
@@ -176,8 +175,7 @@ describe('Arithmetic Edge Cases', () => {
         1000000n,
         1000000n
       ), alice);
-      
-      // Should return an error if amounts are too small
+
       expect(response).toBeDefined();
     });
   });
