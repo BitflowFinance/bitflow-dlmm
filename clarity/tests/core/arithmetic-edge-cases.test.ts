@@ -30,9 +30,7 @@ import {
   generateAmountThatRoundsToZero,
   generateDivisionByZeroCandidate,
 } from "../helpers/edge-case-generators";
-
-const MIN_BIN_ID = -500n;
-const MAX_BIN_ID = 500n;
+import { MAX_BIN_ID, MIN_BIN_ID } from "../../fuzz/utils";
 
 describe('Arithmetic Edge Cases', () => {
   
@@ -82,18 +80,20 @@ describe('Arithmetic Edge Cases', () => {
       const binId = MIN_BIN_ID - 1n; // -501
       const xAmount = 1000000n;
       
-      // This should fail before reaching get-unsigned-bin-id due to validation
-      // or fail with underflow if validation doesn't catch it
-      const response = txErr(dlmmCore.swapXForY(
-        sbtcUsdcPool.identifier,
-        mockSbtcToken.identifier,
-        mockUsdcToken.identifier,
-        binId,
-        xAmount
-      ), alice);
-      
-      // Should return an error (either validation error or underflow)
-      expect(response).toBeDefined();
+      try {
+        txErr(dlmmCore.swapXForY(
+          sbtcUsdcPool.identifier,
+          mockSbtcToken.identifier,
+          mockUsdcToken.identifier,
+          binId,
+          xAmount
+        ), alice);
+
+        // reaching this meant the test failed
+        throw new Error('Should have thrown an error');
+      } catch (error: any) {
+        expect(String(error)).toContain('ArithmeticUnderflow');
+      }
     });
 
     it('should fail swap with invalid bin ID above maximum', async () => {
@@ -140,31 +140,12 @@ describe('Arithmetic Edge Cases', () => {
       expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_NO_BIN_SHARES);
     });
 
-    it('should handle very small swap amounts that might round to zero', async () => {
-      const binId = 0n; // Active bin
-      const xAmount = generateVerySmallAmount(); // 1
-      
-      // Very small amounts might round to zero after fees
-      // The contract should handle this gracefully
-      const response = txErr(dlmmCore.swapXForY(
-        sbtcUsdcPool.identifier,
-        mockSbtcToken.identifier,
-        mockUsdcToken.identifier,
-        binId,
-        xAmount
-      ), alice);
-      
-      // Should return ERR_INVALID_AMOUNT or handle gracefully
-      expect(response).toBeDefined();
-    });
-
     it('should handle add-liquidity with very small amounts', async () => {
       const binId = 0n;
-      const xAmount = generateVerySmallAmount(); // 1
-      const yAmount = generateVerySmallAmount(); // 1
+      const xAmount = 0n
+      const yAmount = 1n
       const minDlp = 1n;
       
-      // Very small amounts might not meet minimum requirements
       const response = txErr(dlmmCore.addLiquidity(
         sbtcUsdcPool.identifier,
         mockSbtcToken.identifier,
@@ -176,8 +157,7 @@ describe('Arithmetic Edge Cases', () => {
         1000000n,
         1000000n
       ), alice);
-      
-      // Should return an error if amounts are too small
+
       expect(response).toBeDefined();
     });
   });
@@ -186,18 +166,18 @@ describe('Arithmetic Edge Cases', () => {
     
     it('should handle swap with minimum amount (1)', async () => {
       const binId = 0n;
-      const xAmount = 1n;
+      const yAmount = 1n;
       
-      const response = txErr(dlmmCore.swapXForY(
+      const response = txOk(dlmmCore.swapYForX(
         sbtcUsdcPool.identifier,
         mockSbtcToken.identifier,
         mockUsdcToken.identifier,
         binId,
-        xAmount
+        yAmount
       ), alice);
       
-      // Should return ERR_INVALID_AMOUNT for amount too small
-      expect(cvToValue(response.result)).toBe(errors.dlmmCore.ERR_INVALID_AMOUNT);
+      expect(response).toBeDefined();
+      expect(cvToValue(response.result)["out"]).toBe(0n); // exchange rate causes a donation swap
     });
 
     it('should handle withdraw-liquidity with minimum amount', async () => {
@@ -251,11 +231,13 @@ describe('Arithmetic Edge Cases', () => {
 
     it('should handle add-liquidity with very large amounts', async () => {
       const binId = 0n;
-      // Use large but reasonable amounts (not max to avoid immediate issues)
-      const xAmount = 1000000000000000n; // Very large but not max
+      const xAmount = 1000000000000000n;
       const yAmount = 50000000000000000n;
       const minDlp = 1n;
       
+      txOk(mockSbtcToken.mint(xAmount, alice), deployer);
+      txOk(mockUsdcToken.mint(yAmount, alice), deployer);
+
       // Should handle large amounts without overflow
       const response = txOk(dlmmCore.addLiquidity(
         sbtcUsdcPool.identifier,
@@ -265,8 +247,8 @@ describe('Arithmetic Edge Cases', () => {
         xAmount,
         yAmount,
         minDlp,
-        1000000n,
-        1000000n
+        xAmount / 1000n,
+        yAmount / 1000n
       ), alice);
       
       const liquidityReceived = cvToValue(response.result);

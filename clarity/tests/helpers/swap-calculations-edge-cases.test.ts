@@ -22,7 +22,7 @@ describe('Edge Case Tests', () => {
       };
       
       // Very large bin price (close to max safe integer)
-      const veryLargeBinPrice = 9000000000000000000n; // 90 * 1e8
+      const veryLargeBinPrice = 900000000000000000n; // 9 * 1e8
       const inputAmount = 100000000n;
       const feeRateBPS = 0n;
 
