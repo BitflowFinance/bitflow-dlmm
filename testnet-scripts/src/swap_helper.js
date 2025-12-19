@@ -34,10 +34,14 @@ const TRANSACTIONS_TO_BROADCAST = parseInt(process.env.TRANSACTIONS_TO_BROADCAST
 const TRANSACTION_FEE_RATE = parseInt(process.env.TRANSACTION_FEE_RATE, 10);
 const TRANSACTION_INTERVAL_MS = parseInt(process.env.TRANSACTION_INTERVAL_MS, 10);
 const POOL_COOLDOWN_MS = parseInt(process.env.POOL_COOLDOWN_MS, 10);
+const MAX_PENDING_TRANSACTIONS = parseInt(process.env.MAX_PENDING_TRANSACTIONS, 10);
 const MIN_BALANCE_PERCENT = parseFloat(process.env.MIN_BALANCE_PERCENT, 10);
 const MAX_BALANCE_PERCENT = parseFloat(process.env.MAX_BALANCE_PERCENT, 10);
 const MIN_SWAP_BINS = parseInt(process.env.MIN_SWAP_BINS, 10);
 const MAX_SWAP_BINS = parseInt(process.env.MAX_SWAP_BINS, 10);
+const TARGET_SWAP_BINS_MIN = parseInt(process.env.TARGET_SWAP_BINS_MIN, 10);
+const TARGET_SWAP_BINS_MAX = parseInt(process.env.TARGET_SWAP_BINS_MAX, 10);
+const MAX_SWAP_AMOUNT = process.env.MAX_SWAP_AMOUNT ? BigInt(process.env.MAX_SWAP_AMOUNT) : null;
 const SLIPPAGE_TOLERANCE = parseInt(process.env.SLIPPAGE_TOLERANCE, 10);
 const BIN_SLIPPAGE_TOLERANCE = parseInt(process.env.BIN_SLIPPAGE_TOLERANCE, 10);
 const USE_MIN_RECEIVED = process.env.USE_MIN_RECEIVED === 'true';
@@ -48,11 +52,11 @@ const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
 
 // Allowed tokens and their per-transaction maximums (do not scale)
 const ALLOWED_TOKENS = {
-  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tstx-v-0-2': 35000,
-  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tdog-v-0-2': 350000,
-  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tusdc-v-0-2': 35000,
-  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tusdh-v-0-1': 3500,
-  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tbtc-v-0-2': 0.035
+  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tstx-v-0-2': 150000,
+  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tdog-v-0-2': 1050000,
+  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tusdc-v-0-2': 150000,
+  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tusdh-v-0-1': 10000,
+  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tbtc-v-0-2': 0.1
 };
 
 let POOLS = [];
@@ -99,6 +103,56 @@ const getStacksNetwork = (useDefault = false) => {
 
 const stacksNetwork = getStacksNetwork();
 
+const getNextNonce = async () => {
+  try {
+    const isMainnet = String(STACKS_NETWORK_VERSION || 'mainnet').toLowerCase() === 'mainnet';
+    
+    const defaultUrl = isMainnet
+      ? 'https://api.mainnet.hiro.so'
+      : 'https://api.testnet.hiro.so'; 
+    const url = `${STACKS_API_URL || defaultUrl}/extended/v1/address/${STACKS_PUBLIC_KEY}/nonces`;
+    
+    const headers = {};
+    if (STACKS_NODE_KEY) headers['X-API-Key'] = STACKS_NODE_KEY;
+    
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error(`API returned status '${response.status}' - '${response.statusText}'`);
+    
+    const responseData = await response.json();
+    if (responseData) {
+      const pendingCount = responseData.pending_nonce_count || 0;
+      
+      if (
+        responseData.detected_missing_nonces &&
+        responseData.detected_missing_nonces.length > 0
+      ) {
+        const missingNonces = responseData.detected_missing_nonces;
+        const nextNonce = Math.min(...missingNonces);
+        console.log(`Using missing nonce: ${nextNonce} (missing nonces: ${missingNonces.join(', ')}, pending: ${pendingCount})`);
+        return { nonce: BigInt(nextNonce), pendingCount };
+      } else if (responseData.possible_next_nonce !== undefined) {
+        const nextNonce = responseData.possible_next_nonce;
+        console.log(`Using possible next nonce: ${nextNonce} (pending: ${pendingCount})`);
+        return { nonce: BigInt(nextNonce), pendingCount };
+      } else {
+        throw new Error('Failed to retrieve next nonce: invalid response format');
+      };
+    } else {
+      throw new Error('Failed to retrieve next nonce: empty response');
+    };
+  } catch (error) {
+    console.error(`Error getting next nonce: ${error.message}`);
+    
+    console.log('Falling back to standard getNonce...');
+    try {
+      const fallbackNonce = await getNonce(STACKS_PUBLIC_KEY, stacksNetwork);
+      return { nonce: fallbackNonce, pendingCount: 0 };
+    } catch (fallbackError) {
+      throw new Error(`Failed to retrieve next nonce: ${error.message} (fallback also failed: ${fallbackError.message})`);
+    };
+  };
+};
+
 const parseContract = (contract) => {
   const [address, name] = contract.split('.');
   return { address, name };
@@ -132,9 +186,11 @@ const getSTXBalance = async (stacksAddress) => {
 
 const getPoolKey = (tokenX, tokenY) => `${tokenX}::${tokenY}`;
 
-const isPoolOnCooldown = (tokenX, tokenY) => {
-  const poolKey = getPoolKey(tokenX, tokenY);
-  const lastSwapTime = poolCooldowns.get(poolKey);
+const getDirectionalSwapKey = (inputToken, outputToken) => `${inputToken}->${outputToken}`;
+
+const isPoolOnCooldown = (inputToken, outputToken) => {
+  const swapKey = getDirectionalSwapKey(inputToken, outputToken);
+  const lastSwapTime = poolCooldowns.get(swapKey);
   
   if (!lastSwapTime) return false;
   
@@ -142,9 +198,9 @@ const isPoolOnCooldown = (tokenX, tokenY) => {
   return elapsed < POOL_COOLDOWN_MS;
 };
 
-const setPoolCooldown = (tokenX, tokenY) => {
-  const poolKey = getPoolKey(tokenX, tokenY);
-  poolCooldowns.set(poolKey, Date.now());
+const setPoolCooldown = (inputToken, outputToken) => {
+  const swapKey = getDirectionalSwapKey(inputToken, outputToken);
+  poolCooldowns.set(swapKey, Date.now());
 };
 
 const getPools = async () => {
@@ -267,7 +323,7 @@ const convertTypedSwapParams = (swapParamsTyped) => {
   });
 };
 
-const buildPostConditions = (postConditions, swapParamsTyped) => {
+const buildPostConditions = (postConditions, minAmountOut) => {
   const conditions = [];
 
   for (let i = 0; i < postConditions.length; i++) {
@@ -278,13 +334,9 @@ const buildPostConditions = (postConditions, swapParamsTyped) => {
     let amount = pc.amount;
     const isLastPostCondition = i === postConditions.length - 1;
 
-    if (isLastPostCondition && swapParamsTyped?.length) {
+    if (isLastPostCondition) {
       if (USE_MIN_RECEIVED) {
-        const totalMinReceived = swapParamsTyped.reduce(
-          (sum, swapParam) => sum + BigInt(swapParam.value['min-received'].value),
-          BigInt(0)
-        );
-        amount = totalMinReceived.toString();
+        amount = minAmountOut;
       } else {
         amount = '0';
       };
@@ -319,6 +371,115 @@ const buildPostConditions = (postConditions, swapParamsTyped) => {
   return conditions;
 };
 
+const findOptimalSwapAmount = async (inputToken, outputToken, initialAmount, maxAmount) => {
+  let currentAmount = BigInt(initialAmount);
+  let minAmount = BigInt(1);
+  let bestSwapData = null;
+  let bestAmount = null;
+  let bestRoute = null;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  if (MAX_SWAP_AMOUNT && currentAmount > MAX_SWAP_AMOUNT) currentAmount = MAX_SWAP_AMOUNT;
+  if (maxAmount && currentAmount > maxAmount) currentAmount = maxAmount;
+
+  while (attempts < maxAttempts) {
+    attempts++;
+    
+    try {
+      const multiQuote = await getMultiQuote(inputToken, outputToken, currentAmount.toString());
+      
+      if (!multiQuote.routes || multiQuote.routes.length === 0) {
+        if (currentAmount <= minAmount) break;
+        currentAmount = (currentAmount * BigInt(70)) / BigInt(100);
+        continue;
+      };
+
+      const route = multiQuote.routes.reduce((best, r) => {
+        const currentAmountOut = BigInt(r.amount_out);
+        const bestAmountOut = best ? BigInt(best.amount_out) : BigInt(0);
+        return currentAmountOut > bestAmountOut ? r : best;
+      }, null);
+
+      if (!route) {
+        if (currentAmount <= minAmount) break;
+        currentAmount = (currentAmount * BigInt(70)) / BigInt(100);
+        continue;
+      };
+
+      const swapData = await getSwapData(
+        route.execution_path,
+        currentAmount.toString(),
+        route.amount_out,
+        inputToken,
+        outputToken,
+        route.input_token_decimals,
+        route.output_token_decimals
+      );
+
+      const binCount = swapData.swap_parameters?.length || 0;
+      const isAcceptable = binCount >= MIN_SWAP_BINS && binCount <= MAX_SWAP_BINS;
+      
+      if (binCount >= TARGET_SWAP_BINS_MIN && binCount <= TARGET_SWAP_BINS_MAX) {
+        bestSwapData = swapData;
+        bestAmount = currentAmount;
+        bestRoute = route;
+        break;
+      };
+
+      if (isAcceptable && (!bestSwapData || Math.abs(binCount - TARGET_SWAP_BINS_MIN) < Math.abs((bestSwapData.swap_parameters?.length || 0) - TARGET_SWAP_BINS_MIN))) {
+        bestSwapData = swapData;
+        bestAmount = currentAmount;
+        bestRoute = route;
+      };
+
+      if (binCount > TARGET_SWAP_BINS_MAX) {
+        if (currentAmount <= minAmount) {
+          if (!bestSwapData && binCount <= MAX_SWAP_BINS) {
+            bestSwapData = swapData;
+            bestAmount = currentAmount;
+            bestRoute = route;
+          };
+          break;
+        };
+        currentAmount = (currentAmount * BigInt(60)) / BigInt(100);
+        continue;
+      };
+
+      if (binCount < TARGET_SWAP_BINS_MIN) {
+        if (binCount < MIN_SWAP_BINS) {
+          const increasedAmount = (currentAmount * BigInt(120)) / BigInt(100);
+          if ((MAX_SWAP_AMOUNT && increasedAmount > MAX_SWAP_AMOUNT) || (maxAmount && increasedAmount > maxAmount)) {
+            break;
+          };
+          
+          currentAmount = increasedAmount;
+          continue;
+        };
+
+        const increasedAmount = (currentAmount * BigInt(120)) / BigInt(100);
+        if ((MAX_SWAP_AMOUNT && increasedAmount > MAX_SWAP_AMOUNT) || (maxAmount && increasedAmount > maxAmount)) break;
+
+        currentAmount = increasedAmount;
+        continue;
+      };
+    } catch (error) {
+      console.log(`Error finding optimal amount (attempt ${attempts}): ${error.message}`);
+      if (currentAmount <= minAmount) break;
+      currentAmount = (currentAmount * BigInt(70)) / BigInt(100);
+    };
+  };
+
+  if (bestSwapData && bestAmount && bestRoute) {
+    const finalBinCount = bestSwapData.swap_parameters?.length || 0;
+    if (finalBinCount >= MIN_SWAP_BINS && finalBinCount <= MAX_SWAP_BINS) {
+      return { swapData: bestSwapData, amount: bestAmount, route: bestRoute };
+    };
+  };
+
+  return { swapData: null, amount: null, route: null };
+};
+
 const executeRandomSwap = async () => {
   const availableSwaps = [];
 
@@ -327,7 +488,10 @@ const executeRandomSwap = async () => {
     if (!isPoolOnCooldown(pool.tokenY, pool.tokenX)) availableSwaps.push({ pool, xForY: false });
   };
 
-  if (availableSwaps.length === 0) return console.log(`Skipping swap: All swap directions are on cooldown`);
+  if (availableSwaps.length === 0) {
+    console.log(`Skipping swap: All swap directions are on cooldown`);
+    return { executed: false, reason: 'cooldown' };
+  };
 
   const selectedSwap = sample(availableSwaps);
   const pool = selectedSwap.pool;
@@ -336,55 +500,62 @@ const executeRandomSwap = async () => {
   const outputToken = xForY ? pool.tokenY : pool.tokenX;
 
   const tokenBalance = await getTokenBalance(inputToken, STACKS_PUBLIC_KEY);
-  if (tokenBalance === 0) return console.log(`Skipping swap: No balance for ${inputToken}`);
+  if (tokenBalance === 0) {
+    console.log(`Skipping swap: No balance for ${inputToken}`);
+    return { executed: false, reason: 'no_balance' };
+  };
 
   const stxBalance = await getSTXBalance(STACKS_PUBLIC_KEY);
-  if (stxBalance - TRANSACTION_FEE_RATE <= 0) return console.log(`Skipping swap: Insufficient STX balance for transaction fees`);
+  if (stxBalance - TRANSACTION_FEE_RATE <= 0) {
+    console.log(`Skipping swap: Insufficient STX balance for transaction fees`);
+    return { executed: false, reason: 'insufficient_stx' };
+  };
 
   const randomPercent = MIN_BALANCE_PERCENT + Math.random() * (MAX_BALANCE_PERCENT - MIN_BALANCE_PERCENT);
-  let amountIn = Math.floor(tokenBalance * (randomPercent / 100));
+  let initialAmount = Math.floor(tokenBalance * (randomPercent / 100));
 
   const tokenMaxAmountIn = ALLOWED_TOKENS[inputToken];
-  if (tokenMaxAmountIn && typeof tokenMaxAmountIn === 'number' && amountIn > tokenMaxAmountIn) amountIn = tokenMaxAmountIn;
+  let maxAmount = null;
+  
+  if (tokenMaxAmountIn && typeof tokenMaxAmountIn === 'number') maxAmount = BigInt(Math.floor(tokenMaxAmountIn));
+  if (MAX_SWAP_AMOUNT) maxAmount = maxAmount ? (maxAmount < MAX_SWAP_AMOUNT ? maxAmount : MAX_SWAP_AMOUNT) : MAX_SWAP_AMOUNT;
 
-  if (amountIn === 0) return console.log(`Skipping swap: Amount too small for ${inputToken}`);
+  if (initialAmount === 0) {
+    console.log(`Skipping swap: Amount too small for ${inputToken}`);
+    return { executed: false, reason: 'amount_too_small' };
+  };
 
-  console.log(`Requesting multi-quote for ${amountIn} ${inputToken} to ${outputToken}`);
+  console.log(`Finding optimal swap amount for ${inputToken} to ${outputToken} (target: ${TARGET_SWAP_BINS_MIN}-${TARGET_SWAP_BINS_MAX} bins)`);
 
-  const multiQuote = await getMultiQuote(inputToken, outputToken, amountIn);
+  const optimalSwap = await findOptimalSwapAmount(inputToken, outputToken, initialAmount, maxAmount);
 
-  console.log(`Multi-quote received: ${multiQuote.routes.length} route(s) found`);
+  if (!optimalSwap.swapData || !optimalSwap.amount || !optimalSwap.route) {
+    console.log(`Skipping swap: Could not find optimal swap amount`);
+    return { executed: false, reason: 'no_optimal_amount' };
+  };
 
-  const bestRoute = multiQuote.routes.reduce((best, route) => {
-    const currentAmountOut = BigInt(route.amount_out);
-    const bestAmountOut = best ? BigInt(best.amount_out) : BigInt(0);
-    return currentAmountOut > bestAmountOut ? route : best;
-  }, null);
-  if (!bestRoute) throw new Error('No valid route found');
-
-  console.log(`Best route selected: Route #${bestRoute.route_index} with expected output of ${bestRoute.amount_out}`);
-
-  console.log(`Requesting swap data for route #${bestRoute.route_index}`);
-
-  const swapData = await getSwapData(
-    bestRoute.execution_path,
-    amountIn.toString(),
-    bestRoute.amount_out,
-    inputToken,
-    outputToken,
-    bestRoute.input_token_decimals,
-    bestRoute.output_token_decimals
-  );
+  const swapData = optimalSwap.swapData;
+  const bestRoute = optimalSwap.route;
+  const amountIn = Number(optimalSwap.amount);
   const minReceived = swapData.swap_parameters_typed.reduce((sum, param) => sum + BigInt(param.value['min-received'].value), BigInt(0)).toString();
 
-  console.log(`Swap data received: ${swapData.total_hops} hop(s) and ${swapData.swap_parameters.length} bins(s)`);
+  console.log(`Optimal swap found: ${amountIn} ${inputToken} -> ${outputToken} (${swapData.swap_parameters.length} bins, target: ${TARGET_SWAP_BINS_MIN}-${TARGET_SWAP_BINS_MAX})`);
 
-  if (!swapData.swap_parameters_typed || swapData.swap_parameters_typed.length === 0) return console.log(`Skipping swap: No swap parameters found`);
-  if (swapData.swap_parameters.length < MIN_SWAP_BINS) return console.log(`Skipping swap: Requires ${swapData.swap_parameters.length} bins, minimum is ${MIN_SWAP_BINS} bins`);
-  if (swapData.swap_parameters.length > MAX_SWAP_BINS) return console.log(`Skipping swap: Requires ${swapData.swap_parameters.length} bins, exceeds max of ${MAX_SWAP_BINS} bins`);
+  if (!swapData.swap_parameters_typed || swapData.swap_parameters_typed.length === 0) {
+    console.log(`Skipping swap: No swap parameters found`);
+    return { executed: false, reason: 'no_swap_parameters' };
+  };
+  if (swapData.swap_parameters.length < MIN_SWAP_BINS) {
+    console.log(`Skipping swap: Requires ${swapData.swap_parameters.length} bins, minimum is ${MIN_SWAP_BINS} bins`);
+    return { executed: false, reason: 'bins_below_minimum' };
+  };
+  if (swapData.swap_parameters.length > MAX_SWAP_BINS) {
+    console.log(`Skipping swap: Requires ${swapData.swap_parameters.length} bins, exceeds max of ${MAX_SWAP_BINS} bins`);
+    return { executed: false, reason: 'bins_exceeds_maximum' };
+  };
 
   const swapParamsCV = convertTypedSwapParams(swapData.swap_parameters_typed);
-  const postConditions = buildPostConditions(swapData.post_conditions, swapData.swap_parameters_typed);
+  const postConditions = buildPostConditions(swapData.post_conditions, bestRoute.min_amount_out);
 
   const { address: swapAddress, name: swapName } = parseContract(swapData.swap_contract);
 
@@ -463,10 +634,22 @@ const executeRandomSwap = async () => {
       };
     };
     
-    return console.log('Swap prepared (debug mode):', debugInfo);
+    console.log('Swap prepared (debug mode):', debugInfo);
+    return { executed: false, reason: 'debug_mode' };
   };
 
-  let currentNonce = await getNonce(STACKS_PUBLIC_KEY, stacksNetwork);
+  const nonceResult = await getNextNonce();
+
+  if (nonceResult.pendingCount >= MAX_PENDING_TRANSACTIONS) {
+    console.log(`Skipping swap: Too many pending transactions (${nonceResult.pendingCount}, max: ${MAX_PENDING_TRANSACTIONS})`);
+    return { executed: false, reason: 'too_many_pending' };
+  };
+  
+  if (nonceResult.pendingCount > MAX_PENDING_TRANSACTIONS * 0.8) {
+    console.log(`Warning: High number of pending transactions (${nonceResult.pendingCount}), consider reducing transaction frequency`);
+  };
+  
+  const currentNonce = nonceResult.nonce;
 
   for (let i = 0; i < TRANSACTIONS_TO_BROADCAST; i++) {
     const transaction = await makeContractCall({
@@ -476,7 +659,11 @@ const executeRandomSwap = async () => {
     
     const broadcastResponse = await broadcastTransaction(transaction, stacksNetwork);
 
-    if (broadcastResponse.error) throw new Error(`Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`);
+    if (broadcastResponse.error) {
+      const errorMessage = `Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`;
+      console.error(errorMessage);
+      return { executed: false, reason: 'broadcast_failed', error: broadcastResponse.reason };
+    };
 
     console.log(`Swap executed (${i + 1}/${TRANSACTIONS_TO_BROADCAST}):`, {
       txId: broadcastResponse.txid,
@@ -498,6 +685,7 @@ const executeRandomSwap = async () => {
   };
 
   setPoolCooldown(inputToken, outputToken);
+  return { executed: true };
 };
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -537,14 +725,20 @@ const mainLoop = async () => {
   while (true) {
     try {
       console.log('');
-      await executeRandomSwap();
+      const result = await executeRandomSwap();
+      
+      if (result && result.executed) {
+        await delay(TRANSACTION_INTERVAL_MS);
+      } else {
+        await delay(100);
+      };
     } catch (error) {
       console.error('Error executing swap transaction:', error.message);
       if (error.stack) {
         console.error(error.stack);
       };
+      await delay(1000);
     };
-    await delay(TRANSACTION_INTERVAL_MS);
   };
 };
 
