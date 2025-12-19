@@ -660,8 +660,7 @@ const executeRandomSwap = async () => {
     const broadcastResponse = await broadcastTransaction(transaction, stacksNetwork);
 
     if (broadcastResponse.error) {
-      const errorMessage = `Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`;
-      console.error(errorMessage);
+      console.error(`Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`);
       return { executed: false, reason: 'broadcast_failed', error: broadcastResponse.reason };
     };
 
@@ -726,7 +725,12 @@ const mainLoop = async () => {
     try {
       console.log('');
       const result = await executeRandomSwap();
-      
+
+      if (result && result.reason === 'insufficient_stx') {
+        console.log('Insufficient STX balance detected. Exiting...');
+        break;
+      };
+
       if (result && result.executed) {
         await delay(TRANSACTION_INTERVAL_MS);
       } else {

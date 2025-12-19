@@ -34,6 +34,7 @@ const TRANSACTIONS_TO_BROADCAST = parseInt(process.env.TRANSACTIONS_TO_BROADCAST
 const TRANSACTION_FEE_RATE = parseInt(process.env.TRANSACTION_FEE_RATE, 10);
 const TRANSACTION_INTERVAL_MS = parseInt(process.env.TRANSACTION_INTERVAL_MS, 10);
 const POOL_COOLDOWN_MS = parseInt(process.env.POOL_COOLDOWN_MS || process.env.PAIR_COOLDOWN_MS, 10);
+const MAX_PENDING_TRANSACTIONS = parseInt(process.env.MAX_PENDING_TRANSACTIONS, 10);
 const MIN_BALANCE_PERCENT = parseFloat(process.env.MIN_BALANCE_PERCENT, 10);
 const MAX_BALANCE_PERCENT = parseFloat(process.env.MAX_BALANCE_PERCENT, 10);
 const MIN_LIQUIDITY_BINS = parseInt(process.env.MIN_LIQUIDITY_BINS, 10);
@@ -104,6 +105,56 @@ const getStacksNetwork = (useDefault = false) => {
 };
 
 const stacksNetwork = getStacksNetwork();
+
+const getNextNonce = async () => {
+  try {
+    const isMainnet = String(STACKS_NETWORK_VERSION || 'mainnet').toLowerCase() === 'mainnet';
+    
+    const defaultUrl = isMainnet
+      ? 'https://api.mainnet.hiro.so'
+      : 'https://api.testnet.hiro.so'; 
+    const url = `${STACKS_API_URL || defaultUrl}/extended/v1/address/${STACKS_PUBLIC_KEY}/nonces`;
+    
+    const headers = {};
+    if (STACKS_NODE_KEY) headers['X-API-Key'] = STACKS_NODE_KEY;
+    
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error(`API returned status '${response.status}' - '${response.statusText}'`);
+    
+    const responseData = await response.json();
+    if (responseData) {
+      const pendingCount = responseData.pending_nonce_count || 0;
+      
+      if (
+        responseData.detected_missing_nonces &&
+        responseData.detected_missing_nonces.length > 0
+      ) {
+        const missingNonces = responseData.detected_missing_nonces;
+        const nextNonce = Math.min(...missingNonces);
+        console.log(`Using missing nonce: ${nextNonce} (missing nonces: ${missingNonces.join(', ')}, pending: ${pendingCount})`);
+        return { nonce: BigInt(nextNonce), pendingCount };
+      } else if (responseData.possible_next_nonce !== undefined) {
+        const nextNonce = responseData.possible_next_nonce;
+        console.log(`Using possible next nonce: ${nextNonce} (pending: ${pendingCount})`);
+        return { nonce: BigInt(nextNonce), pendingCount };
+      } else {
+        throw new Error('Failed to retrieve next nonce: invalid response format');
+      };
+    } else {
+      throw new Error('Failed to retrieve next nonce: empty response');
+    };
+  } catch (error) {
+    console.error(`Error getting next nonce: ${error.message}`);
+    
+    console.log('Falling back to standard getNonce...');
+    try {
+      const fallbackNonce = await getNonce(STACKS_PUBLIC_KEY, stacksNetwork);
+      return { nonce: fallbackNonce, pendingCount: 0 };
+    } catch (fallbackError) {
+      throw new Error(`Failed to retrieve next nonce: ${error.message} (fallback also failed: ${fallbackError.message})`);
+    };
+  };
+};
 
 const parseContract = (contract) => {
   const [address, name] = contract.split('.');
@@ -690,28 +741,43 @@ const executeWithdrawLiquidity = async (pool, preparedBins) => {
 const executeRandomAddLiquidity = async () => {
   const availablePools = POOLS.filter(pool => !isPoolOnCooldown(pool.poolId));
   
-  if (availablePools.length === 0) return console.log(`Skipping add liquidity: All pools are on cooldown`);
+  if (availablePools.length === 0) {
+    console.log(`Skipping add liquidity: All pools are on cooldown`);
+    return { executed: false, reason: 'cooldown' };
+  };
 
   const pool = sample(availablePools);
 
   const stxBalance = await getSTXBalance(STACKS_PUBLIC_KEY);
-  if (stxBalance - TRANSACTION_FEE_RATE <= 0) return console.log(`Skipping add liquidity: Insufficient STX balance for transaction fees`);
+  if (stxBalance - TRANSACTION_FEE_RATE <= 0) {
+    console.log(`Skipping add liquidity: Insufficient STX balance for transaction fees`);
+    return { executed: false, reason: 'insufficient_stx' };
+  };
 
   console.log(`Fetching pool bins for pool ${pool.poolId}...`);
   const poolBins = await getPoolBins(pool.poolId);
 
-  if (!poolBins.bins || poolBins.bins.length === 0) return console.log(`Skipping add liquidity: No bins found for pool ${pool.poolId}`);
+  if (!poolBins.bins || poolBins.bins.length === 0) {
+    console.log(`Skipping add liquidity: No bins found for pool ${pool.poolId}`);
+    return { executed: false, reason: 'no_bins' };
+  };
 
   console.log(`Fetching user position bins for pool ${pool.poolId}...`);
   const userPositions = await getUserPositionBins(STACKS_PUBLIC_KEY, pool.poolId);
 
   const activeBinId = poolBins.active_bin_id;
-  if (!activeBinId) return console.log(`Skipping add liquidity: No active bin ID found`);
+  if (!activeBinId) {
+    console.log(`Skipping add liquidity: No active bin ID found`);
+    return { executed: false, reason: 'no_active_bin' };
+  };
 
   const tokenXBalance = await getTokenBalance(pool.tokenX, STACKS_PUBLIC_KEY);
   const tokenYBalance = await getTokenBalance(pool.tokenY, STACKS_PUBLIC_KEY);
 
-  if (tokenXBalance === 0 && tokenYBalance === 0) return console.log(`Skipping add liquidity: No token balances for pool ${pool.poolId}`);
+  if (tokenXBalance === 0 && tokenYBalance === 0) {
+    console.log(`Skipping add liquidity: No token balances for pool ${pool.poolId}`);
+    return { executed: false, reason: 'no_balance' };
+  };
 
   const numBinsToAdd = random(MIN_LIQUIDITY_BINS, Math.min(MAX_LIQUIDITY_BINS, poolBins.bins.length));
   const availableBins = poolBins.bins.filter(bin => {
@@ -721,7 +787,10 @@ const executeRandomAddLiquidity = async () => {
     return tokenXBalance > 0 || tokenYBalance > 0;
   });
 
-  if (availableBins.length === 0) return console.log(`Skipping add liquidity: No suitable bins for available balances`);
+  if (availableBins.length === 0) {
+    console.log(`Skipping add liquidity: No suitable bins for available balances`);
+    return { executed: false, reason: 'no_suitable_bins' };
+  };
 
   const selectedBins = [];
   for (let i = 0; i < Math.min(numBinsToAdd, availableBins.length); i++) {
@@ -729,7 +798,10 @@ const executeRandomAddLiquidity = async () => {
     if (bin) selectedBins.push(bin);
   };
 
-  if (selectedBins.length === 0) return console.log(`Skipping add liquidity: Could not select bins`);
+  if (selectedBins.length === 0) {
+    console.log(`Skipping add liquidity: Could not select bins`);
+    return { executed: false, reason: 'could_not_select_bins' };
+  };
 
   const binsToAdd = selectedBins.map(bin => {
     const binId = bin.bin_id;
@@ -784,7 +856,10 @@ const executeRandomAddLiquidity = async () => {
     yAmount: Math.floor(bin.yAmount * yScaleFactor)
   })).filter(bin => bin.xAmount > 0 || bin.yAmount > 0);
 
-  if (scaledBinsToAdd.length === 0) return console.log(`Skipping add liquidity: No valid bins to add`);
+  if (scaledBinsToAdd.length === 0) {
+    console.log(`Skipping add liquidity: No valid bins to add`);
+    return { executed: false, reason: 'no_valid_bins' };
+  };
 
   console.log(`Preparing ${scaledBinsToAdd.length} bin(s) for add liquidity...`);
   const preparedBins = prepareBinsForAdd(poolBins, userPositions, activeBinId, scaledBinsToAdd);
@@ -825,13 +900,25 @@ const executeRandomAddLiquidity = async () => {
       postConditionsCount: USE_POST_CONDITIONS ? (2 + preparedBins.filter(b => b.hasEverAddedToBin).length) : 0,
       usePostConditions: USE_POST_CONDITIONS
     };
-    return console.log('Add liquidity prepared (debug mode):', debugInfo);
+    console.log('Add liquidity prepared (debug mode):', debugInfo);
+    return { executed: false, reason: 'debug_mode' };
   };
 
   console.log(`Executing add liquidity for ${preparedBins.length} bin(s)...`);
   const txOptions = await executeAddLiquidity(pool, preparedBins);
 
-  let currentNonce = await getNonce(STACKS_PUBLIC_KEY, stacksNetwork);
+  const nonceResult = await getNextNonce();
+
+  if (nonceResult.pendingCount >= MAX_PENDING_TRANSACTIONS) {
+    console.log(`Skipping add liquidity: Too many pending transactions (${nonceResult.pendingCount}, max: ${MAX_PENDING_TRANSACTIONS})`);
+    return { executed: false, reason: 'too_many_pending' };
+  };
+  
+  if (nonceResult.pendingCount > MAX_PENDING_TRANSACTIONS * 0.8) {
+    console.log(`Warning: High number of pending transactions (${nonceResult.pendingCount}), consider reducing transaction frequency`);
+  };
+  
+  const currentNonce = nonceResult.nonce;
 
   for (let i = 0; i < TRANSACTIONS_TO_BROADCAST; i++) {
     const transaction = await makeContractCall({
@@ -841,7 +928,10 @@ const executeRandomAddLiquidity = async () => {
     
     const broadcastResponse = await broadcastTransaction(transaction, stacksNetwork);
 
-    if (broadcastResponse.error) throw new Error(`Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`);
+    if (broadcastResponse.error) {
+      console.error(`Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`);
+      return { executed: false, reason: 'broadcast_failed', error: broadcastResponse.reason };
+    };
 
     const totalXAmount = preparedBins.reduce((sum, b) => sum + b.xAmount, 0);
     const totalYAmount = preparedBins.reduce((sum, b) => sum + b.yAmount, 0);
@@ -866,33 +956,49 @@ const executeRandomAddLiquidity = async () => {
   };
 
   setPoolCooldown(pool.poolId);
+  return { executed: true };
 };
 
 const executeRandomWithdrawLiquidity = async () => {
   const availablePools = POOLS.filter(pool => !isPoolOnCooldown(pool.poolId));
   
-  if (availablePools.length === 0) return console.log(`Skipping withdraw liquidity: All pools are on cooldown`);
+  if (availablePools.length === 0) {
+    console.log(`Skipping withdraw liquidity: All pools are on cooldown`);
+    return { executed: false, reason: 'cooldown' };
+  };
 
   const pool = sample(availablePools);
 
   const stxBalance = await getSTXBalance(STACKS_PUBLIC_KEY);
-  if (stxBalance - TRANSACTION_FEE_RATE <= 0) return console.log(`Skipping withdraw liquidity: Insufficient STX balance for transaction fees`);
+  if (stxBalance - TRANSACTION_FEE_RATE <= 0) {
+    console.log(`Skipping withdraw liquidity: Insufficient STX balance for transaction fees`);
+    return { executed: false, reason: 'insufficient_stx' };
+  };
 
   console.log(`Fetching pool bins for pool ${pool.poolId}...`);
   
   const poolBins = await getPoolBins(pool.poolId);
   
   const activeBinId = poolBins.active_bin_id || pool.activeBinId;
-  if (!activeBinId) return console.log(`Skipping withdraw liquidity: No active bin ID found`);
+  if (!activeBinId) {
+    console.log(`Skipping withdraw liquidity: No active bin ID found`);
+    return { executed: false, reason: 'no_active_bin' };
+  };
 
   console.log(`Fetching user position bins for pool ${pool.poolId}...`);
   const userPositions = await getUserPositionBins(STACKS_PUBLIC_KEY, pool.poolId);
 
-  if (!userPositions.bins || userPositions.bins.length === 0) return console.log(`Skipping withdraw liquidity: No positions found for pool ${pool.poolId}`);
+  if (!userPositions.bins || userPositions.bins.length === 0) {
+    console.log(`Skipping withdraw liquidity: No positions found for pool ${pool.poolId}`);
+    return { executed: false, reason: 'no_positions' };
+  };
 
   const binsWithLiquidity = userPositions.bins.filter(bin => bin.userLiquidity > 0);
   
-  if (binsWithLiquidity.length === 0) return console.log(`Skipping withdraw liquidity: No bins with liquidity for pool ${pool.poolId}`);
+  if (binsWithLiquidity.length === 0) {
+    console.log(`Skipping withdraw liquidity: No bins with liquidity for pool ${pool.poolId}`);
+    return { executed: false, reason: 'no_liquidity' };
+  };
 
   const withdrawalPercentage = random(MIN_WITHDRAWAL_PERCENT, MAX_WITHDRAWAL_PERCENT);
   const numBinsToWithdraw = random(MIN_LIQUIDITY_BINS, Math.min(MAX_LIQUIDITY_BINS, binsWithLiquidity.length));
@@ -903,12 +1009,18 @@ const executeRandomWithdrawLiquidity = async () => {
     if (bin) selectedBins.push(bin);
   };
 
-  if (selectedBins.length === 0) return console.log(`Skipping withdraw liquidity: Could not select bins`);
+  if (selectedBins.length === 0) {
+    console.log(`Skipping withdraw liquidity: Could not select bins`);
+    return { executed: false, reason: 'could_not_select_bins' };
+  };
 
   console.log(`Preparing ${selectedBins.length} bin(s) for withdraw liquidity (${withdrawalPercentage}%)...`);
   const preparedBins = prepareBinsForWithdraw(poolBins, { bins: selectedBins }, withdrawalPercentage, activeBinId);
 
-  if (preparedBins.length === 0) return console.log(`Skipping withdraw liquidity: No valid bins to withdraw`);
+  if (preparedBins.length === 0) {
+    console.log(`Skipping withdraw liquidity: No valid bins to withdraw`);
+    return { executed: false, reason: 'no_valid_bins' };
+  };
 
   if (DEBUG_MODE) {
     const totalLiquidityRemoved = preparedBins.reduce((sum, bin) => {
@@ -937,7 +1049,8 @@ const executeRandomWithdrawLiquidity = async () => {
       postConditionsCount,
       usePostConditions: USE_POST_CONDITIONS
     };
-    return console.log('Withdraw liquidity prepared (debug mode):', debugInfo);
+    console.log('Withdraw liquidity prepared (debug mode):', debugInfo);
+    return { executed: false, reason: 'debug_mode' };
   };
 
   console.log(`Executing withdraw liquidity for ${preparedBins.length} bin(s)...`);
@@ -948,7 +1061,18 @@ const executeRandomWithdrawLiquidity = async () => {
     return sum + amounts.liquidityToRemove;
   }, 0);
 
-  let currentNonce = await getNonce(STACKS_PUBLIC_KEY, stacksNetwork);
+  const nonceResult = await getNextNonce();
+
+  if (nonceResult.pendingCount >= MAX_PENDING_TRANSACTIONS) {
+    console.log(`Skipping withdraw liquidity: Too many pending transactions (${nonceResult.pendingCount}, max: ${MAX_PENDING_TRANSACTIONS})`);
+    return { executed: false, reason: 'too_many_pending' };
+  };
+  
+  if (nonceResult.pendingCount > MAX_PENDING_TRANSACTIONS * 0.8) {
+    console.log(`Warning: High number of pending transactions (${nonceResult.pendingCount}), consider reducing transaction frequency`);
+  };
+  
+  const currentNonce = nonceResult.nonce;
 
   for (let i = 0; i < TRANSACTIONS_TO_BROADCAST; i++) {
     const transaction = await makeContractCall({
@@ -958,7 +1082,10 @@ const executeRandomWithdrawLiquidity = async () => {
     
     const broadcastResponse = await broadcastTransaction(transaction, stacksNetwork);
 
-    if (broadcastResponse.error) throw new Error(`Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`);
+    if (broadcastResponse.error) {
+      console.error(`Broadcast failed for transaction ${i + 1}/${TRANSACTIONS_TO_BROADCAST}: ${broadcastResponse.reason} (${broadcastResponse.reason_data})`);
+      return { executed: false, reason: 'broadcast_failed', error: broadcastResponse.reason };
+    };
 
     const postConditionsCount = USE_POST_CONDITIONS ? (3 + preparedBins.filter(b => b.hasEverAddedToBin).length) : 0;
 
@@ -981,6 +1108,7 @@ const executeRandomWithdrawLiquidity = async () => {
   };
 
   setPoolCooldown(pool.poolId);
+  return { executed: true };
 };
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -1007,6 +1135,7 @@ const mainLoop = async () => {
   console.log(`Transaction fee rate: ${TRANSACTION_FEE_RATE} uSTX`);
   console.log(`Transaction interval: ${TRANSACTION_INTERVAL_MS}ms`);
   console.log(`Pool cooldown: ${POOL_COOLDOWN_MS}ms`);
+  console.log(`Max pending transactions: ${MAX_PENDING_TRANSACTIONS}`);
   console.log(`Balance percent range: ${MIN_BALANCE_PERCENT}% - ${MAX_BALANCE_PERCENT}%`);
   console.log(`Bins per transaction range: ${MIN_LIQUIDITY_BINS} - ${MAX_LIQUIDITY_BINS} bins`);
   console.log(`Withdrawal percent range: ${MIN_WITHDRAWAL_PERCENT}% - ${MAX_WITHDRAWAL_PERCENT}%`);
@@ -1019,18 +1148,30 @@ const mainLoop = async () => {
   while (true) {
     try {
       console.log('');
+      let result;
       if (Math.random() < 0.5) {
-        await executeRandomAddLiquidity();
+        result = await executeRandomAddLiquidity();
       } else {
-        await executeRandomWithdrawLiquidity();
+        result = await executeRandomWithdrawLiquidity();
+      };
+      
+      if (result && result.reason === 'insufficient_stx') {
+        console.log('Insufficient STX balance detected. Exiting...');
+        break;
+      };
+      
+      if (result && result.executed) {
+        await delay(TRANSACTION_INTERVAL_MS);
+      } else {
+        await delay(100);
       };
     } catch (error) {
       console.error('Error executing liquidity transaction:', error.message);
       if (error.stack) {
         console.error(error.stack);
       };
+      await delay(1000);
     };
-    await delay(TRANSACTION_INTERVAL_MS);
   };
 };
 
