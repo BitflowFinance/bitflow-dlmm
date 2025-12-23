@@ -341,7 +341,7 @@ const buildSwapSimpleMultiParams = (swapParamsTyped) => {
   const groupsWithInitialSteps = swapParamsTyped.map(param => {
     const value = param.value;
     const apiMaxSteps = parseInt(value['max-steps'].value, 10);
-    const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, 350));
+    const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
     
     return {
       param: param,
@@ -389,7 +389,7 @@ const buildSwapSimpleMultiParamsManual = (swapParamsTyped) => {
     
     if (needsNewGroup) {
       if (currentGroup) {
-        const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, 350));
+        const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
         orderedGroups.push({
           'pool-trait': currentGroup['pool-trait'],
           'x-token-trait': currentGroup['x-token-trait'],
@@ -419,7 +419,7 @@ const buildSwapSimpleMultiParamsManual = (swapParamsTyped) => {
   });
   
   if (currentGroup) {
-    const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, 350));
+    const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
     orderedGroups.push({
       'pool-trait': currentGroup['pool-trait'],
       'x-token-trait': currentGroup['x-token-trait'],
@@ -759,7 +759,7 @@ const executeRandomSwap = async () => {
       const groupsWithSteps = swapData.swap_parameters_typed.map(param => {
         const value = param.value;
         const apiMaxSteps = parseInt(value['max-steps'].value, 10);
-        const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, 350));
+        const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
         return {
           apiMaxSteps,
           initialMaxSteps,
