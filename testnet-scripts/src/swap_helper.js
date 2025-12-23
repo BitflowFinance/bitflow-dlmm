@@ -1,6 +1,7 @@
 // swap_helper.js
 
-require('dotenv').config();
+const envPath = process.argv[2] || '.env';
+require('dotenv').config({ path: envPath });
 
 const {
   makeContractCall,
@@ -30,6 +31,7 @@ const STACKS_API_URL = process.env.STACKS_API_URL;
 const STACKS_NODE_URL = process.env.STACKS_NODE_URL;
 const STACKS_NODE_KEY = process.env.STACKS_NODE_KEY;
 const STACKS_NETWORK_VERSION = process.env.STACKS_NETWORK_VERSION;
+const CUSTOM_SWAP_ROUTER_CONTRACT = process.env.CUSTOM_SWAP_ROUTER_CONTRACT;
 const TRANSACTIONS_TO_BROADCAST = parseInt(process.env.TRANSACTIONS_TO_BROADCAST, 10);
 const TRANSACTION_FEE_RATE = parseInt(process.env.TRANSACTION_FEE_RATE, 10);
 const TRANSACTION_INTERVAL_MS = parseInt(process.env.TRANSACTION_INTERVAL_MS, 10);
@@ -47,17 +49,28 @@ const BIN_SLIPPAGE_TOLERANCE = parseInt(process.env.BIN_SLIPPAGE_TOLERANCE, 10);
 const USE_MIN_RECEIVED = process.env.USE_MIN_RECEIVED === 'true';
 const USE_POST_CONDITIONS = process.env.USE_POST_CONDITIONS === 'true';
 const USE_SIMPLE_SWAP = process.env.USE_SIMPLE_SWAP === 'true';
+const ADDITIONAL_STEPS_PER_GROUP = parseInt(process.env.ADDITIONAL_STEPS_PER_GROUP || '0', 10);
 const ALLOW_ALL_TOKENS = process.env.ALLOW_ALL_TOKENS === 'true';
 const DEBUG_MODE = process.env.DEBUG_MODE === 'true';
 
 // Allowed tokens and their per-transaction maximums (do not scale)
 const ALLOWED_TOKENS = {
+  // Mainnet tokens
   'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tstx-v-0-2': 150000,
   'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tdog-v-0-2': 1050000,
   'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tusdc-v-0-2': 150000,
   'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tusdh-v-0-1': 10000,
-  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tbtc-v-0-2': 0.1
+  'SP3ESW1QCNQPVXJDGQWT7E45RDCH38QBK9HEJSX4X.token-tbtc-v-0-2': 0.1,
+
+  // Testnet tokens
+  'ST1WA4CXFR54B1W42R7NSMXEQYQTTMB3CXQM63ETH.token-tstx-v-0-1': 150000,
+  'ST1WA4CXFR54B1W42R7NSMXEQYQTTMB3CXQM63ETH.token-tusdc-v-0-1': 150000,
+  'ST1WA4CXFR54B1W42R7NSMXEQYQTTMB3CXQM63ETH.token-tusdh-v-0-1': 10000,
+  'ST1WA4CXFR54B1W42R7NSMXEQYQTTMB3CXQM63ETH.token-tbtc-v-0-1': 0.1
 };
+
+// Maximum total steps per simple swap transaction (294 max on-chain before hitting limits)
+const MAX_TOTAL_STEPS = 290;
 
 let POOLS = [];
 
@@ -184,8 +197,6 @@ const getSTXBalance = async (stacksAddress) => {
   return Number(data.balance);
 };
 
-const getPoolKey = (tokenX, tokenY) => `${tokenX}::${tokenY}`;
-
 const getDirectionalSwapKey = (inputToken, outputToken) => `${inputToken}->${outputToken}`;
 
 const isPoolOnCooldown = (inputToken, outputToken) => {
@@ -295,7 +306,8 @@ const getSwapData = async (executionPath, amountIn, amountOut, inputToken, outpu
       output_token: outputToken,
       input_token_decimals: inputDecimals,
       output_token_decimals: outputDecimals,
-      slippage_tolerance: SLIPPAGE_TOLERANCE
+      slippage_tolerance: SLIPPAGE_TOLERANCE,
+      swap_parameters_type: USE_SIMPLE_SWAP ? 'simple' : 'full'
     })
   });
 
@@ -308,7 +320,7 @@ const getSwapData = async (executionPath, amountIn, amountOut, inputToken, outpu
   return data;
 };
 
-const convertTypedSwapParams = (swapParamsTyped) => {
+const buildSwapMultiParams = (swapParamsTyped) => {
   return swapParamsTyped.map(param => {
     const value = param.value;
     return tupleCV({
@@ -320,6 +332,120 @@ const convertTypedSwapParams = (swapParamsTyped) => {
       'min-received': uintCV(USE_MIN_RECEIVED ? value['min-received'].value : 0),
       'x-for-y': value['x-for-y'].type === 'true' ? trueCV() : falseCV()
     });
+  });
+};
+
+const buildSwapSimpleMultiParams = (swapParamsTyped) => {
+  if (swapParamsTyped.length === 0) return [];
+  
+  const groupsWithInitialSteps = swapParamsTyped.map(param => {
+    const value = param.value;
+    const apiMaxSteps = parseInt(value['max-steps'].value, 10);
+    const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, 350));
+    
+    return {
+      param: param,
+      initialMaxSteps: initialMaxSteps
+    };
+  });
+  
+  const totalInitialSteps = groupsWithInitialSteps.reduce((sum, group) => sum + group.initialMaxSteps, 0);
+  const scaleFactor = totalInitialSteps > MAX_TOTAL_STEPS ? MAX_TOTAL_STEPS / totalInitialSteps : 1;
+  
+  return groupsWithInitialSteps.map(group => {
+    const value = group.param.value;
+    const scaledMaxSteps = Math.max(1, Math.floor(group.initialMaxSteps * scaleFactor));
+    
+    return {
+      'pool-trait': principalCV(value['pool-trait'].value),
+      'x-token-trait': principalCV(value['x-token-trait'].value),
+      'y-token-trait': principalCV(value['y-token-trait'].value),
+      'amount': uintCV(value['amount'].value),
+      'min-received': uintCV(USE_MIN_RECEIVED ? value['min-received'].value : 0),
+      'x-for-y': value['x-for-y'].type === 'true' ? trueCV() : falseCV(),
+      'max-steps': uintCV(scaledMaxSteps)
+    };
+  });
+};
+
+const buildSwapSimpleMultiParamsManual = (swapParamsTyped) => {
+  if (swapParamsTyped.length === 0) return [];
+  
+  const orderedGroups = [];
+  let currentGroup = null;
+  
+  swapParamsTyped.forEach((param) => {
+    const value = param.value;
+    const poolTrait = value['pool-trait'].value;
+    const xTokenTrait = value['x-token-trait'].value;
+    const yTokenTrait = value['y-token-trait'].value;
+    const xForY = value['x-for-y'].type === 'true';
+    
+    const needsNewGroup = !currentGroup || 
+      currentGroup['pool-trait'] !== poolTrait ||
+      currentGroup['x-token-trait'] !== xTokenTrait ||
+      currentGroup['y-token-trait'] !== yTokenTrait ||
+      currentGroup['x-for-y'] !== xForY;
+    
+    if (needsNewGroup) {
+      if (currentGroup) {
+        const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, 350));
+        orderedGroups.push({
+          'pool-trait': currentGroup['pool-trait'],
+          'x-token-trait': currentGroup['x-token-trait'],
+          'y-token-trait': currentGroup['y-token-trait'],
+          'x-for-y': currentGroup['x-for-y'],
+          'amount': currentGroup.amount,
+          'min-received': currentGroup.minReceived,
+          'binCount': currentGroup.binCount,
+          'initialMaxSteps': initialMaxSteps
+        });
+      };
+
+      currentGroup = {
+        'pool-trait': poolTrait,
+        'x-token-trait': xTokenTrait,
+        'y-token-trait': yTokenTrait,
+        'x-for-y': xForY,
+        amount: BigInt(0),
+        minReceived: BigInt(0),
+        binCount: 0
+      };
+    };
+    
+    currentGroup.amount += BigInt(value['amount'].value);
+    if (USE_MIN_RECEIVED) currentGroup.minReceived += BigInt(value['min-received'].value);
+    currentGroup.binCount += 1;
+  });
+  
+  if (currentGroup) {
+    const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, 350));
+    orderedGroups.push({
+      'pool-trait': currentGroup['pool-trait'],
+      'x-token-trait': currentGroup['x-token-trait'],
+      'y-token-trait': currentGroup['y-token-trait'],
+      'x-for-y': currentGroup['x-for-y'],
+      'amount': currentGroup.amount,
+      'min-received': currentGroup.minReceived,
+      'binCount': currentGroup.binCount,
+      'initialMaxSteps': initialMaxSteps
+    });
+  };
+
+  const totalInitialSteps = orderedGroups.reduce((sum, group) => sum + group.initialMaxSteps, 0);
+  const scaleFactor = totalInitialSteps > MAX_TOTAL_STEPS ? MAX_TOTAL_STEPS / totalInitialSteps : 1;
+
+  return orderedGroups.map(group => {
+    const scaledMaxSteps = Math.max(1, Math.floor(group.initialMaxSteps * scaleFactor));
+    return {
+      'pool-trait': principalCV(group['pool-trait']),
+      'x-token-trait': principalCV(group['x-token-trait']),
+      'y-token-trait': principalCV(group['y-token-trait']),
+      'amount': uintCV(group['amount'].toString()),
+      'min-received': uintCV(group['min-received'].toString()),
+      'x-for-y': group['x-for-y'] ? trueCV() : falseCV(),
+      'max-steps': uintCV(scaledMaxSteps)
+    };
   });
 };
 
@@ -554,24 +680,29 @@ const executeRandomSwap = async () => {
     return { executed: false, reason: 'bins_exceeds_maximum' };
   };
 
-  const swapParamsCV = convertTypedSwapParams(swapData.swap_parameters_typed);
+  const swapParamsCV = USE_SIMPLE_SWAP
+    ? buildSwapSimpleMultiParams(swapData.swap_parameters_typed)
+    : buildSwapMultiParams(swapData.swap_parameters_typed);
   const postConditions = buildPostConditions(swapData.post_conditions, bestRoute.min_amount_out);
 
-  const { address: swapAddress, name: swapName } = parseContract(swapData.swap_contract);
-
-  let functionName = swapData.function_name;
-  if (USE_SIMPLE_SWAP) functionName = xForY ? 'swap-x-for-y-simple-multi' : 'swap-y-for-x-simple-multi';
+  const { address: swapAddress, name: swapName } = CUSTOM_SWAP_ROUTER_CONTRACT
+    ? parseContract(CUSTOM_SWAP_ROUTER_CONTRACT)
+    : parseContract(swapData.swap_contract);
 
   let functionArgs = [];
   if (USE_SIMPLE_SWAP) {
-    const firstSwap = swapData.swap_parameters_typed[0].value;
-
+    if (swapParamsCV.length === 0) {
+      console.log(`Skipping swap: No grouped swap parameters found`);
+      return { executed: false, reason: 'no_grouped_swap_parameters' };
+    };
+    
+    if (swapParamsCV.length > 5) {
+      console.log(`Skipping swap: Too many swap groups (${swapParamsCV.length}), maximum is 5`);
+      return { executed: false, reason: 'too_many_swap_groups' };
+    };
+    
     functionArgs = [
-      principalCV(firstSwap['pool-trait'].value),
-      principalCV(firstSwap['x-token-trait'].value),
-      principalCV(firstSwap['y-token-trait'].value),
-      uintCV(firstSwap['amount'].value),
-      uintCV(USE_MIN_RECEIVED ? minReceived : '0')
+      listCV(swapParamsCV.map(param => tupleCV(param)))
     ];
   } else {
     functionArgs = [
@@ -583,7 +714,7 @@ const executeRandomSwap = async () => {
   const txOptions = {
     contractAddress: swapAddress,
     contractName: swapName,
-    functionName: functionName,
+    functionName: swapData.function_name,
     functionArgs: functionArgs,
     senderKey: STACKS_PRIVATE_KEY,
     network: stacksNetwork,
@@ -615,7 +746,7 @@ const executeRandomSwap = async () => {
       hops: swapData.total_hops,
       bins: swapData.swap_parameters.length,
       swapContract: swapData.swap_contract,
-      functionName: functionName,
+      functionName: swapData.function_name,
       fee: TRANSACTION_FEE_RATE,
       binSlippageTolerance: USE_SIMPLE_SWAP ? 'N/A' : BIN_SLIPPAGE_TOLERANCE,
       postConditionsCount: USE_POST_CONDITIONS ? postConditions.length : 0,
@@ -625,16 +756,66 @@ const executeRandomSwap = async () => {
     };
     
     if (USE_SIMPLE_SWAP) {
-      debugInfo.simpleSwapArgs = {
-        pool: swapData.swap_parameters_typed[0].value['pool-trait'].value,
-        xToken: swapData.swap_parameters_typed[0].value['x-token-trait'].value,
-        yToken: swapData.swap_parameters_typed[0].value['y-token-trait'].value,
-        amount: swapData.swap_parameters_typed[0].value['amount'].value,
-        minReceived: USE_MIN_RECEIVED ? minReceived : '0'
+      const groupsWithSteps = swapData.swap_parameters_typed.map(param => {
+        const value = param.value;
+        const apiMaxSteps = parseInt(value['max-steps'].value, 10);
+        const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, 350));
+        return {
+          apiMaxSteps,
+          initialMaxSteps,
+          param
+        };
+      });
+      
+      const totalInitialSteps = groupsWithSteps.reduce((sum, group) => sum + group.initialMaxSteps, 0);
+      const scaleFactor = totalInitialSteps > MAX_TOTAL_STEPS ? MAX_TOTAL_STEPS / totalInitialSteps : 1;
+      const totalFinalSteps = Math.floor(totalInitialSteps * scaleFactor);
+      
+      debugInfo.swapSimpleMultiArgs = {
+        swapGroups: swapData.swap_parameters_typed.length,
+        totalInitialSteps: totalInitialSteps,
+        totalFinalSteps: totalFinalSteps,
+        scaleFactor: scaleFactor < 1 ? scaleFactor.toFixed(4) : 1,
+        groups: groupsWithSteps.map((group, idx) => {
+          const value = group.param.value;
+          const scaledMaxSteps = Math.max(1, Math.floor(group.initialMaxSteps * scaleFactor));
+          return {
+            groupIndex: idx,
+            pool: value['pool-trait'].value,
+            xToken: value['x-token-trait'].value,
+            yToken: value['y-token-trait'].value,
+            amount: value['amount'].value,
+            minReceived: value['min-received'].value,
+            xForY: value['x-for-y'].type === 'true',
+            apiMaxSteps: group.apiMaxSteps,
+            initialMaxSteps: group.initialMaxSteps,
+            finalMaxSteps: scaledMaxSteps
+          };
+        })
       };
     };
     
     console.log('Swap prepared (debug mode):', debugInfo);
+    if (USE_SIMPLE_SWAP && debugInfo.swapSimpleMultiArgs) {
+      console.log('\nSwap Groups Details:');
+      console.log(`  Total Initial Steps: ${debugInfo.swapSimpleMultiArgs.totalInitialSteps}`);
+      console.log(`  Total Final Steps: ${debugInfo.swapSimpleMultiArgs.totalFinalSteps}`);
+      if (debugInfo.swapSimpleMultiArgs.scaleFactor < 1) {
+        console.log(`  Scale Factor: ${debugInfo.swapSimpleMultiArgs.scaleFactor} (scaled down from ${debugInfo.swapSimpleMultiArgs.totalInitialSteps})`);
+      }
+      debugInfo.swapSimpleMultiArgs.groups.forEach((group, idx) => {
+        console.log(`  Group ${idx + 1}:`);
+        console.log(`    Pool: ${group.pool}`);
+        console.log(`    X Token: ${group.xToken}`);
+        console.log(`    Y Token: ${group.yToken}`);
+        console.log(`    Direction: ${group.xForY ? 'x-for-y' : 'y-for-x'}`);
+        console.log(`    Amount: ${group.amount}`);
+        console.log(`    Min Received: ${group.minReceived}`);
+        console.log(`    API Max Steps: ${group.apiMaxSteps}`);
+        console.log(`    Initial Max Steps: ${group.initialMaxSteps} (API + ${ADDITIONAL_STEPS_PER_GROUP})`);
+        console.log(`    Final Max Steps: ${group.finalMaxSteps}`);
+      });
+    };
     return { executed: false, reason: 'debug_mode' };
   };
 
@@ -707,6 +888,7 @@ const mainLoop = async () => {
   console.log(`Pools: ${POOLS.length}`);
   console.log(`Public key: ${STACKS_PUBLIC_KEY}`);
   console.log(`Stacks network version: ${STACKS_NETWORK_VERSION.charAt(0).toUpperCase() + STACKS_NETWORK_VERSION.slice(1)}`);
+  if (CUSTOM_SWAP_ROUTER_CONTRACT) console.log(`Custom swap router contract: ${CUSTOM_SWAP_ROUTER_CONTRACT}`);
   console.log(`Transactions to broadcast: ${TRANSACTIONS_TO_BROADCAST}`);
   console.log(`Transaction fee rate: ${TRANSACTION_FEE_RATE} uSTX`);
   console.log(`Transaction interval: ${TRANSACTION_INTERVAL_MS}ms`);
@@ -718,6 +900,10 @@ const mainLoop = async () => {
   console.log(`Min received: ${USE_MIN_RECEIVED ? 'Enabled' : 'Disabled'}`);
   console.log(`Post conditions: ${USE_POST_CONDITIONS ? 'Enabled' : 'Disabled'}`);
   console.log(`Simple swap: ${USE_SIMPLE_SWAP ? 'Enabled' : 'Disabled'}`);
+  if (USE_SIMPLE_SWAP) {
+    console.log(`Additional steps per group: ${ADDITIONAL_STEPS_PER_GROUP}`);
+    console.log(`Max total steps across all groups: ${MAX_TOTAL_STEPS}`);
+  };
   console.log(`Allow all tokens: ${ALLOW_ALL_TOKENS ? 'Enabled' : 'Disabled'}`);
   console.log(`Debug mode: ${DEBUG_MODE ? 'Enabled' : 'Disabled'}`);
 
