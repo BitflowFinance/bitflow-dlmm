@@ -69,8 +69,11 @@ const ALLOWED_TOKENS = {
   'ST1WA4CXFR54B1W42R7NSMXEQYQTTMB3CXQM63ETH.token-tbtc-v-0-1': 0.1
 };
 
-// Maximum total steps per simple swap transaction (294 max on-chain before hitting limits)
-const MAX_TOTAL_STEPS = 290;
+// Maximum steps per simple swap transaction
+const MAX_SWAP_SIMPLE_STEPS = 277;
+
+// Maximum list entries per swap multi transaction
+const MAX_SWAP_MULTI_ENTRIES = 277;
 
 let POOLS = [];
 
@@ -341,7 +344,7 @@ const buildSwapSimpleMultiParams = (swapParamsTyped) => {
   const groupsWithInitialSteps = swapParamsTyped.map(param => {
     const value = param.value;
     const apiMaxSteps = parseInt(value['max-steps'].value, 10);
-    const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
+    const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, MAX_SWAP_SIMPLE_STEPS));
     
     return {
       param: param,
@@ -350,7 +353,7 @@ const buildSwapSimpleMultiParams = (swapParamsTyped) => {
   });
   
   const totalInitialSteps = groupsWithInitialSteps.reduce((sum, group) => sum + group.initialMaxSteps, 0);
-  const scaleFactor = totalInitialSteps > MAX_TOTAL_STEPS ? MAX_TOTAL_STEPS / totalInitialSteps : 1;
+  const scaleFactor = totalInitialSteps > MAX_SWAP_SIMPLE_STEPS ? MAX_SWAP_SIMPLE_STEPS / totalInitialSteps : 1;
   
   return groupsWithInitialSteps.map(group => {
     const value = group.param.value;
@@ -389,7 +392,7 @@ const buildSwapSimpleMultiParamsManual = (swapParamsTyped) => {
     
     if (needsNewGroup) {
       if (currentGroup) {
-        const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
+        const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, MAX_SWAP_SIMPLE_STEPS));
         orderedGroups.push({
           'pool-trait': currentGroup['pool-trait'],
           'x-token-trait': currentGroup['x-token-trait'],
@@ -419,7 +422,7 @@ const buildSwapSimpleMultiParamsManual = (swapParamsTyped) => {
   });
   
   if (currentGroup) {
-    const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
+    const initialMaxSteps = Math.max(1, Math.min(currentGroup.binCount + ADDITIONAL_STEPS_PER_GROUP, MAX_SWAP_SIMPLE_STEPS));
     orderedGroups.push({
       'pool-trait': currentGroup['pool-trait'],
       'x-token-trait': currentGroup['x-token-trait'],
@@ -433,7 +436,7 @@ const buildSwapSimpleMultiParamsManual = (swapParamsTyped) => {
   };
 
   const totalInitialSteps = orderedGroups.reduce((sum, group) => sum + group.initialMaxSteps, 0);
-  const scaleFactor = totalInitialSteps > MAX_TOTAL_STEPS ? MAX_TOTAL_STEPS / totalInitialSteps : 1;
+  const scaleFactor = totalInitialSteps > MAX_SWAP_SIMPLE_STEPS ? MAX_SWAP_SIMPLE_STEPS / totalInitialSteps : 1;
 
   return orderedGroups.map(group => {
     const scaledMaxSteps = Math.max(1, Math.floor(group.initialMaxSteps * scaleFactor));
@@ -705,6 +708,11 @@ const executeRandomSwap = async () => {
       listCV(swapParamsCV.map(param => tupleCV(param)))
     ];
   } else {
+    if (swapParamsCV.length > MAX_SWAP_MULTI_ENTRIES) {
+      console.log(`Skipping swap: Too many swap multi entries (${swapParamsCV.length}), maximum is ${MAX_SWAP_MULTI_ENTRIES}`);
+      return { executed: false, reason: 'too_many_swap_multi_entries' };
+    };
+    
     functionArgs = [
       listCV(swapParamsCV),
       uintCV(BIN_SLIPPAGE_TOLERANCE)
@@ -759,7 +767,7 @@ const executeRandomSwap = async () => {
       const groupsWithSteps = swapData.swap_parameters_typed.map(param => {
         const value = param.value;
         const apiMaxSteps = parseInt(value['max-steps'].value, 10);
-        const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, MAX_TOTAL_STEPS));
+        const initialMaxSteps = Math.max(1, Math.min(apiMaxSteps + ADDITIONAL_STEPS_PER_GROUP, MAX_SWAP_SIMPLE_STEPS));
         return {
           apiMaxSteps,
           initialMaxSteps,
@@ -768,7 +776,7 @@ const executeRandomSwap = async () => {
       });
       
       const totalInitialSteps = groupsWithSteps.reduce((sum, group) => sum + group.initialMaxSteps, 0);
-      const scaleFactor = totalInitialSteps > MAX_TOTAL_STEPS ? MAX_TOTAL_STEPS / totalInitialSteps : 1;
+      const scaleFactor = totalInitialSteps > MAX_SWAP_SIMPLE_STEPS ? MAX_SWAP_SIMPLE_STEPS / totalInitialSteps : 1;
       const totalFinalSteps = Math.floor(totalInitialSteps * scaleFactor);
       
       debugInfo.swapSimpleMultiArgs = {
@@ -902,7 +910,9 @@ const mainLoop = async () => {
   console.log(`Simple swap: ${USE_SIMPLE_SWAP ? 'Enabled' : 'Disabled'}`);
   if (USE_SIMPLE_SWAP) {
     console.log(`Additional steps per group: ${ADDITIONAL_STEPS_PER_GROUP}`);
-    console.log(`Max total steps across all groups: ${MAX_TOTAL_STEPS}`);
+    console.log(`Max steps across all groups: ${MAX_SWAP_SIMPLE_STEPS}`);
+  } else {
+    console.log(`Max swap multi entries: ${MAX_SWAP_MULTI_ENTRIES}`);
   };
   console.log(`Allow all tokens: ${ALLOW_ALL_TOKENS ? 'Enabled' : 'Disabled'}`);
   console.log(`Debug mode: ${DEBUG_MODE ? 'Enabled' : 'Disabled'}`);
