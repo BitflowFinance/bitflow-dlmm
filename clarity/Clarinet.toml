@@ -70,6 +70,21 @@ path = "contracts/dlmm-core-multi-helper-v-1-1.clar"
 clarity_version = 4
 epoch = "3.3"
 
+[contracts.dlmm-core-validation-helper-v-1-1]
+path = "contracts/dlmm-core-validation-helper-v-1-1.clar"
+clarity_version = 4
+epoch = "3.3"
+
+[contracts.dlmm-pool-multi-helper-v-1-1]
+path = "contracts/dlmm-pool-multi-helper-v-1-1.clar"
+clarity_version = 4
+epoch = "3.3"
+
+[contracts.dlmm-pool-sbtc-usdc-validation-v-1-1]
+path = "contracts/dlmm-pool-sbtc-usdc-validation-v-1-1.clar"
+clarity_version = 4
+epoch = "3.3"
+
 [contracts.mock-sbtc-token]
 path = "contracts/mocks/mock-sbtc-token.clar"
 clarity_version = 4
