@@ -174,8 +174,8 @@
 		(bin-id-delta (- active-bin-id expected-bin-id))
 		(is-unfavorable (if x-for-y (< bin-id-delta 0) (> bin-id-delta 0)))
 		(swap-result (if x-for-y
-										 (try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id amount))
-										 (try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id amount))))
+						(try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id amount))
+						(try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id amount))))
 		(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u319) ERR_RESULTS_LIST_OVERFLOW))
 	)
 		(asserts! (>= (get out swap-result) (get min-received swap)) ERR_MINIMUM_RECEIVED)
@@ -200,27 +200,27 @@
 		(x-amount-for-swap (get x-amount-for-swap result-data))
 	)
 		(if (> x-amount-for-swap u0)
-				(let (
-					(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
-					(bin-id-delta (- active-bin-id expected-bin-id))
-					(is-unfavorable (< bin-id-delta 0))
-					(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id x-amount-for-swap)))
-					(out (get out swap-result))
-					(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u319) ERR_RESULTS_LIST_OVERFLOW))
-					(updated-x-amount-for-swap (- x-amount-for-swap (get in swap-result)))
-					(updated-y-amount (+ (get y-amount result-data) out))
-				)
-					(asserts! (>= out (get min-received swap)) ERR_MINIMUM_RECEIVED)
-					(ok {
-						x-token-trait: x-token-trait,
-						y-token-trait: y-token-trait,
-						results: updated-results,
-						x-amount-for-swap: updated-x-amount-for-swap,
-						y-amount: updated-y-amount,
-						unfavorable: (+ (get unfavorable result-data) (if is-unfavorable (abs-int bin-id-delta) u0))
-					})
-				)
-				(ok result-data))
+			(let (
+				(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
+				(bin-id-delta (- active-bin-id expected-bin-id))
+				(is-unfavorable (< bin-id-delta 0))
+				(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id x-amount-for-swap)))
+				(out (get out swap-result))
+				(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u319) ERR_RESULTS_LIST_OVERFLOW))
+				(updated-x-amount-for-swap (- x-amount-for-swap (get in swap-result)))
+				(updated-y-amount (+ (get y-amount result-data) out))
+			)
+				(asserts! (>= out (get min-received swap)) ERR_MINIMUM_RECEIVED)
+				(ok {
+					x-token-trait: x-token-trait,
+					y-token-trait: y-token-trait,
+					results: updated-results,
+					x-amount-for-swap: updated-x-amount-for-swap,
+					y-amount: updated-y-amount,
+					unfavorable: (+ (get unfavorable result-data) (if is-unfavorable (abs-int bin-id-delta) u0))
+				})
+			)
+			(ok result-data))
 	)
 )
 
@@ -238,27 +238,27 @@
 		(y-amount-for-swap (get y-amount-for-swap result-data))
 	)
 		(if (> y-amount-for-swap u0)
-				(let (
-					(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
-					(bin-id-delta (- active-bin-id expected-bin-id))
-					(is-unfavorable (> bin-id-delta 0))
-					(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id y-amount-for-swap)))
-					(out (get out swap-result))
-					(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u319) ERR_RESULTS_LIST_OVERFLOW))
-					(updated-y-amount-for-swap (- y-amount-for-swap (get in swap-result)))
-					(updated-x-amount (+ (get x-amount result-data) out))
-				)
-					(asserts! (>= out (get min-received swap)) ERR_MINIMUM_RECEIVED)
-					(ok {
-						x-token-trait: x-token-trait,
-						y-token-trait: y-token-trait,
-						results: updated-results,
-						y-amount-for-swap: updated-y-amount-for-swap,
-						x-amount: updated-x-amount,
-						unfavorable: (+ (get unfavorable result-data) (if is-unfavorable (abs-int bin-id-delta) u0))
-					})
-				)
-				(ok result-data))
+			(let (
+				(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
+				(bin-id-delta (- active-bin-id expected-bin-id))
+				(is-unfavorable (> bin-id-delta 0))
+				(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id y-amount-for-swap)))
+				(out (get out swap-result))
+				(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u319) ERR_RESULTS_LIST_OVERFLOW))
+				(updated-y-amount-for-swap (- y-amount-for-swap (get in swap-result)))
+				(updated-x-amount (+ (get x-amount result-data) out))
+			)
+				(asserts! (>= out (get min-received swap)) ERR_MINIMUM_RECEIVED)
+				(ok {
+					x-token-trait: x-token-trait,
+					y-token-trait: y-token-trait,
+					results: updated-results,
+					y-amount-for-swap: updated-y-amount-for-swap,
+					x-amount: updated-x-amount,
+					unfavorable: (+ (get unfavorable result-data) (if is-unfavorable (abs-int bin-id-delta) u0))
+				})
+			)
+			(ok result-data))
 	)
 )
 
@@ -277,8 +277,8 @@
 		(max-steps (get max-steps swap))
 		(max-steps-check (asserts! (and (>= max-steps MIN_STEPS) (<= max-steps MAX_STEPS)) ERR_INVALID_MAX_STEPS))
 		(swap-result (if x-for-y
-								 (try! (swap-x-for-y-simple-range-multi pool-trait x-token-trait y-token-trait amount min-received max-steps))
-								 (try! (swap-y-for-x-simple-range-multi pool-trait x-token-trait y-token-trait amount min-received max-steps))))
+						(try! (swap-x-for-y-simple-range-multi pool-trait x-token-trait y-token-trait amount min-received max-steps))
+						(try! (swap-y-for-x-simple-range-multi pool-trait x-token-trait y-token-trait amount min-received max-steps))))
 		(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u5) ERR_RESULTS_LIST_OVERFLOW))
 	)
 		(ok {results: updated-results})
@@ -297,21 +297,21 @@
 		(x-amount-for-swap (get x-amount-for-swap result-data))
 	)
 		(if (> x-amount-for-swap u0)
-				(let (
-					(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
-					(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id x-amount-for-swap)))
-					(updated-x-amount-for-swap (- x-amount-for-swap (get in swap-result)))
-					(updated-y-amount (+ (get y-amount result-data) (get out swap-result)))
-				)
-					(ok {
-						pool-trait: pool-trait,
-						x-token-trait: x-token-trait,
-						y-token-trait: y-token-trait,
-						x-amount-for-swap: updated-x-amount-for-swap,
-						y-amount: updated-y-amount
-					})
-				)
-				(ok result-data))
+			(let (
+				(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
+				(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-x-for-y pool-trait x-token-trait y-token-trait active-bin-id x-amount-for-swap)))
+				(updated-x-amount-for-swap (- x-amount-for-swap (get in swap-result)))
+				(updated-y-amount (+ (get y-amount result-data) (get out swap-result)))
+			)
+				(ok {
+					pool-trait: pool-trait,
+					x-token-trait: x-token-trait,
+					y-token-trait: y-token-trait,
+					x-amount-for-swap: updated-x-amount-for-swap,
+					y-amount: updated-y-amount
+				})
+			)
+			(ok result-data))
 	)
 )
 
@@ -327,21 +327,21 @@
 		(y-amount-for-swap (get y-amount-for-swap result-data))
 	)
 		(if (> y-amount-for-swap u0)
-				(let (
-					(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
-					(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id y-amount-for-swap)))
-					(updated-y-amount-for-swap (- y-amount-for-swap (get in swap-result)))
-					(updated-x-amount (+ (get x-amount result-data) (get out swap-result)))
-				)
-					(ok {
-						pool-trait: pool-trait,
-						x-token-trait: x-token-trait,
-						y-token-trait: y-token-trait,
-						y-amount-for-swap: updated-y-amount-for-swap,
-						x-amount: updated-x-amount
-					})
-				)
-				(ok result-data))
+			(let (
+				(active-bin-id (unwrap! (contract-call? pool-trait get-active-bin-id) ERR_NO_ACTIVE_BIN_DATA))
+				(swap-result (try! (contract-call? .dlmm-core-v-1-1 swap-y-for-x pool-trait x-token-trait y-token-trait active-bin-id y-amount-for-swap)))
+				(updated-y-amount-for-swap (- y-amount-for-swap (get in swap-result)))
+				(updated-x-amount (+ (get x-amount result-data) (get out swap-result)))
+			)
+				(ok {
+					pool-trait: pool-trait,
+					x-token-trait: x-token-trait,
+					y-token-trait: y-token-trait,
+					y-amount-for-swap: updated-y-amount-for-swap,
+					x-amount: updated-x-amount
+				})
+			)
+			(ok result-data))
 	)
 )
 
