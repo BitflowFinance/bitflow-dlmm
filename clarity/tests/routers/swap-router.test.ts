@@ -261,7 +261,6 @@ describe('DLMM Swap Helper Functions', () => {
     });
 
     it('should revert on empty swap list', async () => {
-      // test will fail
       const swaps: any[] = [];
       const maxUnfavorableBins = 5n;
       
@@ -270,8 +269,37 @@ describe('DLMM Swap Helper Functions', () => {
         maxUnfavorableBins
       ), alice);
 
-      // will be changed with specific error code once set
-      expect(cvToValue(response.result)).toBeGreaterThan(0n);
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_EMPTY_SWAPS_LIST);
+    });
+
+    it('should revert on empty X-for-Y same-multi swap list', async () => {
+      const swaps: any[] = [];
+
+      const response = txErr(dlmmSwapRouter.swapXForYSameMulti(
+        swaps,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        1000000n,
+        1n,
+        5n
+      ), alice);
+
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_EMPTY_SWAPS_LIST);
+    });
+
+    it('should revert on empty Y-for-X same-multi swap list', async () => {
+      const swaps: any[] = [];
+
+      const response = txErr(dlmmSwapRouter.swapYForXSameMulti(
+        swaps,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        50000000n,
+        1n,
+        5n
+      ), alice);
+
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_EMPTY_SWAPS_LIST);
     });
 
     it('should handle swaps with zero amounts', async () => {
