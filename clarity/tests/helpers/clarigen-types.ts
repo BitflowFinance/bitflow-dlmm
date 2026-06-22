@@ -2747,7 +2747,7 @@ dlmmSwapRouterV11: {
 }[];
   "unfavorable": bigint;
 }, bigint>>,
-    swapXForYSameMulti: {"name":"swap-x-for-y-same-multi","access":"public","args":[{"name":"swaps","type":{"list":{"type":{"tuple":[{"name":"expected-bin-id","type":"int128"},{"name":"min-received","type":"uint128"},{"name":"pool-trait","type":"trait_reference"}]},"length":350}}},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"amount","type":"uint128"},{"name":"min-y-amount-total","type":"uint128"},{"name":"max-unfavorable-bins","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"results","type":{"list":{"type":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"length":350}}},{"name":"unfavorable","type":"uint128"},{"name":"y-amount","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[swaps: TypedAbiArg<{
+    swapXForYSameMulti: {"name":"swap-x-for-y-same-multi","access":"public","args":[{"name":"swaps","type":{"list":{"type":{"tuple":[{"name":"expected-bin-id","type":"int128"},{"name":"min-received","type":"uint128"},{"name":"pool-trait","type":"trait_reference"}]},"length":350}}},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"amount","type":"uint128"},{"name":"min-y-amount-total","type":"uint128"},{"name":"max-unfavorable-bins","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"results","type":{"list":{"type":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"length":350}}},{"name":"unfavorable","type":"uint128"},{"name":"x-amount-spent","type":"uint128"},{"name":"y-amount","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[swaps: TypedAbiArg<{
   "expectedBinId": number | bigint;
   "minReceived": number | bigint;
   "poolTrait": string;
@@ -2757,13 +2757,14 @@ dlmmSwapRouterV11: {
   "out": bigint;
 }[];
   "unfavorable": bigint;
+  "xAmountSpent": bigint;
   "yAmount": bigint;
 }, bigint>>,
     swapXForYSimpleMulti: {"name":"swap-x-for-y-simple-multi","access":"public","args":[{"name":"pool-trait","type":"trait_reference"},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"x-amount","type":"uint128"},{"name":"min-dy","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[poolTrait: TypedAbiArg<string, "poolTrait">, xTokenTrait: TypedAbiArg<string, "xTokenTrait">, yTokenTrait: TypedAbiArg<string, "yTokenTrait">, xAmount: TypedAbiArg<number | bigint, "xAmount">, minDy: TypedAbiArg<number | bigint, "minDy">], Response<{
   "in": bigint;
   "out": bigint;
 }, bigint>>,
-    swapYForXSameMulti: {"name":"swap-y-for-x-same-multi","access":"public","args":[{"name":"swaps","type":{"list":{"type":{"tuple":[{"name":"expected-bin-id","type":"int128"},{"name":"min-received","type":"uint128"},{"name":"pool-trait","type":"trait_reference"}]},"length":350}}},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"amount","type":"uint128"},{"name":"min-x-amount-total","type":"uint128"},{"name":"max-unfavorable-bins","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"results","type":{"list":{"type":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"length":350}}},{"name":"unfavorable","type":"uint128"},{"name":"x-amount","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[swaps: TypedAbiArg<{
+    swapYForXSameMulti: {"name":"swap-y-for-x-same-multi","access":"public","args":[{"name":"swaps","type":{"list":{"type":{"tuple":[{"name":"expected-bin-id","type":"int128"},{"name":"min-received","type":"uint128"},{"name":"pool-trait","type":"trait_reference"}]},"length":350}}},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"amount","type":"uint128"},{"name":"min-x-amount-total","type":"uint128"},{"name":"max-unfavorable-bins","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"results","type":{"list":{"type":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"length":350}}},{"name":"unfavorable","type":"uint128"},{"name":"x-amount","type":"uint128"},{"name":"y-amount-spent","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[swaps: TypedAbiArg<{
   "expectedBinId": number | bigint;
   "minReceived": number | bigint;
   "poolTrait": string;
@@ -2774,6 +2775,7 @@ dlmmSwapRouterV11: {
 }[];
   "unfavorable": bigint;
   "xAmount": bigint;
+  "yAmountSpent": bigint;
 }, bigint>>,
     swapYForXSimpleMulti: {"name":"swap-y-for-x-simple-multi","access":"public","args":[{"name":"pool-trait","type":"trait_reference"},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"y-amount","type":"uint128"},{"name":"min-dx","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[poolTrait: TypedAbiArg<string, "poolTrait">, xTokenTrait: TypedAbiArg<string, "xTokenTrait">, yTokenTrait: TypedAbiArg<string, "yTokenTrait">, yAmount: TypedAbiArg<number | bigint, "yAmount">, minDx: TypedAbiArg<number | bigint, "minDx">], Response<{
   "in": bigint;
@@ -4166,4 +4168,3 @@ export const project = {
   contracts,
   deployments,
 } as const;
-  
