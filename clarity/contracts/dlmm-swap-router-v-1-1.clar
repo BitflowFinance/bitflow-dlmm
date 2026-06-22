@@ -44,12 +44,14 @@
 		(swaps (list 350 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, expected-bin-id: int, amount: uint, min-received: uint, x-for-y: bool}))
 		(max-unfavorable-bins uint)
 	)
-	(let (
-		(swap-result (try! (fold fold-swap-multi swaps (ok {results: (list ), unfavorable: u0}))))
-	)
+	(begin
 		(asserts! (> (len swaps) u0) ERR_EMPTY_SWAPS_LIST)
-		(asserts! (<= (get unfavorable swap-result) max-unfavorable-bins) ERR_BIN_SLIPPAGE)
-		(ok swap-result)
+		(let (
+			(swap-result (try! (fold fold-swap-multi swaps (ok {results: (list ), unfavorable: u0}))))
+	)
+			(asserts! (<= (get unfavorable swap-result) max-unfavorable-bins) ERR_BIN_SLIPPAGE)
+			(ok swap-result)
+		)
 	)
 )
 
@@ -59,15 +61,17 @@
 		(x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
 		(amount uint) (min-y-amount-total uint) (max-unfavorable-bins uint)
 	)
-	(let (
-		(swap-result (try! (fold fold-swap-x-for-y-same-multi swaps (ok {x-token-trait: x-token-trait, y-token-trait: y-token-trait, results: (list ), x-amount-for-swap: amount, y-amount: u0, unfavorable: u0}))))
-		(y-amount-total (get y-amount swap-result))
-		(unfavorable (get unfavorable swap-result))
- )
+	(begin
 		(asserts! (> (len swaps) u0) ERR_EMPTY_SWAPS_LIST)
-		(asserts! (<= unfavorable max-unfavorable-bins) ERR_BIN_SLIPPAGE)
-		(asserts! (>= y-amount-total min-y-amount-total) ERR_MINIMUM_Y_AMOUNT)
-		(ok {results: (get results swap-result), y-amount: y-amount-total, unfavorable: unfavorable})
+		(let (
+			(swap-result (try! (fold fold-swap-x-for-y-same-multi swaps (ok {x-token-trait: x-token-trait, y-token-trait: y-token-trait, results: (list ), x-amount-for-swap: amount, y-amount: u0, unfavorable: u0}))))
+			(y-amount-total (get y-amount swap-result))
+			(unfavorable (get unfavorable swap-result))
+ )
+			(asserts! (<= unfavorable max-unfavorable-bins) ERR_BIN_SLIPPAGE)
+			(asserts! (>= y-amount-total min-y-amount-total) ERR_MINIMUM_Y_AMOUNT)
+			(ok {results: (get results swap-result), y-amount: y-amount-total, unfavorable: unfavorable})
+		)
 	)
 )
 
@@ -77,15 +81,17 @@
 		(x-token-trait <sip-010-trait>) (y-token-trait <sip-010-trait>)
 		(amount uint) (min-x-amount-total uint) (max-unfavorable-bins uint)
 	)
-	(let (
-		(swap-result (try! (fold fold-swap-y-for-x-same-multi swaps (ok {x-token-trait: x-token-trait, y-token-trait: y-token-trait, results: (list ), y-amount-for-swap: amount, x-amount: u0, unfavorable: u0}))))
-		(x-amount-total (get x-amount swap-result))
-		(unfavorable (get unfavorable swap-result))
- )
+	(begin
 		(asserts! (> (len swaps) u0) ERR_EMPTY_SWAPS_LIST)
-		(asserts! (<= unfavorable max-unfavorable-bins) ERR_BIN_SLIPPAGE)
-		(asserts! (>= x-amount-total min-x-amount-total) ERR_MINIMUM_X_AMOUNT)
-		(ok {results: (get results swap-result), x-amount: x-amount-total, unfavorable: unfavorable})
+		(let (
+			(swap-result (try! (fold fold-swap-y-for-x-same-multi swaps (ok {x-token-trait: x-token-trait, y-token-trait: y-token-trait, results: (list ), y-amount-for-swap: amount, x-amount: u0, unfavorable: u0}))))
+			(x-amount-total (get x-amount swap-result))
+			(unfavorable (get unfavorable swap-result))
+ )
+			(asserts! (<= unfavorable max-unfavorable-bins) ERR_BIN_SLIPPAGE)
+			(asserts! (>= x-amount-total min-x-amount-total) ERR_MINIMUM_X_AMOUNT)
+			(ok {results: (get results swap-result), x-amount: x-amount-total, unfavorable: unfavorable})
+		)
 	)
 )
 
