@@ -218,6 +218,74 @@ describe('DLMM Swap Helper Functions', () => {
       expect(received).toBeGreaterThan(0n);
     });
 
+    it('should report aggregate spent amount for X-for-Y same-token multi swaps', async () => {
+      const swaps = [{
+        poolTrait: sbtcUsdcPool.identifier,
+        expectedBinId: 0,
+        minReceived: 1n
+      }];
+      const amount = 1000000n; // 0.01 BTC
+      const maxUnfavorableBins = 5n;
+
+      const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
+      const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
+
+      const response = txOk(dlmmSwapRouter.swapXForYSameMulti(
+        swaps,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        amount,
+        1n,
+        maxUnfavorableBins
+      ), alice);
+
+      const finalXBalance = rovOk(mockSbtcToken.getBalance(alice));
+      const finalYBalance = rovOk(mockUsdcToken.getBalance(alice));
+      const result = cvToValue(response.result);
+      const spent = result.results.reduce((sum: bigint, r: {in: bigint, out: bigint}) => sum + r.in, 0n);
+      const received = result.results.reduce((sum: bigint, r: {in: bigint, out: bigint}) => sum + r.out, 0n);
+
+      expect(result.xAmountSpent).toBe(spent);
+      expect(result.yAmount).toBe(received);
+      expect(finalXBalance).toBe(initialXBalance - result.xAmountSpent);
+      expect(finalYBalance).toBe(initialYBalance + result.yAmount);
+      expect(result.xAmountSpent).toBeGreaterThan(0n);
+    });
+
+    it('should report aggregate spent amount for Y-for-X same-token multi swaps', async () => {
+      const swaps = [{
+        poolTrait: sbtcUsdcPool.identifier,
+        expectedBinId: 0,
+        minReceived: 1n
+      }];
+      const amount = 50000000n; // 50 USDC
+      const maxUnfavorableBins = 5n;
+
+      const initialXBalance = rovOk(mockSbtcToken.getBalance(alice));
+      const initialYBalance = rovOk(mockUsdcToken.getBalance(alice));
+
+      const response = txOk(dlmmSwapRouter.swapYForXSameMulti(
+        swaps,
+        mockSbtcToken.identifier,
+        mockUsdcToken.identifier,
+        amount,
+        1n,
+        maxUnfavorableBins
+      ), alice);
+
+      const finalXBalance = rovOk(mockSbtcToken.getBalance(alice));
+      const finalYBalance = rovOk(mockUsdcToken.getBalance(alice));
+      const result = cvToValue(response.result);
+      const spent = result.results.reduce((sum: bigint, r: {in: bigint, out: bigint}) => sum + r.in, 0n);
+      const received = result.results.reduce((sum: bigint, r: {in: bigint, out: bigint}) => sum + r.out, 0n);
+
+      expect(result.yAmountSpent).toBe(spent);
+      expect(result.xAmount).toBe(received);
+      expect(finalYBalance).toBe(initialYBalance - result.yAmountSpent);
+      expect(finalXBalance).toBe(initialXBalance + result.xAmount);
+      expect(result.yAmountSpent).toBeGreaterThan(0n);
+    });
+
     it('should fail when minimum received not met', async () => {
       const swaps = [{
         poolTrait: sbtcUsdcPool.identifier,
