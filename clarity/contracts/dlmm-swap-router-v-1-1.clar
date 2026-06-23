@@ -96,12 +96,17 @@
 ;; Swap through up to 319 bins in up to 5 pools
 (define-public (swap-simple-multi
 		(swaps (list 5 {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, amount: uint, min-received: uint, x-for-y: bool, max-steps: uint}))
+		(min-final-output uint)
 	)
 	(let (
-		(swap-result (try! (fold fold-swap-simple-multi swaps (ok {results: (list )}))))
+		(swap-result (try! (fold fold-swap-simple-multi swaps (ok {results: (list ), final-output: u0}))))
 	)
 		(asserts! (> (len swaps) u0) ERR_EMPTY_SWAPS_LIST)
-		(ok swap-result)
+		(asserts! (>= (get final-output swap-result) min-final-output) ERR_MINIMUM_RECEIVED)
+		(ok {
+			results: (get results swap-result),
+			final-output: (get final-output swap-result)
+		})
 	)
 )
 
@@ -264,7 +269,7 @@
 
 (define-private (fold-swap-simple-multi
 	(swap {pool-trait: <dlmm-pool-trait>, x-token-trait: <sip-010-trait>, y-token-trait: <sip-010-trait>, amount: uint, min-received: uint, x-for-y: bool, max-steps: uint})
-	(result (response {results: (list 5 {in: uint, out: uint})} uint))
+	(result (response {results: (list 5 {in: uint, out: uint}), final-output: uint} uint))
 )
 	(let (
 		(result-data (unwrap! result ERR_NO_RESULT_DATA))
@@ -281,7 +286,10 @@
 						(try! (swap-y-for-x-simple-range-multi pool-trait x-token-trait y-token-trait amount min-received max-steps))))
 		(updated-results (unwrap! (as-max-len? (append (get results result-data) swap-result) u5) ERR_RESULTS_LIST_OVERFLOW))
 	)
-		(ok {results: updated-results})
+		(ok {
+			results: updated-results,
+			final-output: (get out swap-result)
+		})
 	)
 )
 

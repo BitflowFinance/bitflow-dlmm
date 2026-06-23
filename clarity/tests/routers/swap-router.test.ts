@@ -494,6 +494,70 @@ describe('DLMM Swap Helper Functions', () => {
       expect(received).toBeGreaterThanOrEqual(0n);
     });
 
+    it('should enforce a final output minimum for simple multi-hop swaps', async () => {
+      const swaps = [
+        {
+          poolTrait: sbtcUsdcPool.identifier,
+          xTokenTrait: mockSbtcToken.identifier,
+          yTokenTrait: mockUsdcToken.identifier,
+          amount: 500000n,
+          minReceived: 1n,
+          xForY: true,
+          maxSteps: 10n
+        },
+        {
+          poolTrait: sbtcUsdcPool.identifier,
+          xTokenTrait: mockSbtcToken.identifier,
+          yTokenTrait: mockUsdcToken.identifier,
+          amount: 25000000n,
+          minReceived: 1n,
+          xForY: false,
+          maxSteps: 10n
+        }
+      ];
+
+      const response = txOk(dlmmSwapRouter.swapSimpleMulti(
+        swaps,
+        1n
+      ), alice);
+
+      const result = cvToValue(response.result);
+      const lastResult = result.results[result.results.length - 1];
+
+      expect(result.finalOutput).toBe(lastResult.out);
+      expect(result.finalOutput).toBeGreaterThan(0n);
+    });
+
+    it('should fail simple multi-hop swaps when final output is below minimum', async () => {
+      const swaps = [
+        {
+          poolTrait: sbtcUsdcPool.identifier,
+          xTokenTrait: mockSbtcToken.identifier,
+          yTokenTrait: mockUsdcToken.identifier,
+          amount: 500000n,
+          minReceived: 1n,
+          xForY: true,
+          maxSteps: 10n
+        },
+        {
+          poolTrait: sbtcUsdcPool.identifier,
+          xTokenTrait: mockSbtcToken.identifier,
+          yTokenTrait: mockUsdcToken.identifier,
+          amount: 25000000n,
+          minReceived: 1n,
+          xForY: false,
+          maxSteps: 10n
+        }
+      ];
+
+      const response = txErr(dlmmSwapRouter.swapSimpleMulti(
+        swaps,
+        999999999999n
+      ), alice);
+
+      expect(cvToValue(response.result)).toBe(errors.dlmmSwapRouter.ERR_MINIMUM_RECEIVED);
+    });
+
     it('should fail when using random token in swap helper', async () => {
       // Mint random tokens for testing
       txOk(mockRandomToken.mint(1000000n, alice), deployer);
