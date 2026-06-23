@@ -2747,6 +2747,21 @@ dlmmSwapRouterV11: {
 }[];
   "unfavorable": bigint;
 }, bigint>>,
+    swapSimpleMulti: {"name":"swap-simple-multi","access":"public","args":[{"name":"swaps","type":{"list":{"type":{"tuple":[{"name":"amount","type":"uint128"},{"name":"max-steps","type":"uint128"},{"name":"min-received","type":"uint128"},{"name":"pool-trait","type":"trait_reference"},{"name":"x-for-y","type":"bool"},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"}]},"length":5}}},{"name":"min-final-output","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"final-output","type":"uint128"},{"name":"results","type":{"list":{"type":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"length":5}}}]},"error":"uint128"}}}} as TypedAbiFunction<[swaps: TypedAbiArg<{
+  "amount": number | bigint;
+  "maxSteps": number | bigint;
+  "minReceived": number | bigint;
+  "poolTrait": string;
+  "xForY": boolean;
+  "xTokenTrait": string;
+  "yTokenTrait": string;
+}[], "swaps">, minFinalOutput: TypedAbiArg<number | bigint, "minFinalOutput">], Response<{
+  "finalOutput": bigint;
+  "results": {
+  "in": bigint;
+  "out": bigint;
+}[];
+}, bigint>>,
     swapXForYSameMulti: {"name":"swap-x-for-y-same-multi","access":"public","args":[{"name":"swaps","type":{"list":{"type":{"tuple":[{"name":"expected-bin-id","type":"int128"},{"name":"min-received","type":"uint128"},{"name":"pool-trait","type":"trait_reference"}]},"length":350}}},{"name":"x-token-trait","type":"trait_reference"},{"name":"y-token-trait","type":"trait_reference"},{"name":"amount","type":"uint128"},{"name":"min-y-amount-total","type":"uint128"},{"name":"max-unfavorable-bins","type":"uint128"}],"outputs":{"type":{"response":{"ok":{"tuple":[{"name":"results","type":{"list":{"type":{"tuple":[{"name":"in","type":"uint128"},{"name":"out","type":"uint128"}]},"length":350}}},{"name":"unfavorable","type":"uint128"},{"name":"y-amount","type":"uint128"}]},"error":"uint128"}}}} as TypedAbiFunction<[swaps: TypedAbiArg<{
   "expectedBinId": number | bigint;
   "minReceived": number | bigint;
@@ -4166,4 +4181,3 @@ export const project = {
   contracts,
   deployments,
 } as const;
-  
