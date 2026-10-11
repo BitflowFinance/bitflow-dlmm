@@ -474,9 +474,9 @@
 			(asserts! (or (is-eq caller sender) (is-eq contract-caller sender)) ERR_NOT_AUTHORIZED_SIP_013)
 			(asserts! (not (is-eq sender recipient)) ERR_MATCHING_PRINCIPALS_SIP_013)
 
-			;; Assert that addresses are standard principals and amount is valid
-			(asserts! (is-standard sender) ERR_INVALID_PRINCIPAL)
-			(asserts! (is-standard recipient) ERR_INVALID_PRINCIPAL)
+			;; SIP-013 does not restrict principals to standard addresses. Contract principals
+			;; (e.g. the staking contract holding/returning staked LP) must be able to send and
+			;; receive pool tokens, so no is-standard check is performed here.
 			(asserts! (> amount u0) ERR_INVALID_AMOUNT_SIP_013)
 			(asserts! (<= amount sender-balance) ERR_INSUFFICIENT_BALANCE_SIP_013)
 
